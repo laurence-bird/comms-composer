@@ -1,0 +1,4 @@
+[submodule "ci_scripts"]
+	path = ci_scripts
+	url = git@github.com:ovotech/comms-ci-scripts.git
+	branch = master
