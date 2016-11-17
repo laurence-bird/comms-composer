@@ -48,4 +48,31 @@ class RenderingSpec extends FlatSpec with Matchers {
     result.textBody should be(Some("TEXT HEADER The amount was £1.23 TEXT FOOTER"))
   }
 
+  it should "render a template that references fields in the customer profile" in {
+    val manifest = CommManifest(CommType.Service, "profile-fields", "0.1")
+    val template = Template(
+      sender = None,
+      subject = Mustache("SUBJECT {{profile.firstName}} {{amount}}"),
+      htmlBody = Mustache("{{> header}} HTML BODY {{profile.firstName}} {{amount}} {{> footer}}"),
+      textBody = Some(Mustache("{{> header}} TEXT BODY {{profile.firstName}} {{amount}} {{> footer}}")),
+      htmlFragments = Map(
+        "header" -> Mustache("HTML HEADER {{profile.firstName}} {{amount}}"),
+        "footer" -> Mustache("HTML FOOTER {{profile.firstName}} {{amount}}")
+      ),
+      textFragments = Map(
+        "header" -> Mustache("TEXT HEADER {{profile.firstName}} {{amount}}"),
+        "footer" -> Mustache("TEXT FOOTER {{profile.firstName}} {{amount}}")
+      )
+    )
+    val data = Map("amount" -> "1.23")
+
+    val result = Rendering.render(manifest, template, data, profile)
+    result.subject should be("SUBJECT Joe 1.23")
+    result.htmlBody should be("HTML HEADER Joe 1.23 HTML BODY Joe 1.23 HTML FOOTER Joe 1.23")
+    result.textBody should be(Some("TEXT HEADER Joe 1.23 TEXT BODY Joe 1.23 TEXT FOOTER Joe 1.23"))
+  }
+
+  // TODO test for referencing non-existent data
+  // TODO test for referencing non-existent partial
+
 }
