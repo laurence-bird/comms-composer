@@ -10,15 +10,18 @@ scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf
 val testReportsDir = sys.env.getOrElse("CI_REPORTS", "target/reports")
 testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", testReportsDir)
 
+resolvers += Resolver.bintrayRepo("ovotech", "maven")
 libraryDependencies ++= Seq(
+  "com.ovoenergy" %% "comms-kafka-messages-internal" % "0.0.7-SNAPSHOT",
   "com.typesafe.akka" %% "akka-stream-kafka" % "0.12",
   "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
+  "org.typelevel" %% "cats-free" % "0.8.1",
   "ch.qos.logback" % "logback-classic" % "1.1.7",
   "io.logz.logback" % "logzio-logback-appender" % "1.0.11",
   "org.scalatest" %% "scalatest" % "3.0.1" % Test
 )
 
-lazy val root = (project in file("."))
-  .withDocker
+scalafmtConfig in ThisBuild := Some(file(".scalafmt.conf"))
+reformatOnCompileSettings
 
-
+lazy val root = (project in file(".")).withDocker
