@@ -19,7 +19,7 @@ class ComposerSpec extends FlatSpec with Matchers {
           htmlFragments = Map.empty,
           textFragments = Map.empty
         )
-      case Render(template, _, _) =>
+      case Render(_, template, _, _) =>
         RenderedEmail(
           subject = template.subject.content.replaceAllLiterally("{{firstName}}", "Chris"),
           htmlBody = template.htmlBody.content.replaceAllLiterally("{{amount}}", "1.23"),

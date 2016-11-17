@@ -13,6 +13,7 @@ testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", testReportsD
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 libraryDependencies ++= Seq(
   "com.ovoenergy" %% "comms-kafka-messages-internal" % "0.0.7-SNAPSHOT",
+  "com.github.jknack" % "handlebars" % "4.0.6",
   "com.typesafe.akka" %% "akka-stream-kafka" % "0.12",
   "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
   "org.typelevel" %% "cats-free" % "0.8.1",
