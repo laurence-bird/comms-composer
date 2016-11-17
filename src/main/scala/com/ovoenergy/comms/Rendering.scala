@@ -11,14 +11,14 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import java.util.{Map => JMap}
 
-import cats.Apply
+import cats.{Apply, Semigroup}
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
-import cats.instances.set._
 import cats.instances.option._
 import cats.syntax.traverse._
-
 import shapeless.LabelledGeneric
+
+import scala.util.{Failure, Success, Try}
 
 object Rendering {
 
@@ -28,9 +28,34 @@ object Rendering {
     case object Text extends FragmentType
   }
 
-  private val templateCache = new ConcurrentMapTemplateCache()
-
-  type MissingKeysOr[A] = Validated[Set[String], A]
+  private final case class Errors(missingKeys: Set[String], exceptions: Seq[Throwable]) {
+    def toErrorMessage: String = {
+      val missingKeysMsg = {
+        if (missingKeys.nonEmpty)
+          s"""The template referenced the following non-existent keys:
+             |${missingKeys.map(k => s" - $k").mkString("\n")}
+           """.stripMargin
+        else
+          ""
+      }
+      val exceptionsMsg = {
+        if (exceptions.nonEmpty)
+          s"""The following exceptions were thrown:
+              |${exceptions.map(e => s" - ${e.getMessage}").mkString("\n")}
+           """.stripMargin
+        else
+          ""
+      }
+      s"$missingKeysMsg$exceptionsMsg"
+    }
+  }
+  private object Errors {
+    implicit val semigroup: Semigroup[Errors] = new Semigroup[Errors] {
+      override def combine(x: Errors, y: Errors): Errors =
+        Errors(x.missingKeys ++ y.missingKeys, x.exceptions ++ y.exceptions)
+    }
+  }
+  private type ErrorsOr[A] = Validated[Errors, A]
 
   def render(commManifest: CommManifest,
              template: Template,
@@ -41,18 +66,18 @@ object Rendering {
       ("profile" -> profileToMap(customerProfile))).asJava
     // TODO add system data to context
 
-    val subject: MissingKeysOr[String] = {
+    val subject: ErrorsOr[String] = {
       val handlebars = new HandlebarsWrapper(customTemplateLoader = None)
       val filename = buildFilename(commManifest, "subject")
       handlebars.render(filename, template.subject)(context)
     }
-    val htmlBody: MissingKeysOr[String] = {
+    val htmlBody: ErrorsOr[String] = {
       val templateLoader = new FragmentTemplateLoader(commManifest, template.htmlFragments, FragmentType.Html)
       val handlebars = new HandlebarsWrapper(Some(templateLoader))
       val filename = buildFilename(commManifest, "htmlBody")
       handlebars.render(filename, template.htmlBody)(context)
     }
-    val textBody: Option[MissingKeysOr[String]] =
+    val textBody: Option[ErrorsOr[String]] =
       template.textBody map { tb =>
         val templateLoader = new FragmentTemplateLoader(commManifest, template.textFragments, FragmentType.Text)
         val handlebars = new HandlebarsWrapper(Some(templateLoader))
@@ -60,14 +85,12 @@ object Rendering {
         handlebars.render(filename, tb)(context)
       }
 
-    val missingKeysOrResult: MissingKeysOr[RenderedEmail] =
-      Apply[MissingKeysOr].map3(subject, htmlBody, textBody.sequenceU) {
+    val missingKeysOrResult: ErrorsOr[RenderedEmail] =
+      Apply[ErrorsOr].map3(subject, htmlBody, textBody.sequenceU) {
         case (s, h, t) => RenderedEmail(s, h, t)
       }
 
-    missingKeysOrResult
-      .leftMap(missingKeys => s"The template referenced the following missing keys: ${missingKeys.mkString(", ")}")
-      .toEither
+    missingKeysOrResult.leftMap(errors => errors.toErrorMessage).toEither
   }
 
   /*
@@ -77,6 +100,9 @@ object Rendering {
   private def buildFilename(commManifest: CommManifest, suffixes: String*): String =
     (Seq(commManifest.commType, commManifest.name, commManifest.version) ++ suffixes).mkString("::")
 
+  /*
+  Use shapeless to turn the CustomerProfile case class into a Map[String, String]
+   */
   private def profileToMap(profile: CustomerProfile): JMap[String, String] = {
     import shapeless.ops.record._
     val generic = LabelledGeneric[CustomerProfile]
@@ -87,6 +113,11 @@ object Rendering {
     }.toMap.asJava
   }
 
+  private val templateCache = new ConcurrentMapTemplateCache()
+
+  /*
+  Custom template loader for supplying the fragments (headers/footers) we have downloaded from S3
+   */
   private class FragmentTemplateLoader(commManifest: CommManifest,
                                        fragments: Map[String, Mustache],
                                        fragmentType: FragmentType)
@@ -102,6 +133,9 @@ object Rendering {
     }
   }
 
+  /*
+  Wrapper for Handlebars that keeps track of any references to missing keys
+   */
   private class HandlebarsWrapper(customTemplateLoader: Option[TemplateLoader]) {
     private val missingKeys = mutable.Set.empty[String]
 
@@ -124,13 +158,19 @@ object Rendering {
       base.`with`(templateCache).`with`(helperRegistry)
     }
 
-    def render(filename: String, template: Mustache)(context: JMap[String, AnyRef]): MissingKeysOr[String] = {
-      val compiledTemplate = handlebars.compile(new StringTemplateSource(filename, template.content))
-      val result = compiledTemplate.apply(context)
-      if (missingKeys.isEmpty)
-        Valid(result)
-      else
-        Invalid(missingKeys.toSet)
+    def render(filename: String, template: Mustache)(context: JMap[String, AnyRef]): ErrorsOr[String] = {
+      Try {
+        val compiledTemplate = handlebars.compile(new StringTemplateSource(filename, template.content))
+        compiledTemplate.apply(context)
+      } match { // note: Try has a `fold` function in Scala 2.12 :)
+        case Success(result) =>
+          if (missingKeys.isEmpty)
+            Valid(result)
+          else
+            Invalid(Errors(missingKeys = missingKeys.toSet, exceptions = Nil))
+        case Failure(e) =>
+          Invalid(Errors(missingKeys = Set.empty, exceptions = List(e)))
+      }
     }
 
   }

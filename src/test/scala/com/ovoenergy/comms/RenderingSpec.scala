@@ -24,6 +24,20 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     result.textBody should be(Some("The amount was £1.23"))
   }
 
+  it should "fail to render an invalid Mustache template" in {
+    val manifest = CommManifest(CommType.Service, "broken", "0.1")
+    val template = Template(
+      sender = None,
+      subject = Mustache("hey check this out {{"),
+      htmlBody = Mustache(""),
+      textBody = Some(Mustache("")),
+      htmlFragments = Map.empty,
+      textFragments = Map.empty
+    )
+
+    Rendering.render(manifest, template, Map.empty, profile) should be('left)
+  }
+
   it should "render a template with partials" in {
     val manifest = CommManifest(CommType.Service, "partials", "0.1")
     val template = Template(
@@ -89,6 +103,25 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     errorMessage should include("thing")
     "thing".r.findAllMatchIn(errorMessage) should have size 1
   }
-  // TODO test for referencing non-existent partial
 
+  it should "fail if the template references a non-existent partial" in {
+    val manifest = CommManifest(CommType.Service, "missing-partials", "0.1")
+    val template = Template(
+      sender = None,
+      subject = Mustache("Thanks for your payment of £{{amount}}"),
+      htmlBody = Mustache("{{> yolo}} You paid £{{amount}} {{> footer}}"),
+      textBody = Some(Mustache("{{> yolo}} The amount was £{{amount}} {{> footer}}")),
+      htmlFragments = Map(
+        "header" -> Mustache("HTML HEADER"),
+        "footer" -> Mustache("HTML FOOTER")
+      ),
+      textFragments = Map(
+        "header" -> Mustache("TEXT HEADER"),
+        "footer" -> Mustache("TEXT FOOTER")
+      )
+    )
+    val data = Map("amount" -> "1.23")
+
+    Rendering.render(manifest, template, data, profile) should be('left)
+  }
 }
