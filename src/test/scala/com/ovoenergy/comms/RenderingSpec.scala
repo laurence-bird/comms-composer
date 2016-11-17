@@ -1,10 +1,14 @@
 package com.ovoenergy.comms
 
+import java.time.{Clock, OffsetDateTime, ZoneId}
+
 import org.scalatest._
 
 class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   val profile = CustomerProfile("Joe", "Bloggs")
+
+  val render = Rendering.render(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
     val manifest = CommManifest(CommType.Service, "simple", "0.1")
@@ -18,7 +22,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> "1.23")
 
-    val result = Rendering.render(manifest, template, data, profile).right.value
+    val result = render(manifest, template, data, profile).right.value
     result.subject should be("Thanks for your payment of £1.23")
     result.htmlBody should be("You paid £1.23")
     result.textBody should be(Some("The amount was £1.23"))
@@ -35,7 +39,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
       textFragments = Map.empty
     )
 
-    Rendering.render(manifest, template, Map.empty, profile) should be('left)
+    render(manifest, template, Map.empty, profile) should be('left)
   }
 
   it should "render a template with partials" in {
@@ -56,7 +60,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> "1.23")
 
-    val result = Rendering.render(manifest, template, data, profile).right.value
+    val result = render(manifest, template, data, profile).right.value
     result.subject should be("Thanks for your payment of £1.23")
     result.htmlBody should be("HTML HEADER You paid £1.23 HTML FOOTER")
     result.textBody should be(Some("TEXT HEADER The amount was £1.23 TEXT FOOTER"))
@@ -80,7 +84,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> "1.23")
 
-    val result = Rendering.render(manifest, template, data, profile).right.value
+    val result = render(manifest, template, data, profile).right.value
     result.subject should be("SUBJECT Joe 1.23")
     result.htmlBody should be("HTML HEADER Joe 1.23 HTML BODY Joe 1.23 HTML FOOTER Joe 1.23")
     result.textBody should be(Some("TEXT HEADER Joe 1.23 TEXT BODY Joe 1.23 TEXT FOOTER Joe 1.23"))
@@ -98,7 +102,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> "1.23")
 
-    val errorMessage = Rendering.render(manifest, template, data, profile).left.value
+    val errorMessage = render(manifest, template, data, profile).left.value
     errorMessage should include("profile.prefix")
     errorMessage should include("thing")
     "thing".r.findAllMatchIn(errorMessage) should have size 1
@@ -122,6 +126,35 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> "1.23")
 
-    Rendering.render(manifest, template, data, profile) should be('left)
+    render(manifest, template, data, profile) should be('left)
+  }
+
+  it should "render a template that references fields in the system data" in {
+    val manifest = CommManifest(CommType.Service, "system-data-fields", "0.1")
+    val template = Template(
+      sender = None,
+      subject = Mustache("SUBJECT {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}"),
+      htmlBody = Mustache(
+        "{{> header}} HTML BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}} {{> footer}}"),
+      textBody = Some(
+        Mustache(
+          "{{> header}} TEXT BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}} {{> footer}}")),
+      htmlFragments = Map(
+        "header" -> Mustache("HTML HEADER {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}"),
+        "footer" -> Mustache("HTML FOOTER {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}")
+      ),
+      textFragments = Map(
+        "header" -> Mustache("TEXT HEADER {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}"),
+        "footer" -> Mustache("TEXT FOOTER {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}")
+      )
+    )
+    val data = Map("amount" -> "1.23")
+    val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
+
+    val result = Rendering.render(clock)(manifest, template, data, profile).right.value
+    result.subject should be("SUBJECT 31/12/2015 1.23")
+    result.htmlBody should be("HTML HEADER 31/12/2015 1.23 HTML BODY 31/12/2015 1.23 HTML FOOTER 31/12/2015 1.23")
+    result.textBody should be(
+      Some("TEXT HEADER 31/12/2015 1.23 TEXT BODY 31/12/2015 1.23 TEXT FOOTER 31/12/2015 1.23"))
   }
 }

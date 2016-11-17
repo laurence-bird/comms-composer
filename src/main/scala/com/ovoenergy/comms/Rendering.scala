@@ -1,6 +1,7 @@
 package com.ovoenergy.comms
 
 import java.io.IOException
+import java.time.{Clock, LocalDateTime, OffsetDateTime, ZonedDateTime}
 
 import com.github.jknack.handlebars.{Handlebars, Helper, Options}
 import com.github.jknack.handlebars.cache.ConcurrentMapTemplateCache
@@ -57,14 +58,14 @@ object Rendering {
   }
   private type ErrorsOr[A] = Validated[Errors, A]
 
-  def render(commManifest: CommManifest,
-             template: Template,
-             data: Map[String, String],
-             customerProfile: CustomerProfile): Either[String, RenderedEmail] = {
+  def render(clock: Clock)(commManifest: CommManifest,
+                           template: Template,
+                           data: Map[String, String],
+                           customerProfile: CustomerProfile): Either[String, RenderedEmail] = {
 
     val context: JMap[String, AnyRef] = (data +
-      ("profile" -> profileToMap(customerProfile))).asJava
-    // TODO add system data to context
+      ("profile" -> profileToMap(customerProfile)) +
+      ("system" -> systemVariables(clock))).asJava
 
     val subject: ErrorsOr[String] = {
       val handlebars = new HandlebarsWrapper(customTemplateLoader = None)
@@ -91,6 +92,15 @@ object Rendering {
       }
 
     missingKeysOrResult.leftMap(errors => errors.toErrorMessage).toEither
+  }
+
+  private def systemVariables(clock: Clock): JMap[String, String] = {
+    val now = ZonedDateTime.now(clock)
+    Map(
+      "year" -> now.getYear.toString,
+      "month" -> now.getMonth.getValue.toString,
+      "dayOfMonth" -> now.getDayOfMonth.toString
+    ).asJava
   }
 
   /*
