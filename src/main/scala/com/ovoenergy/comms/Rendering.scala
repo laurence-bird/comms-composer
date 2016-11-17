@@ -5,10 +5,18 @@ import java.io.IOException
 import com.github.jknack.handlebars.{Handlebars, Helper, Options}
 import com.github.jknack.handlebars.cache.ConcurrentMapTemplateCache
 import com.github.jknack.handlebars.helper.DefaultHelperRegistry
-import com.github.jknack.handlebars.io.{AbstractTemplateLoader, StringTemplateSource, TemplateSource}
+import com.github.jknack.handlebars.io.{AbstractTemplateLoader, StringTemplateSource, TemplateLoader, TemplateSource}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import java.util.{Map => JMap}
+
+import cats.Apply
+import cats.data.Validated
+import cats.data.Validated.{Invalid, Valid}
+import cats.instances.set._
+import cats.instances.option._
+import cats.syntax.traverse._
 
 import shapeless.LabelledGeneric
 
@@ -22,56 +30,50 @@ object Rendering {
 
   private val templateCache = new ConcurrentMapTemplateCache()
 
-  private val helperRegistry = {
-    // TODO collect invalid placeholders for reporting
-    val reg = new DefaultHelperRegistry()
-    reg.registerHelperMissing(new Helper[JMap[String, Any]] {
-      override def apply(context: JMap[String, Any], options: Options): AnyRef = {
-        println(s"context: $context")
-        println(s"options: ${options.helperName}")
-        ""
-      }
-    })
-    reg
-  }
+  type MissingKeysOr[A] = Validated[Set[String], A]
 
   def render(commManifest: CommManifest,
              template: Template,
              data: Map[String, String],
-             customerProfile: CustomerProfile): RenderedEmail = {
+             customerProfile: CustomerProfile): Either[String, RenderedEmail] = {
 
-    val context = data +
-        ("profile" -> profileToMap(customerProfile))
+    val context: JMap[String, AnyRef] = (data +
+      ("profile" -> profileToMap(customerProfile))).asJava
     // TODO add system data to context
 
-    // TODO refactor
-    val subject = {
-      val handlebars = new Handlebars().`with`(templateCache)
-      // not a real filename, actually a cache key
+    val subject: MissingKeysOr[String] = {
+      val handlebars = new HandlebarsWrapper(customTemplateLoader = None)
       val filename = buildFilename(commManifest, "subject")
-      val mustacheTemplate = handlebars.compile(new StringTemplateSource(filename, template.subject.content))
-      mustacheTemplate.apply(context.asJava)
+      handlebars.render(filename, template.subject)(context)
     }
-    val htmlBody = {
-      val handlebars =
-        new Handlebars(new FragmentTemplateLoader(commManifest, template.htmlFragments, FragmentType.Html))
-          .`with`(templateCache)
+    val htmlBody: MissingKeysOr[String] = {
+      val templateLoader = new FragmentTemplateLoader(commManifest, template.htmlFragments, FragmentType.Html)
+      val handlebars = new HandlebarsWrapper(Some(templateLoader))
       val filename = buildFilename(commManifest, "htmlBody")
-      val mustacheTemplate = handlebars.compile(new StringTemplateSource(filename, template.htmlBody.content))
-      mustacheTemplate.apply(context.asJava)
+      handlebars.render(filename, template.htmlBody)(context)
     }
-    val textBody = template.textBody map { tb =>
-      val handlebars =
-        new Handlebars(new FragmentTemplateLoader(commManifest, template.textFragments, FragmentType.Text))
-          .`with`(templateCache)
-      val filename = buildFilename(commManifest, "textBody")
-      val mustacheTemplate = handlebars.compile(new StringTemplateSource(filename, tb.content))
-      mustacheTemplate.apply(context.asJava)
-    }
+    val textBody: Option[MissingKeysOr[String]] =
+      template.textBody map { tb =>
+        val templateLoader = new FragmentTemplateLoader(commManifest, template.textFragments, FragmentType.Text)
+        val handlebars = new HandlebarsWrapper(Some(templateLoader))
+        val filename = buildFilename(commManifest, "textBody")
+        handlebars.render(filename, tb)(context)
+      }
 
-    RenderedEmail(subject, htmlBody, textBody)
+    val missingKeysOrResult: MissingKeysOr[RenderedEmail] =
+      Apply[MissingKeysOr].map3(subject, htmlBody, textBody.sequenceU) {
+        case (s, h, t) => RenderedEmail(s, h, t)
+      }
+
+    missingKeysOrResult
+      .leftMap(missingKeys => s"The template referenced the following missing keys: ${missingKeys.mkString(", ")}")
+      .toEither
   }
 
+  /*
+   Builds a "filename" for a Mustache template.
+   This is not actually a filename. It's actually a key for use by the template cache.
+   */
   private def buildFilename(commManifest: CommManifest, suffixes: String*): String =
     (Seq(commManifest.commType, commManifest.name, commManifest.version) ++ suffixes).mkString("::")
 
@@ -98,6 +100,39 @@ object Rendering {
           throw new IOException(s"Template references a non-existent $fragmentType fragment: $partialName")
       }
     }
+  }
+
+  private class HandlebarsWrapper(customTemplateLoader: Option[TemplateLoader]) {
+    private val missingKeys = mutable.Set.empty[String]
+
+    private val helperRegistry = {
+      val reg = new DefaultHelperRegistry()
+      reg.registerHelperMissing(new Helper[JMap[String, AnyRef]] {
+        override def apply(context: JMap[String, AnyRef], options: Options): AnyRef = {
+          missingKeys.add(options.helperName)
+          ""
+        }
+      })
+      reg
+    }
+
+    private val handlebars = {
+      val base = customTemplateLoader match {
+        case Some(templateLoader) => new Handlebars(templateLoader)
+        case None => new Handlebars()
+      }
+      base.`with`(templateCache).`with`(helperRegistry)
+    }
+
+    def render(filename: String, template: Mustache)(context: JMap[String, AnyRef]): MissingKeysOr[String] = {
+      val compiledTemplate = handlebars.compile(new StringTemplateSource(filename, template.content))
+      val result = compiledTemplate.apply(context)
+      if (missingKeys.isEmpty)
+        Valid(result)
+      else
+        Invalid(missingKeys.toSet)
+    }
+
   }
 
 }

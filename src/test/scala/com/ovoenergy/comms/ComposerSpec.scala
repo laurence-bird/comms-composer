@@ -27,8 +27,6 @@ class ComposerSpec extends FlatSpec with Matchers {
         )
       case LookupSender(_, _) =>
         Sender("Ovo Energy", "no-reply@ovoenergy.com")
-      case Validate(_) =>
-        ()
     }
   }
 

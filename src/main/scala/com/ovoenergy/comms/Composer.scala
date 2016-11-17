@@ -24,9 +24,6 @@ object Composer {
   def lookupSender(template: Template, commType: CommType): Composer[Sender] =
     liftF(LookupSender(template, commType))
 
-  def validate(renderedEmail: RenderedEmail): Composer[Unit] =
-    liftF(Validate(renderedEmail))
-
   def buildEvent(incomingEvent: OrchestratedEmail, renderedEmail: RenderedEmail, sender: Sender) = ComposedEmail(
     metadata = Metadata(
       timestampIso8601 = OffsetDateTime.now().toString,
@@ -50,7 +47,6 @@ object Composer {
       template <- retrieveTemplate(Email, event.commManifest)
       rendered <- render(event.commManifest, template, event.data, event.customerProfile)
       sender <- lookupSender(template, event.commManifest.commType)
-      _ <- validate(rendered)
     } yield buildEvent(event, rendered, sender)
   }
 

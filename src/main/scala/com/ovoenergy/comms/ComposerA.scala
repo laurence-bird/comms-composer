@@ -11,5 +11,3 @@ case class Render(commManifest: CommManifest,
     extends ComposerA[RenderedEmail]
 
 case class LookupSender(template: Template, commType: CommType) extends ComposerA[Sender]
-
-case class Validate(renderedEmail: RenderedEmail) extends ComposerA[Unit]
