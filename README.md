@@ -1,6 +1,6 @@
 # Composer
 
-[![CircleCI](https://circleci.com/gh/ovotech/comms-composer.svg?style=svg&circle-token=29b5c39281290ccfe989e327aba05427d2c7d8a2)](https://circleci.com/gh/ovotech/comms-composer)
+[![CircleCI](https://circleci.com/gh/ovotech/comms-composer/tree/master.svg?style=svg)](https://circleci.com/gh/ovotech/comms-composer/tree/master)
 
 Composes a comms payload given information about what template to use and some customer-specific data to insert into that template.
 
