@@ -43,7 +43,7 @@ object Serialization {
       }
     }
 
-  private def avroSerializer[T: SchemaFor: ToRecord: ClassTag]: Serializer[T] =
+  private def avroSerializer[T: SchemaFor: ToRecord]: Serializer[T] =
     new Serializer[T] {
       override def configure(configs: util.Map[String, _], isKey: Boolean): Unit = {}
       override def close(): Unit = {}

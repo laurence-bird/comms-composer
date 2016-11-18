@@ -2,7 +2,7 @@ package com.ovoenergy.comms
 
 import akka.actor.ActorSystem
 import akka.kafka.ConsumerSettings
-import akka.stream.ActorMaterializer
+import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import akka.stream.scaladsl.Sink
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import cakesolutions.kafka.KafkaProducer
@@ -57,7 +57,12 @@ object Main extends App {
     Composer.program(orchestratedEmail).foldMap(interpreter)
   }
 
-  stream.runWith(Sink.ignore)
+  val decider: Supervision.Decider = { e =>
+    log.error("Restarting due to error", e)
+    Supervision.Restart
+  }
+
+  stream.runWith(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))
   log.info("Started stream")
 
 }
