@@ -1,10 +1,11 @@
-package com.ovoenergy.comms
+package com.ovoenergy.comms.email
 
 import java.time.{Clock, OffsetDateTime}
 import java.util.UUID
 
-import cats.~>
 import cats.syntax.either._
+import cats.~>
+import com.ovoenergy.comms._
 
 object Interpreter {
 
@@ -16,7 +17,7 @@ object Interpreter {
       case RetrieveTemplate(_, _) =>
         // TODO implement S3 repo
         Right(
-          Template(
+          EmailTemplate(
             sender = None,
             subject = Mustache("Hello {{firstName}}"),
             htmlBody = Mustache("<h2>Thanks for your payment of £{{amount}}</h2>"),
@@ -26,11 +27,11 @@ object Interpreter {
           ))
       case Render(commManifest, template, data, customerProfile) =>
         Rendering
-          .render(Clock.systemDefaultZone())(commManifest, template, data, customerProfile)
+          .renderEmail(Clock.systemDefaultZone())(commManifest, template, data, customerProfile)
           .leftMap(reason => fail(reason, incomingEvent))
       case LookupSender(_, _) =>
         // TODO implement lookup logic
-        Right(Sender("Ovo Energy", "no-reply@ovoenergy.com"))
+        Right(EmailSender("Ovo Energy", "no-reply@ovoenergy.com"))
     }
   }
 

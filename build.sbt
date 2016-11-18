@@ -15,6 +15,7 @@ resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 libraryDependencies ++= Seq(
   "com.ovoenergy" %% "comms-kafka-messages-internal" % "0.0.7",
   "com.github.jknack" % "handlebars" % "4.0.6",
+  "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57",
   "net.cakesolutions" %% "scala-kafka-client" % "0.10.0.0",
   "com.typesafe.akka" %% "akka-stream-kafka" % "0.12",
   "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
