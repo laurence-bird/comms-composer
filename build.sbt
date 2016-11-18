@@ -11,6 +11,7 @@ val testReportsDir = sys.env.getOrElse("CI_REPORTS", "target/reports")
 testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", testReportsDir)
 
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
+resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 libraryDependencies ++= Seq(
   "com.ovoenergy" %% "comms-kafka-messages-internal" % "0.0.7",
   "com.github.jknack" % "handlebars" % "4.0.6",
