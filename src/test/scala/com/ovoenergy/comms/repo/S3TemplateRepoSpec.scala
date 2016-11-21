@@ -6,8 +6,8 @@ import org.scalatest.{EitherValues, FlatSpec, Matchers}
 
 class S3TemplateRepoSpec extends FlatSpec with Matchers with EitherValues {
 
-  def s3(objects: Map[String, String]) = new S3Client {
-    override def listFiles(prefix: String): Seq[String] = Nil
+  def s3(objects: Map[String, String], childLists: Map[String, Seq[String]] = Map.empty) = new S3Client {
+    override def listFiles(prefix: String): Seq[String] = childLists.getOrElse(prefix, Nil)
     override def getUTF8TextFileContent(key: String): Option[String] = objects.get(key)
   }
 
@@ -61,15 +61,24 @@ class S3TemplateRepoSpec extends FlatSpec with Matchers with EitherValues {
   }
 
   it should "download a template with fragments" in {
-    pending
     val s3client = s3(
-      Map(
+      objects = Map(
         "service/payment/0.1/email/subject.txt" -> "the subject",
         "service/payment/0.1/email/body.html" -> "the HTML body",
-        "service/fragments/email/header/fragment.html" -> "the HTML header",
-        "service/fragments/email/thing/fragment.html" -> "another HTML fragment",
-        "service/fragments/text/header/fragment.txt" -> "the text header"
-      ))
+        "service/fragments/email/html/header/fragment.html" -> "the HTML header",
+        "service/fragments/email/html/thing/fragment.html" -> "another HTML fragment",
+        "service/fragments/email/text/header/fragment.txt" -> "the text header"
+      ),
+      childLists = Map(
+        "service/fragments/email/html" -> Seq(
+          "service/fragments/email/html/header/fragment.html",
+          "service/fragments/email/html/thing/fragment.html"
+        ),
+        "service/fragments/email/text" -> Seq(
+          "service/fragments/email/text/header/fragment.txt"
+        )
+      )
+    )
     val template = S3TemplateRepo.getEmailTemplate(commManifest).run(s3client)
     template should be(
       Right(

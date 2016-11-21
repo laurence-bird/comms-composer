@@ -4,7 +4,9 @@ import cats.Apply
 import cats.data.{ReaderT, Validated}
 import cats.instances.list._
 import com.ovoenergy.comms.email.EmailTemplate
-import com.ovoenergy.comms.{Channel, CommManifest, Mustache}
+import com.ovoenergy.comms.{Channel, CommManifest, CommType, Mustache}
+
+import scala.util.matching.Regex
 
 object S3TemplateRepo {
 
@@ -33,9 +35,8 @@ object S3TemplateRepo {
     val textBody = s3File(Filenames.Email.TextBody).map(Mustache)
     val customSender = s3File(Filenames.Email.Sender)
 
-    // TODO
-    val htmlFragments = Map.empty[String, Mustache]
-    val textFragments = Map.empty[String, Mustache]
+    val htmlFragments = findHtmlFragments(s3client, commManifest.commType)
+    val textFragments = findTextFragments(s3client, commManifest.commType)
 
     type ValidatedErrorsOr[A] = Validated[List[String], A]
     Apply[ValidatedErrorsOr]
@@ -52,6 +53,27 @@ object S3TemplateRepo {
       }
       .leftMap(errors => errors.mkString(", "))
       .toEither
+  }
+
+  private val HtmlFragmentFile = """.*/fragments/email/html/([^/]+)/fragment.html""".r
+  private val TextFragmentFile = """.*/fragments/email/text/([^/]+)/fragment.txt""".r
+
+  private def findHtmlFragments(s3client: S3Client, commType: CommType): Map[String, Mustache] =
+    findFragments(s3client, s"${commType.toString.toLowerCase}/fragments/email/html", HtmlFragmentFile)
+
+  private def findTextFragments(s3client: S3Client, commType: CommType): Map[String, Mustache] =
+    findFragments(s3client, s"${commType.toString.toLowerCase}/fragments/email/text", TextFragmentFile)
+
+  private def findFragments(s3client: S3Client, prefix: String, regex: Regex): Map[String, Mustache] = {
+    s3client
+      .listFiles(prefix)
+      .collect {
+        case key @ `regex`(fragmentName) =>
+          s3client.getUTF8TextFileContent(key).map(content => fragmentName -> Mustache(content))
+      }
+      .flatten
+      .toMap
+
   }
 
   private def emailTemplateFileKey(channel: Channel, commManifest: CommManifest, filename: String): String =

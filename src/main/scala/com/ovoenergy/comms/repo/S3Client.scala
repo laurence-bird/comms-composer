@@ -3,7 +3,7 @@ package com.ovoenergy.comms.repo
 import java.nio.charset.StandardCharsets
 
 import com.amazonaws.services.s3.AmazonS3Client
-import com.amazonaws.services.s3.model.AmazonS3Exception
+import com.amazonaws.services.s3.model.{AmazonS3Exception, ListObjectsV2Request}
 import com.amazonaws.util.IOUtils
 import org.slf4j.LoggerFactory
 
@@ -44,7 +44,8 @@ class AmazonS3ClientWrapper(client: AmazonS3Client) extends S3Client {
 
   override def listFiles(prefix: String): Seq[String] = {
     try {
-      client.listObjects(TemplatesBucket, prefix).getObjectSummaries.asScala.map(_.getKey)
+      val request = new ListObjectsV2Request().withBucketName(TemplatesBucket).withPrefix(prefix)
+      client.listObjectsV2(request).getObjectSummaries.asScala.map(_.getKey)
     } catch {
       case e: AmazonS3Exception =>
         log.warn(s"Failed to list objects under s3://$TemplatesBucket/$prefix", e)
