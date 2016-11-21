@@ -22,9 +22,8 @@ object Interpreter {
           Rendering
             .renderEmail(Clock.systemDefaultZone())(commManifest, template, data, customerProfile)
             .leftMap(reason => fail(reason, incomingEvent))
-        case LookupSender(_, _) =>
-          // TODO implement lookup logic
-          Right(EmailSender("Ovo Energy", "no-reply@ovoenergy.com"))
+        case LookupSender(template, commType) =>
+          Right(SenderLogic.chooseSender(template, commType))
       }
     }
 
