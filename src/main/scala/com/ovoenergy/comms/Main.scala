@@ -63,8 +63,9 @@ object Main extends App {
     Kafka.Output(topic, producer)
   }
 
+  val interpreterFactory = Interpreter.build(s3Client) _
   val emailStream = Kafka.buildStream(input, composedEmailEventOutput, failedEmailEventOutput) { orchestratedEmail =>
-    val interpreter = Interpreter.build(orchestratedEmail)
+    val interpreter = interpreterFactory(orchestratedEmail)
     Composer.program(orchestratedEmail).foldMap(interpreter)
   }
 
