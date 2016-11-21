@@ -1,6 +1,6 @@
 package com.ovoenergy.comms.repo
 
-import com.ovoenergy.comms.email.EmailTemplate
+import com.ovoenergy.comms.email.{EmailSender, EmailTemplate}
 import com.ovoenergy.comms.{CommManifest, CommType, Mustache}
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
 
@@ -38,7 +38,7 @@ class S3TemplateRepoSpec extends FlatSpec with Matchers with EitherValues {
         "service/payment/0.1/email/subject.txt" -> "the subject",
         "service/payment/0.1/email/body.html" -> "the HTML body",
         "service/payment/0.1/email/body.txt" -> "the text body",
-        "service/payment/0.1/email/sender.txt" -> "the custom sender"
+        "service/payment/0.1/email/sender.txt" -> "custom sender <foo@ovoenergy.com>"
       ))
     val template = S3TemplateRepo.getEmailTemplate(commManifest).run(s3client)
     template should be(
@@ -47,10 +47,21 @@ class S3TemplateRepoSpec extends FlatSpec with Matchers with EitherValues {
           subject = Mustache("the subject"),
           htmlBody = Mustache("the HTML body"),
           textBody = Some(Mustache("the text body")),
-          sender = Some("the custom sender"),
+          sender = Some(EmailSender("custom sender", "foo@ovoenergy.com")),
           htmlFragments = Map.empty,
           textFragments = Map.empty
         )))
+  }
+
+  it should "validate the custom sender if it is present" in {
+    val s3client = s3(
+      Map(
+        "service/payment/0.1/email/subject.txt" -> "the subject",
+        "service/payment/0.1/email/body.html" -> "the HTML body",
+        "service/payment/0.1/email/sender.txt" -> "#yolo"
+      ))
+    val errorMsg = S3TemplateRepo.getEmailTemplate(commManifest).run(s3client).left.value
+    errorMsg should include("#yolo")
   }
 
   it should "fail if subject or HTML body are missing" in {

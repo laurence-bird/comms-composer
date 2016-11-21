@@ -1,9 +1,11 @@
 package com.ovoenergy.comms.repo
 
 import cats.Apply
-import cats.data.{ReaderT, Validated}
+import cats.data.{NonEmptyList, ReaderT, Validated, ValidatedNel}
 import cats.instances.list._
-import com.ovoenergy.comms.email.EmailTemplate
+import cats.syntax.traverse._
+import cats.instances.option._
+import com.ovoenergy.comms.email.{EmailSender, EmailTemplate}
 import com.ovoenergy.comms.{Channel, CommManifest, CommType, Mustache}
 
 import scala.util.matching.Regex
@@ -26,32 +28,34 @@ object S3TemplateRepo {
     def s3File(filename: String): Option[String] =
       s3client.getUTF8TextFileContent(emailTemplateFileKey(Channel.Email, commManifest, filename))
 
-    val subject =
+    type ValidatedErrorsOr[A] = ValidatedNel[String, A]
+
+    val subject: ValidatedErrorsOr[Mustache] =
       Validated.fromOption(s3File(Filenames.Email.Subject).map(Mustache),
-                           ifNone = List("Subject file not found on S3"))
-    val htmlBody =
+                           ifNone = NonEmptyList.of("Subject file not found on S3"))
+    val htmlBody: ValidatedErrorsOr[Mustache] =
       Validated.fromOption(s3File(Filenames.Email.HtmlBody).map(Mustache),
-                           ifNone = List("HTML body file not found on S3"))
-    val textBody = s3File(Filenames.Email.TextBody).map(Mustache)
-    val customSender = s3File(Filenames.Email.Sender)
+                           ifNone = NonEmptyList.of("HTML body file not found on S3"))
+    val textBody: Option[Mustache] = s3File(Filenames.Email.TextBody).map(Mustache)
+    val customSender: ValidatedErrorsOr[Option[EmailSender]] =
+      s3File(Filenames.Email.Sender).map(EmailSender.parse).sequenceU
 
     val htmlFragments = findHtmlFragments(s3client, commManifest.commType)
     val textFragments = findTextFragments(s3client, commManifest.commType)
 
-    type ValidatedErrorsOr[A] = Validated[List[String], A]
     Apply[ValidatedErrorsOr]
-      .map2(subject, htmlBody) {
-        case (sub, html) =>
+      .map3(subject, htmlBody, customSender) {
+        case (sub, html, sender) =>
           EmailTemplate(
-            sender = customSender,
             subject = sub,
             htmlBody = html,
             textBody = textBody,
+            sender = sender,
             htmlFragments = htmlFragments,
             textFragments = textFragments
           )
       }
-      .leftMap(errors => errors.mkString(", "))
+      .leftMap(errors => errors.toList.mkString(", "))
       .toEither
   }
 
