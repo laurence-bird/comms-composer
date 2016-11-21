@@ -1,6 +1,6 @@
 package com.ovoenergy.comms.email
 
-import cats.data.{NonEmptyList, Validated, ValidatedNel}
+import cats.data.{NonEmptyList, ValidatedNel}
 import cats.data.Validated.{Invalid, Valid}
 
 case class EmailSender(name: String, emailAddress: String) {
