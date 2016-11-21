@@ -16,7 +16,7 @@ import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3Client
 import com.ovoenergy.comms.email.{Composer, Interpreter}
-import com.ovoenergy.comms.repo.{AmazonS3ClientWrapper, S3TemplateRepo}
+import com.ovoenergy.comms.repo.AmazonS3ClientWrapper
 
 object Main extends App {
 

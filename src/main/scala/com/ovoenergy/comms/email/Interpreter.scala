@@ -8,7 +8,7 @@ import cats.~>
 import com.ovoenergy.comms._
 import com.ovoenergy.comms.repo.{S3Client, S3TemplateRepo}
 
-object Interpreter {
+object Interpreter extends Logging {
 
   type FailedOr[A] = Either[Failed, A]
 
@@ -27,19 +27,22 @@ object Interpreter {
       }
     }
 
-  private def fail(reason: String, incomingEvent: OrchestratedEmail): Failed = Failed(
-    // TODO add a convenience constructor to Metadata in comms-kafka-messages
-    Metadata(
-      OffsetDateTime.now().toString,
-      UUID.randomUUID(),
-      incomingEvent.metadata.customerId,
-      incomingEvent.metadata.transactionId,
-      incomingEvent.metadata.friendlyDescription,
-      "comms-composer",
-      incomingEvent.metadata.canary,
-      Some(incomingEvent.metadata)
-    ),
-    reason
-  )
+  private def fail(reason: String, incomingEvent: OrchestratedEmail): Failed = {
+    warn(incomingEvent.metadata.transactionId)(s"Failed to compose email. Reason: $reason")
+    Failed(
+      // TODO add a convenience constructor to Metadata in comms-kafka-messages
+      Metadata(
+        OffsetDateTime.now().toString,
+        UUID.randomUUID(),
+        incomingEvent.metadata.customerId,
+        incomingEvent.metadata.transactionId,
+        incomingEvent.metadata.friendlyDescription,
+        "comms-composer",
+        incomingEvent.metadata.canary,
+        Some(incomingEvent.metadata)
+      ),
+      reason
+    )
+  }
 
 }
