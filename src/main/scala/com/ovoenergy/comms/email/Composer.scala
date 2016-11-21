@@ -1,4 +1,4 @@
-package com.ovoenergy.comms
+package com.ovoenergy.comms.email
 
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -6,25 +6,26 @@ import java.util.UUID
 import cats.free.Free
 import cats.free.Free.liftF
 import com.ovoenergy.comms.Channel.Email
+import com.ovoenergy.comms._
 
 object Composer {
 
   type StringOrA[A] = Either[String, A]
   type Composer[A] = Free[ComposerA, A]
 
-  def retrieveTemplate(channel: Channel, commManifest: CommManifest): Composer[Template] =
+  def retrieveTemplate(channel: Channel, commManifest: CommManifest): Composer[EmailTemplate] =
     liftF(RetrieveTemplate(channel, commManifest))
 
   def render(commManifest: CommManifest,
-             template: Template,
+             template: EmailTemplate,
              data: Map[String, String],
              customerProfile: CustomerProfile): Composer[RenderedEmail] =
     liftF(Render(commManifest, template, data, customerProfile))
 
-  def lookupSender(template: Template, commType: CommType): Composer[Sender] =
+  def lookupSender(template: EmailTemplate, commType: CommType): Composer[EmailSender] =
     liftF(LookupSender(template, commType))
 
-  def buildEvent(incomingEvent: OrchestratedEmail, renderedEmail: RenderedEmail, sender: Sender) = ComposedEmail(
+  def buildEvent(incomingEvent: OrchestratedEmail, renderedEmail: RenderedEmail, sender: EmailSender) = ComposedEmail(
     metadata = Metadata(
       timestampIso8601 = OffsetDateTime.now().toString,
       kafkaMessageId = UUID.randomUUID(),

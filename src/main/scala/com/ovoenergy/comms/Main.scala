@@ -11,6 +11,12 @@ import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 import com.ovoenergy.comms.kafka.{Kafka, Serialization}
 import cats.instances.either._
+import com.amazonaws.auth.{AWSCredentialsProviderChain, InstanceProfileCredentialsProvider}
+import com.amazonaws.auth.profile.ProfileCredentialsProvider
+import com.amazonaws.regions.Regions
+import com.amazonaws.services.s3.AmazonS3Client
+import com.ovoenergy.comms.email.{Composer, Interpreter}
+import com.ovoenergy.comms.repo.{AmazonS3ClientWrapper, S3TemplateRepo}
 
 object Main extends App {
 
@@ -18,10 +24,15 @@ object Main extends App {
 
   val config = ConfigFactory.load()
 
-//  val awsCredentials = new AWSCredentialsProviderChain(
-//    new ProfileCredentialsProvider(),
-//    new InstanceProfileCredentialsProvider()
-//  )
+  val s3Client: AmazonS3ClientWrapper = {
+    val awsCredentials = new AWSCredentialsProviderChain(
+      new ProfileCredentialsProvider(),
+      InstanceProfileCredentialsProvider.getInstance()
+    )
+    val underlying: AmazonS3Client =
+      new AmazonS3Client(awsCredentials).withRegion(Regions.fromName(config.getString("aws.region")))
+    new AmazonS3ClientWrapper(underlying)
+  }
 
   implicit val actorSystem = ActorSystem("kafka")
   implicit val materializer = ActorMaterializer()
@@ -52,8 +63,9 @@ object Main extends App {
     Kafka.Output(topic, producer)
   }
 
-  val stream = Kafka.buildStream(input, composedEmailEventOutput, failedEmailEventOutput) { orchestratedEmail =>
-    val interpreter = Interpreter.build(orchestratedEmail)
+  val interpreterFactory = Interpreter.build(s3Client) _
+  val emailStream = Kafka.buildStream(input, composedEmailEventOutput, failedEmailEventOutput) { orchestratedEmail =>
+    val interpreter = interpreterFactory(orchestratedEmail)
     Composer.program(orchestratedEmail).foldMap(interpreter)
   }
 
@@ -62,7 +74,7 @@ object Main extends App {
     Supervision.Restart
   }
 
-  stream.runWith(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))
-  log.info("Started stream")
+  emailStream.runWith(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))
+  log.info("Started email stream")
 
 }

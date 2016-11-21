@@ -1,9 +1,10 @@
-package com.ovoenergy.comms
+package com.ovoenergy.comms.email
 
 import java.util.UUID
 
-import org.scalatest.{FlatSpec, Matchers}
 import cats.{Id, ~>}
+import com.ovoenergy.comms._
+import org.scalatest.{FlatSpec, Matchers}
 
 class ComposerSpec extends FlatSpec with Matchers {
 
@@ -11,7 +12,7 @@ class ComposerSpec extends FlatSpec with Matchers {
 
     override def apply[A](op: ComposerA[A]): Id[A] = op match {
       case RetrieveTemplate(_, _) =>
-        Template(
+        EmailTemplate(
           sender = None,
           subject = Mustache("Hello {{firstName}}"),
           htmlBody = Mustache("<h2>Thanks for your payment of £{{amount}}</h2>"),
@@ -26,7 +27,7 @@ class ComposerSpec extends FlatSpec with Matchers {
           textBody = None
         )
       case LookupSender(_, _) =>
-        Sender("Ovo Energy", "no-reply@ovoenergy.com")
+        EmailSender("Ovo Energy", "no-reply@ovoenergy.com")
     }
   }
 

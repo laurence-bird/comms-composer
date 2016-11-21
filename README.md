@@ -6,7 +6,7 @@ Composes a comms payload given information about what template to use and some c
 
 Only composes emails for now. At some point in the future it will support other channels, e.g. SMS, push.
 
-### Running it locally
+## Running it locally
 
 The following environment variables are required to run the service locally:
 * KAFKA_HOSTS
@@ -16,10 +16,10 @@ You can run the service directly with SBT via `sbt run` or by running the docker
 * `sbt docker:publishLocal`
 * `docker-compose up`
 
-### Tests
+## Tests
 
 Tests are executed via `sbt test`
 
-### Deployment
+## Deployment
 
 The service is deployed continuously to both the UAT and PRD (TBD) environments via the [CircleCI build](https://circleci.com/gh/ovotech/comms-composer) 

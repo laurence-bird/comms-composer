@@ -17,6 +17,7 @@ import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import cats.instances.option._
 import cats.syntax.traverse._
+import com.ovoenergy.comms.email.{EmailTemplate, RenderedEmail}
 import shapeless.LabelledGeneric
 
 import scala.util.{Failure, Success, Try}
@@ -58,10 +59,10 @@ object Rendering {
   }
   private type ErrorsOr[A] = Validated[Errors, A]
 
-  def render(clock: Clock)(commManifest: CommManifest,
-                           template: Template,
-                           data: Map[String, String],
-                           customerProfile: CustomerProfile): Either[String, RenderedEmail] = {
+  def renderEmail(clock: Clock)(commManifest: CommManifest,
+                                template: EmailTemplate,
+                                data: Map[String, String],
+                                customerProfile: CustomerProfile): Either[String, RenderedEmail] = {
 
     val context: JMap[String, AnyRef] = (data +
       ("profile" -> profileToMap(customerProfile)) +

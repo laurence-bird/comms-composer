@@ -2,17 +2,18 @@ package com.ovoenergy.comms
 
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
+import com.ovoenergy.comms.email.EmailTemplate
 import org.scalatest._
 
 class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   val profile = CustomerProfile("Joe", "Bloggs")
 
-  val render = Rendering.render(Clock.systemDefaultZone()) _
+  val render = Rendering.renderEmail(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
     val manifest = CommManifest(CommType.Service, "simple", "0.1")
-    val template = Template(
+    val template = EmailTemplate(
       sender = None,
       subject = Mustache("Thanks for your payment of £{{amount}}"),
       htmlBody = Mustache("You paid £{{amount}}"),
@@ -30,7 +31,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   it should "fail to render an invalid Mustache template" in {
     val manifest = CommManifest(CommType.Service, "broken", "0.1")
-    val template = Template(
+    val template = EmailTemplate(
       sender = None,
       subject = Mustache("hey check this out {{"),
       htmlBody = Mustache(""),
@@ -44,7 +45,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   it should "render a template with partials" in {
     val manifest = CommManifest(CommType.Service, "partials", "0.1")
-    val template = Template(
+    val template = EmailTemplate(
       sender = None,
       subject = Mustache("Thanks for your payment of £{{amount}}"),
       htmlBody = Mustache("{{> header}} You paid £{{amount}} {{> footer}}"),
@@ -68,7 +69,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   it should "render a template that references fields in the customer profile" in {
     val manifest = CommManifest(CommType.Service, "profile-fields", "0.1")
-    val template = Template(
+    val template = EmailTemplate(
       sender = None,
       subject = Mustache("SUBJECT {{profile.firstName}} {{amount}}"),
       htmlBody = Mustache("{{> header}} HTML BODY {{profile.firstName}} {{amount}} {{> footer}}"),
@@ -92,7 +93,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   it should "fail if the template references non-existent data" in {
     val manifest = CommManifest(CommType.Service, "missing-data", "0.1")
-    val template = Template(
+    val template = EmailTemplate(
       sender = None,
       subject = Mustache("Hi {{profile.prefix}} {{profile.lastName}}"),
       htmlBody = Mustache("You bought a {{thing}}. The amount was £{{amount}}."),
@@ -110,7 +111,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   it should "fail if the template references a non-existent partial" in {
     val manifest = CommManifest(CommType.Service, "missing-partials", "0.1")
-    val template = Template(
+    val template = EmailTemplate(
       sender = None,
       subject = Mustache("Thanks for your payment of £{{amount}}"),
       htmlBody = Mustache("{{> yolo}} You paid £{{amount}} {{> footer}}"),
@@ -131,7 +132,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   it should "render a template that references fields in the system data" in {
     val manifest = CommManifest(CommType.Service, "system-data-fields", "0.1")
-    val template = Template(
+    val template = EmailTemplate(
       sender = None,
       subject = Mustache("SUBJECT {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}"),
       htmlBody = Mustache(
@@ -151,7 +152,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     val data = Map("amount" -> "1.23")
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
-    val result = Rendering.render(clock)(manifest, template, data, profile).right.value
+    val result = Rendering.renderEmail(clock)(manifest, template, data, profile).right.value
     result.subject should be("SUBJECT 31/12/2015 1.23")
     result.htmlBody should be("HTML HEADER 31/12/2015 1.23 HTML BODY 31/12/2015 1.23 HTML FOOTER 31/12/2015 1.23")
     result.textBody should be(
