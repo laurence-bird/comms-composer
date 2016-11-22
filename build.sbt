@@ -8,7 +8,7 @@ scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf
 
 // Make ScalaTest write test reports that CircleCI understands
 val testReportsDir = sys.env.getOrElse("CI_REPORTS", "target/reports")
-testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u", testReportsDir)
+testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF", "-u", testReportsDir, "-l", "DockerComposeTag")
 
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
@@ -23,10 +23,16 @@ libraryDependencies ++= Seq(
   "com.chuusai" %% "shapeless" % "2.3.2",
   "ch.qos.logback" % "logback-classic" % "1.1.7",
   "io.logz.logback" % "logzio-logback-appender" % "1.0.11",
-  "org.scalatest" %% "scalatest" % "3.0.1" % Test
+  "org.scalatest" %% "scalatest" % "3.0.1" % Test,
+  "org.apache.kafka" %% "kafka" % "0.10.0.1" % Test
 )
 
 scalafmtConfig in ThisBuild := Some(file(".scalafmt.conf"))
 reformatOnCompileSettings
+
+// Service tests
+enablePlugins(DockerComposePlugin)
+testTagsToExecute := "DockerComposeTag"
+dockerImageCreationTask := (publishLocal in Docker).value
 
 lazy val root = (project in file(".")).withDocker

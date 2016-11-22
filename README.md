@@ -18,7 +18,9 @@ You can run the service directly with SBT via `sbt run` or by running the docker
 
 ## Tests
 
-Tests are executed via `sbt test`
+`sbt test` to run the unit tests.
+
+`sbt dockerComposeTest` to run the service tests. These involve running the service and its dependencies (Kafka, ZooKeeper and a fake S3 API) using docker-compose.
 
 ## Deployment
 
