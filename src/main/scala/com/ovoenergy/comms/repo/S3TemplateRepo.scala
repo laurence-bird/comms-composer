@@ -6,11 +6,11 @@ import cats.instances.list._
 import cats.syntax.traverse._
 import cats.instances.option._
 import com.ovoenergy.comms.email.{EmailSender, EmailTemplate}
-import com.ovoenergy.comms.{Channel, CommManifest, CommType, Mustache}
+import com.ovoenergy.comms._
 
 import scala.util.matching.Regex
 
-object S3TemplateRepo {
+object S3TemplateRepo extends Logging {
 
   private object Filenames {
     object Email {
@@ -71,13 +71,14 @@ object S3TemplateRepo {
   private def findFragments(s3client: S3Client, prefix: String, regex: Regex): Map[String, Mustache] = {
     s3client
       .listFiles(prefix)
+      .map(x => { log.info(s"File in the fragment directory: $x"); x }) // TODO remove
       .collect {
         case key @ `regex`(fragmentName) =>
+          log.info(s"Found a fragment file: $key")
           s3client.getUTF8TextFileContent(key).map(content => fragmentName -> Mustache(content))
       }
       .flatten
       .toMap
-
   }
 
   private def emailTemplateFileKey(channel: Channel, commManifest: CommManifest, filename: String): String =

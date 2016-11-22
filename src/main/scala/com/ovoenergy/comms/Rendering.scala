@@ -22,7 +22,7 @@ import shapeless.LabelledGeneric
 
 import scala.util.{Failure, Success, Try}
 
-object Rendering {
+object Rendering extends Logging {
 
   private sealed trait FragmentType
   private object FragmentType {
@@ -64,6 +64,7 @@ object Rendering {
                                 data: Map[String, String],
                                 customerProfile: CustomerProfile,
                                 recipientEmailAddress: String): Either[String, RenderedEmail] = {
+    log.info(s"HTML fragments: ${template.htmlFragments.keySet}")
 
     val context: JMap[String, AnyRef] = (data +
       ("profile" -> profileToMap(customerProfile, recipientEmailAddress)) +
