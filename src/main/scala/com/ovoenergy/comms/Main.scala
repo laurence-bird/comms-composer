@@ -11,7 +11,7 @@ import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 import com.ovoenergy.comms.kafka.{Kafka, Serialization}
 import cats.instances.either._
-import com.amazonaws.auth.{AWSCredentialsProviderChain, InstanceProfileCredentialsProvider}
+import com.amazonaws.auth.{AWSCredentialsProviderChain, ContainerCredentialsProvider}
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3Client
@@ -26,8 +26,8 @@ object Main extends App {
 
   val s3Client: AmazonS3ClientWrapper = {
     val awsCredentials = new AWSCredentialsProviderChain(
-      new ProfileCredentialsProvider(),
-      InstanceProfileCredentialsProvider.getInstance()
+      new ContainerCredentialsProvider(),
+      new ProfileCredentialsProvider()
     )
     val underlying: AmazonS3Client =
       new AmazonS3Client(awsCredentials).withRegion(Regions.fromName(config.getString("aws.region")))
