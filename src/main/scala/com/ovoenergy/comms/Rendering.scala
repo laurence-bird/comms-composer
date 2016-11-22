@@ -64,7 +64,6 @@ object Rendering extends Logging {
                                 data: Map[String, String],
                                 customerProfile: CustomerProfile,
                                 recipientEmailAddress: String): Either[String, RenderedEmail] = {
-    log.info(s"HTML fragments: ${template.htmlFragments.keySet}")
 
     val context: JMap[String, AnyRef] = (data +
       ("profile" -> profileToMap(customerProfile, recipientEmailAddress)) +

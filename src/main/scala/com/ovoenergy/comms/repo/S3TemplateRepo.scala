@@ -71,10 +71,8 @@ object S3TemplateRepo extends Logging {
   private def findFragments(s3client: S3Client, prefix: String, regex: Regex): Map[String, Mustache] = {
     s3client
       .listFiles(prefix)
-      .map(x => { log.info(s"File in the fragment directory: $x"); x }) // TODO remove
       .collect {
         case key @ `regex`(fragmentName) =>
-          log.info(s"Found a fragment file: $key")
           s3client.getUTF8TextFileContent(key).map(content => fragmentName -> Mustache(content))
       }
       .flatten

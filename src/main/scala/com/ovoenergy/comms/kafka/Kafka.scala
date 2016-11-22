@@ -8,7 +8,6 @@ import akka.stream.scaladsl.Source
 import cakesolutions.kafka.KafkaProducer
 import com.ovoenergy.comms.{ComposedEmail, Failed, Logging, OrchestratedEmail}
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
-import org.slf4j.LoggerFactory
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -23,11 +22,15 @@ object Kafka extends Logging {
                   failedEventOutput: Output[Failed])(
       processEvent: OrchestratedEmail => Either[Failed, ComposedEmail]): Source[Done, Control] = {
 
-    def sendComposedEmail(composedEmail: ComposedEmail): Future[RecordMetadata] =
+    def sendComposedEmail(composedEmail: ComposedEmail): Future[RecordMetadata] = {
+      info(composedEmail.metadata.transactionId)(s"Sending ComposedEmail event. Metadata: ${composedEmail.metadata}")
       composedEmailEventOutput.producer.send(new ProducerRecord(composedEmailEventOutput.topic, composedEmail))
+    }
 
-    def sendFailed(failed: Failed): Future[RecordMetadata] =
+    def sendFailed(failed: Failed): Future[RecordMetadata] = {
+      info(failed.metadata.transactionId)(s"Sending Failed event: $failed")
       failedEventOutput.producer.send(new ProducerRecord(failedEventOutput.topic, failed))
+    }
 
     Consumer.committableSource(input.consumerSettings, Subscriptions.topics(input.topic)).mapAsync(1) { msg =>
       val future: Future[_] = msg.record.value match {
