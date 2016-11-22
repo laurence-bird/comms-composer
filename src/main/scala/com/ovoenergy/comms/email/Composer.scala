@@ -19,8 +19,9 @@ object Composer {
   def render(commManifest: CommManifest,
              template: EmailTemplate,
              data: Map[String, String],
-             customerProfile: CustomerProfile): Composer[RenderedEmail] =
-    liftF(Render(commManifest, template, data, customerProfile))
+             customerProfile: CustomerProfile,
+             recipientEmailAddress: String): Composer[RenderedEmail] =
+    liftF(Render(commManifest, template, data, customerProfile, recipientEmailAddress))
 
   def lookupSender(template: EmailTemplate, commType: CommType): Composer[EmailSender] =
     liftF(LookupSender(template, commType))
@@ -46,7 +47,7 @@ object Composer {
   def program(event: OrchestratedEmail): Composer[ComposedEmail] = {
     for {
       template <- retrieveTemplate(Email, event.commManifest)
-      rendered <- render(event.commManifest, template, event.data, event.customerProfile)
+      rendered <- render(event.commManifest, template, event.data, event.customerProfile, event.recipientEmailAddress)
       sender <- lookupSender(template, event.commManifest.commType)
     } yield buildEvent(event, rendered, sender)
   }
