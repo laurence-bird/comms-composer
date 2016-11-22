@@ -18,9 +18,13 @@ object Interpreter extends Logging {
         case RetrieveTemplate(channel, commManifest) =>
           // only supporting email for now
           S3TemplateRepo.getEmailTemplate(commManifest).run(s3client).leftMap(reason => fail(reason, incomingEvent))
-        case Render(commManifest, template, data, customerProfile) =>
+        case Render(commManifest, template, data, customerProfile, recipientEmailAddress) =>
           Rendering
-            .renderEmail(Clock.systemDefaultZone())(commManifest, template, data, customerProfile)
+            .renderEmail(Clock.systemDefaultZone())(commManifest,
+                                                    template,
+                                                    data,
+                                                    customerProfile,
+                                                    recipientEmailAddress)
             .leftMap(reason => fail(reason, incomingEvent))
         case LookupSender(template, commType) =>
           Right(SenderLogic.chooseSender(template, commType))

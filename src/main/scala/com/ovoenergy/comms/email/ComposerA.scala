@@ -9,7 +9,8 @@ case class RetrieveTemplate(channel: Channel, commManifest: CommManifest) extend
 case class Render(commManifest: CommManifest,
                   template: EmailTemplate,
                   data: Map[String, String],
-                  customerProfile: CustomerProfile)
+                  customerProfile: CustomerProfile,
+                  recipientEmailAddress: String)
     extends ComposerA[RenderedEmail]
 
 case class LookupSender(template: EmailTemplate, commType: CommType) extends ComposerA[EmailSender]
