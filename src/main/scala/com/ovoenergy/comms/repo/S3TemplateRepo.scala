@@ -59,8 +59,8 @@ object S3TemplateRepo {
       .toEither
   }
 
-  private val HtmlFragmentFile = """.*/fragments/email/html/([^/]+)/fragment.html""".r
-  private val TextFragmentFile = """.*/fragments/email/text/([^/]+)/fragment.txt""".r
+  private val HtmlFragmentFile = """.*/fragments/email/html/([a-zA-Z0-9-_]+).html""".r
+  private val TextFragmentFile = """.*/fragments/email/text/([a-zA-Z0-9-_]+).txt""".r
 
   private def findHtmlFragments(s3client: S3Client, commType: CommType): Map[String, Mustache] =
     findFragments(s3client, s"${commType.toString.toLowerCase}/fragments/email/html", HtmlFragmentFile)
