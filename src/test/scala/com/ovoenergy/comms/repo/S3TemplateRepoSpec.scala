@@ -76,17 +76,17 @@ class S3TemplateRepoSpec extends FlatSpec with Matchers with EitherValues {
       objects = Map(
         "service/payment/0.1/email/subject.txt" -> "the subject",
         "service/payment/0.1/email/body.html" -> "the HTML body",
-        "service/fragments/email/html/header/fragment.html" -> "the HTML header",
-        "service/fragments/email/html/thing/fragment.html" -> "another HTML fragment",
-        "service/fragments/email/text/header/fragment.txt" -> "the text header"
+        "service/fragments/email/html/header.html" -> "the HTML header",
+        "service/fragments/email/html/thing.html" -> "another HTML fragment",
+        "service/fragments/email/text/header.txt" -> "the text header"
       ),
       childLists = Map(
         "service/fragments/email/html" -> Seq(
-          "service/fragments/email/html/header/fragment.html",
-          "service/fragments/email/html/thing/fragment.html"
+          "service/fragments/email/html/header.html",
+          "service/fragments/email/html/thing.html"
         ),
         "service/fragments/email/text" -> Seq(
-          "service/fragments/email/text/header/fragment.txt"
+          "service/fragments/email/text/header.txt"
         )
       )
     )
