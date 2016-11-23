@@ -4,7 +4,7 @@ import java.time.OffsetDateTime
 import java.util
 import java.util.UUID
 
-import cakesolutions.kafka._
+import cakesolutions.kafka.{KafkaConsumer => KafkaCons, KafkaProducer}
 import cakesolutions.kafka.KafkaProducer.{Conf => ProdConf}
 import cakesolutions.kafka.KafkaConsumer.{Conf => ConsConf}
 import com.amazonaws.auth.BasicAWSCredentials
@@ -12,6 +12,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.kafka.Serialization
 import com.typesafe.config.ConfigFactory
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest._
@@ -21,16 +22,9 @@ import scala.concurrent.duration._
 
 object DockerComposeTag extends Tag("DockerComposeTag")
 
-class ServiceSpec extends FlatSpec with Matchers with OptionValues {
+class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAndAfterAll {
 
-  "composer service" should "compose an email" taggedAs DockerComposeTag in {
-    createKafkaTopics()
-    uploadTemplateToS3()
-    waitForKafkaConsumerToSettle()
-    sendOrchestratedEmailEvent()
-    verifyComposedEmailEvent()
-    checkNoFailedEvent()
-  }
+  behavior of "composer service"
 
   val config = ConfigFactory.load()
   val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email")
@@ -39,6 +33,41 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues {
   val kafkaHosts = "localhost:29092"
   val zkHosts = "localhost:32181"
   val s3Endpoint = "http://localhost:4569"
+
+  var orchestratedEmailProducer: KafkaProducer[String, OrchestratedEmail] = _
+  var composedEmailConsumer: KafkaConsumer[String, Option[ComposedEmail]] = _
+  var failedConsumer: KafkaConsumer[String, Option[Failed]] = _
+
+  override protected def beforeAll(): Unit = {
+    createKafkaTopics()
+    waitForKafkaConsumerToSettle()
+    createKafkaProducer()
+    createKafkaConsumers()
+  }
+
+  it should "compose an email" taggedAs DockerComposeTag in {
+    uploadTemplateToS3()
+    sendOrchestratedEmailEvent(
+      CommManifest(
+        CommType.Service,
+        "composer-service-test",
+        "0.1"
+      ))
+    verifyComposedEmailEvent()
+    expectNoFailedEvent()
+  }
+
+  it should "send a failed event if the template does not exist" taggedAs DockerComposeTag in {
+    uploadTemplateToS3()
+    sendOrchestratedEmailEvent(
+      CommManifest(
+        CommType.Service,
+        "no-such-template",
+        "9.9"
+      ))
+    expectNoComposedEmailEvent()
+    expectNFailedEvents(1)
+  }
 
   private def createKafkaTopics(): Unit = {
     import _root_.kafka.admin.AdminUtils
@@ -52,6 +81,35 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues {
 
   private def waitForKafkaConsumerToSettle(): Unit = {
     Thread.sleep(5000L) // :(
+  }
+
+  private def createKafkaProducer(): Unit = {
+    orchestratedEmailProducer = KafkaProducer(
+      ProdConf(new StringSerializer, Serialization.avroSerializer[OrchestratedEmail], bootstrapServers = kafkaHosts))
+  }
+
+  private def createKafkaConsumers(): Unit = {
+    composedEmailConsumer = {
+      val consumer = KafkaCons(
+        ConsConf(new StringDeserializer,
+                 Serialization.avroDeserializer[ComposedEmail],
+                 groupId = "test",
+                 bootstrapServers = kafkaHosts,
+                 maxPollRecords = 1))
+      consumer.subscribe(util.Arrays.asList(composedEmailTopic))
+      consumer
+    }
+
+    failedConsumer = {
+      val consumer = KafkaCons(
+        ConsConf(new StringDeserializer,
+                 Serialization.avroDeserializer[Failed],
+                 groupId = "test",
+                 bootstrapServers = kafkaHosts,
+                 maxPollRecords = 1))
+      consumer.subscribe(util.Arrays.asList(failedTopic))
+      consumer
+    }
   }
 
   private def uploadTemplateToS3(): Unit = {
@@ -81,10 +139,7 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues {
     s3.putObject("ovo-comms-templates", "service/fragments/email/text/header.txt", "TEXT HEADER")
   }
 
-  private def sendOrchestratedEmailEvent(): Unit = {
-    val orchestratedEmailSerializer = Serialization.avroSerializer[OrchestratedEmail]
-    val producer = KafkaProducer(
-      ProdConf(new StringSerializer, orchestratedEmailSerializer, bootstrapServers = kafkaHosts))
+  private def sendOrchestratedEmailEvent(commManifest: CommManifest): Unit = {
     val event = OrchestratedEmail(
       Metadata(
         OffsetDateTime.now().toString,
@@ -96,11 +151,7 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues {
         canary = true,
         None
       ),
-      CommManifest(
-        CommType.Service,
-        "composer-service-test",
-        "0.1"
-      ),
+      commManifest,
       "chris.birchall@ovoenergy.com",
       CustomerProfile(
         "Chris",
@@ -110,20 +161,13 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues {
         "amount" -> "1.23"
       )
     )
-    val future = producer.send(new ProducerRecord(orchestratedEmailTopic, event))
+    val future = orchestratedEmailProducer.send(new ProducerRecord(orchestratedEmailTopic, event))
     val result = Await.result(future, atMost = 5.seconds)
     println(s"Sent Kafka message: $result")
   }
 
   private def verifyComposedEmailEvent(): Unit = {
-    val composedEmailDeserializer = Serialization.avroDeserializer[ComposedEmail]
-    val consumer = KafkaConsumer(
-      ConsConf(new StringDeserializer,
-               composedEmailDeserializer,
-               groupId = "test",
-               bootstrapServers = "127.0.0.1:29092"))
-    consumer.subscribe(util.Arrays.asList(composedEmailTopic))
-    val records = consumer.poll(10000L)
+    val records = composedEmailConsumer.poll(5000L)
     try {
       records.count() should be(1)
       val event = records.iterator().next().value().value
@@ -135,20 +179,27 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues {
       event.metadata.transactionId should be("transaction123")
       event.metadata.customerId should be("customer123")
     } finally {
-      consumer.commitSync()
+      composedEmailConsumer.commitSync()
     }
   }
 
-  private def checkNoFailedEvent(): Unit = {
-    val composedEmailDeserializer = Serialization.avroDeserializer[Failed]
-    val consumer = KafkaConsumer(
-      ConsConf(new StringDeserializer, composedEmailDeserializer, groupId = "test", bootstrapServers = kafkaHosts))
-    consumer.subscribe(util.Arrays.asList(failedTopic))
-    val records = consumer.poll(1000L)
+  private def expectNoComposedEmailEvent(): Unit = {
+    val records = composedEmailConsumer.poll(5000L)
     try {
       records.count() should be(0)
     } finally {
-      consumer.commitSync()
+      composedEmailConsumer.commitSync()
+    }
+  }
+
+  private def expectNoFailedEvent(): Unit = expectNFailedEvents(0)
+
+  private def expectNFailedEvents(n: Int): Unit = {
+    val records = failedConsumer.poll(5000L)
+    try {
+      records.count() should be(n)
+    } finally {
+      failedConsumer.commitSync()
     }
   }
 
