@@ -13,6 +13,7 @@ services:
     environment:
       ENV: LOCAL
       KAFKA_HOSTS: kafka:29092
+      DOCKER_COMPOSE: "true"
 
   fakes3:
     image: lphoward/fake-s3

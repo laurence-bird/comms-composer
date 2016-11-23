@@ -1,9 +1,5 @@
 package com.ovoenergy.comms
 
-import java.net.InetAddress
-import java.time.OffsetDateTime
-import java.util.UUID
-
 import akka.actor.ActorSystem
 import akka.kafka.ConsumerSettings
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
@@ -15,35 +11,36 @@ import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 import com.ovoenergy.comms.kafka.{Kafka, Serialization}
 import cats.instances.either._
-import com.amazonaws.auth.{
-  AWSCredentialsProviderChain,
-  AWSStaticCredentialsProvider,
-  BasicAWSCredentials,
-  ContainerCredentialsProvider
-}
+import com.amazonaws.auth._
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
-import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
+import com.amazonaws.services.s3.AmazonS3Client
 import com.ovoenergy.comms.email.{Composer, Interpreter}
 import com.ovoenergy.comms.repo.AmazonS3ClientWrapper
 
-import scala.util.control.NonFatal
-
 object Main extends App {
 
-  // TODO only do this in service tests
-  System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
+  val runningInDockerCompose = sys.env.get("DOCKER_COMPOSE").contains("true")
+
+  if (runningInDockerCompose) {
+    // accept the self-signed certs from the SSL proxy sitting in front of the fake S3 container
+    System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
+  }
 
   val log = LoggerFactory.getLogger(getClass)
 
   val config = ConfigFactory.load()
 
   val s3Client: AmazonS3ClientWrapper = {
-    val awsCredentials = new AWSCredentialsProviderChain(
-      new ContainerCredentialsProvider(),
-      new ProfileCredentialsProvider(),
-      new AWSStaticCredentialsProvider(new BasicAWSCredentials("service-test", "dummy"))
-    )
+    val awsCredentials: AWSCredentialsProvider = {
+      if (runningInDockerCompose)
+        new AWSStaticCredentialsProvider(new BasicAWSCredentials("service-test", "dummy"))
+      else
+        new AWSCredentialsProviderChain(
+          new ContainerCredentialsProvider(),
+          new ProfileCredentialsProvider()
+        )
+    }
     val underlying: AmazonS3Client =
       new AmazonS3Client(awsCredentials).withRegion(Regions.fromName(config.getString("aws.region")))
     new AmazonS3ClientWrapper(underlying)
@@ -80,25 +77,8 @@ object Main extends App {
 
   val interpreterFactory = Interpreter.build(s3Client) _
   val emailStream = Kafka.buildStream(input, composedEmailEventOutput, failedEmailEventOutput) { orchestratedEmail =>
-    try {
-      val interpreter = interpreterFactory(orchestratedEmail)
-      Composer.program(orchestratedEmail).foldMap(interpreter)
-    } catch {
-      case NonFatal(e) =>
-        log.info(s"OH NO! ", e)
-        Left(
-          Failed(Metadata(
-                   OffsetDateTime.now().toString,
-                   UUID.randomUUID(),
-                   orchestratedEmail.metadata.customerId,
-                   orchestratedEmail.metadata.transactionId,
-                   orchestratedEmail.metadata.friendlyDescription,
-                   "comms-composer",
-                   orchestratedEmail.metadata.canary,
-                   Some(orchestratedEmail.metadata)
-                 ),
-                 e.getMessage))
-    }
+    val interpreter = interpreterFactory(orchestratedEmail)
+    Composer.program(orchestratedEmail).foldMap(interpreter)
   }
 
   val decider: Supervision.Decider = { e =>
