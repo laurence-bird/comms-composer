@@ -47,6 +47,6 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:32181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://10.42.34.53:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${IP_ADDRESS}:29092
     depends_on:
       - zookeeper
