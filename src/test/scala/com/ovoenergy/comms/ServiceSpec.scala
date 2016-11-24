@@ -11,7 +11,7 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.kafka.Serialization
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest._
@@ -32,7 +32,8 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues {
     checkNoFailedEvent()
   }
 
-  val config = ConfigFactory.load()
+  val config =
+    ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
   val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email")
   val composedEmailTopic = config.getString("kafka.topics.composed.email")
   val failedTopic = config.getString("kafka.topics.failed")

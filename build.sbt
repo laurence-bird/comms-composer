@@ -33,6 +33,11 @@ reformatOnCompileSettings
 // Service tests
 enablePlugins(DockerComposePlugin)
 testTagsToExecute := "DockerComposeTag"
+
 dockerImageCreationTask := (publishLocal in Docker).value
+
+lazy val ipAddress: String = "./get_ip_address.sh".!!.trim
+
+variablesForSubstitution := Map("IP_ADDRESS" -> ipAddress)
 
 lazy val root = (project in file(".")).withDocker
