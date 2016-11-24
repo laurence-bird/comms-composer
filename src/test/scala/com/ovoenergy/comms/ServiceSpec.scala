@@ -1,19 +1,20 @@
 package com.ovoenergy.comms
 
-import java.time.OffsetDateTime
+import java.time.{LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.UUID
 
-import cakesolutions.kafka.{KafkaConsumer => KafkaCons, KafkaProducer}
+import cakesolutions.kafka.{KafkaProducer, KafkaConsumer => KafkaCons}
 import cakesolutions.kafka.KafkaProducer.{Conf => ProdConf}
 import cakesolutions.kafka.KafkaConsumer.{Conf => ConsConf}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.kafka.Serialization
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest._
 
@@ -26,7 +27,8 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAn
 
   behavior of "composer service"
 
-  val config = ConfigFactory.load()
+  val config =
+    ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
   val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email")
   val composedEmailTopic = config.getString("kafka.topics.composed.email")
   val failedTopic = config.getString("kafka.topics.failed")
@@ -43,6 +45,12 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAn
     waitForKafkaConsumerToSettle()
     createKafkaProducer()
     createKafkaConsumers()
+  }
+
+  override protected def afterAll(): Unit = {
+    orchestratedEmailProducer.close()
+    composedEmailConsumer.close()
+    failedConsumer.close()
   }
 
   it should "compose an email" taggedAs DockerComposeTag in {
@@ -96,7 +104,8 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAn
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
-      consumer.subscribe(util.Arrays.asList(composedEmailTopic))
+      // DO NOT USE subscribe()! See https://github.com/dpkp/kafka-python/issues/690#issuecomment-220490765
+      consumer.assign(util.Arrays.asList(new TopicPartition(composedEmailTopic, 0)))
       consumer
     }
 
@@ -107,7 +116,7 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAn
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
-      consumer.subscribe(util.Arrays.asList(failedTopic))
+      consumer.assign(util.Arrays.asList(new TopicPartition(failedTopic, 0)))
       consumer
     }
   }
@@ -167,7 +176,7 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAn
   }
 
   private def verifyComposedEmailEvent(): Unit = {
-    val records = composedEmailConsumer.poll(5000L)
+    val records = composedEmailConsumer.poll(3000L)
     try {
       records.count() should be(1)
       val event = records.iterator().next().value().value
@@ -184,7 +193,7 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAn
   }
 
   private def expectNoComposedEmailEvent(): Unit = {
-    val records = composedEmailConsumer.poll(5000L)
+    val records = composedEmailConsumer.poll(3000L)
     try {
       records.count() should be(0)
     } finally {
@@ -195,7 +204,7 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAn
   private def expectNoFailedEvent(): Unit = expectNFailedEvents(0)
 
   private def expectNFailedEvents(n: Int): Unit = {
-    val records = failedConsumer.poll(5000L)
+    val records = failedConsumer.poll(3000L)
     try {
       records.count() should be(n)
     } finally {
