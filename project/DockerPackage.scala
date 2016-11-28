@@ -26,10 +26,12 @@ object DockerPackage {
     dockerExposedPorts := Seq(8080),
     dockerBaseImage := "alpine",
     dockerCommands := dockerCommands.value.head +: setupAlpine ++: dockerCommands.value.tail,
-    mappings in Universal += file("src/main/resources/application.conf")      ->  "conf/local/application.conf",
+    mappings in Universal += file("target/credstash/application.conf")        ->  "conf/local/application.conf",
     mappings in Universal += file("src/main/resources/logback.xml")           ->  "conf/local/logback.xml",
-    mappings in Universal += file("target/src_managed/resources/uat/application.conf")  ->  "conf/uat/application.conf",
-    mappings in Universal += file("target/src_managed/resources/uat/logback.xml")       ->  "conf/uat/logback.xml",
+    mappings in Universal += file("target/credstash/uat.conf")                ->  "conf/uat/application.conf",
+    mappings in Universal += file("target/credstash/prd.conf")                ->  "conf/prd/application.conf",
+    mappings in Universal += file("target/credstash/uat/prd-logback.xml")     ->  "conf/uat/logback.xml",
+    mappings in Universal += file("target/credstash/uat/uat-logback.xml")     ->  "conf/prd/logback.xml",
     bashScriptExtraDefines += """addJava "-Dconfig.file=${app_home}/../conf/${ENV,,}/application.conf"""",
     bashScriptExtraDefines += """addJava "-Dlogback.configurationFile=${app_home}/../conf/${ENV,,}/logback.xml"""",
     bashScriptExtraDefines += """addJava "-Xms256M"""",
@@ -41,10 +43,6 @@ object DockerPackage {
       .settings(settings: _*)
       .enablePlugins(JavaServerAppPackaging, DockerPlugin)
       .settings(
-        dockerConfigTask := {
-          import sys.process._
-          "aws s3 sync s3://ovo-comms-platform-config/service-config/uat/composer ./target/src_managed/resources/uat" !
-        },
         dockerLoginTask := {
           import sys.process._
           "aws --region eu-west-1 ecr get-login" #| "bash" !
