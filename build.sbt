@@ -36,6 +36,8 @@ testTagsToExecute := "DockerComposeTag"
 
 dockerImageCreationTask := (publishLocal in Docker).value
 
+credstashInputDir := file("conf")
+
 lazy val ipAddress: String = {
   val addr = "./get_ip_address.sh".!!.trim
   println(s"My IP address appears to be $addr")
