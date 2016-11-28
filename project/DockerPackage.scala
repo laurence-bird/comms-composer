@@ -5,13 +5,12 @@ import com.typesafe.sbt.packager.docker._
 import com.typesafe.sbt.packager.universal.UniversalPlugin.autoImport._
 import sbt.Keys._
 import sbt._
-
+import CredstashPlugin.autoImport._
 import scala.language.postfixOps
 
 object DockerPackage {
 
   lazy val dockerLoginTask = TaskKey[Unit]("dockerLogin", "Log in to Amazon ECR")
-  lazy val dockerConfigTask = TaskKey[Unit]("dockerConfig", "Pull config from S3")
   lazy val awsAccountNumber = sys.env.getOrElse("AWS_ACCOUNT_ID", "NOT_SET")
 
   private lazy val setupAlpine = Seq(
@@ -30,8 +29,8 @@ object DockerPackage {
     mappings in Universal += file("src/main/resources/logback.xml")           ->  "conf/local/logback.xml",
     mappings in Universal += file("target/credstash/uat.conf")                ->  "conf/uat/application.conf",
     mappings in Universal += file("target/credstash/prd.conf")                ->  "conf/prd/application.conf",
-    mappings in Universal += file("target/credstash/uat/prd-logback.xml")     ->  "conf/uat/logback.xml",
-    mappings in Universal += file("target/credstash/uat/uat-logback.xml")     ->  "conf/prd/logback.xml",
+    mappings in Universal += file("target/credstash/prd-logback.xml")     ->  "conf/uat/logback.xml",
+    mappings in Universal += file("target/credstash/uat-logback.xml")     ->  "conf/prd/logback.xml",
     bashScriptExtraDefines += """addJava "-Dconfig.file=${app_home}/../conf/${ENV,,}/application.conf"""",
     bashScriptExtraDefines += """addJava "-Dlogback.configurationFile=${app_home}/../conf/${ENV,,}/logback.xml"""",
     bashScriptExtraDefines += """addJava "-Xms256M"""",
@@ -47,7 +46,7 @@ object DockerPackage {
           import sys.process._
           "aws --region eu-west-1 ecr get-login" #| "bash" !
         },
-        (publish in Docker) := (publish in Docker).dependsOn(dockerLoginTask, dockerConfigTask).value
+        (publish in Docker) := (publish in Docker).dependsOn(dockerLoginTask, credstashPopulateConfig).value
       )
   }
 
