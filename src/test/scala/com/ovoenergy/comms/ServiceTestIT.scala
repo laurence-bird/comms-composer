@@ -23,7 +23,7 @@ import scala.concurrent.duration._
 
 object DockerComposeTag extends Tag("DockerComposeTag")
 
-class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAndAfterAll {
+class ServiceTestIT extends FlatSpec with Matchers with OptionValues with BeforeAndAfterAll {
 
   behavior of "composer service"
 
