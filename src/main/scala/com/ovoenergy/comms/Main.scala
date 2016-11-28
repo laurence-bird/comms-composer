@@ -11,7 +11,7 @@ import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 import com.ovoenergy.comms.kafka.{Kafka, Serialization}
 import cats.instances.either._
-import com.amazonaws.auth.{AWSCredentialsProviderChain, ContainerCredentialsProvider}
+import com.amazonaws.auth._
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3Client
@@ -20,15 +20,27 @@ import com.ovoenergy.comms.repo.AmazonS3ClientWrapper
 
 object Main extends App {
 
+  val runningInDockerCompose = sys.env.get("DOCKER_COMPOSE").contains("true")
+
+  if (runningInDockerCompose) {
+    // accept the self-signed certs from the SSL proxy sitting in front of the fake S3 container
+    System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
+  }
+
   val log = LoggerFactory.getLogger(getClass)
 
   val config = ConfigFactory.load()
 
   val s3Client: AmazonS3ClientWrapper = {
-    val awsCredentials = new AWSCredentialsProviderChain(
-      new ContainerCredentialsProvider(),
-      new ProfileCredentialsProvider()
-    )
+    val awsCredentials: AWSCredentialsProvider = {
+      if (runningInDockerCompose)
+        new AWSStaticCredentialsProvider(new BasicAWSCredentials("service-test", "dummy"))
+      else
+        new AWSCredentialsProviderChain(
+          new ContainerCredentialsProvider(),
+          new ProfileCredentialsProvider()
+        )
+    }
     val underlying: AmazonS3Client =
       new AmazonS3Client(awsCredentials).withRegion(Regions.fromName(config.getString("aws.region")))
     new AmazonS3ClientWrapper(underlying)

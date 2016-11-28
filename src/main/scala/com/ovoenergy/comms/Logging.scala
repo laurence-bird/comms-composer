@@ -16,6 +16,10 @@ trait Logging {
     withMDC(transactionId)(log.warn(message))
   }
 
+  def warnE(transactionId: String)(message: String, exception: Throwable): Unit = {
+    withMDC(transactionId)(log.warn(message, exception))
+  }
+
   private def withMDC(transactionId: String)(block: => Unit): Unit = {
     MDC.put(TransactionId, transactionId)
     try {
