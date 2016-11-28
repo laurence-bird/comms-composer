@@ -42,7 +42,6 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAn
 
   override protected def beforeAll(): Unit = {
     createKafkaTopics()
-    waitForKafkaConsumerToSettle()
     createKafkaProducer()
     createKafkaConsumers()
   }
@@ -80,15 +79,26 @@ class ServiceSpec extends FlatSpec with Matchers with OptionValues with BeforeAn
   private def createKafkaTopics(): Unit = {
     import _root_.kafka.admin.AdminUtils
     import _root_.kafka.utils.ZkUtils
+    import scala.concurrent.duration._
+    import scala.util.control.NonFatal
+
     val zkUtils = ZkUtils(zkHosts, 30000, 5000, isZkSecurityEnabled = false)
 
-    // Note: the app itself creates the OrchestratedEmail topic by subscribing to it
+    //Wait until kafka calls are not erroring and the service has created the OrchestratedEmail topic
+    val timeout = 10.seconds.fromNow
+    var notStarted = true
+    while (timeout.hasTimeLeft && notStarted) {
+      try {
+        notStarted = !AdminUtils.topicExists(zkUtils, orchestratedEmailTopic)
+      } catch {
+        case NonFatal(ex) => Thread.sleep(100)
+      }
+    }
+    if (notStarted) fail("Services did not start within 10 seconds")
+
+    // Create the 2 output topics that we want to consume from
     AdminUtils.createTopic(zkUtils, composedEmailTopic, 1, 1)
     AdminUtils.createTopic(zkUtils, failedTopic, 1, 1)
-  }
-
-  private def waitForKafkaConsumerToSettle(): Unit = {
-    Thread.sleep(5000L) // :(
   }
 
   private def createKafkaProducer(): Unit = {
