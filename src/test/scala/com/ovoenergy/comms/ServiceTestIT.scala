@@ -42,6 +42,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   override protected def beforeAll(): Unit = {
     createKafkaTopics()
+    Thread.sleep(3000L) // hopefully this will stop the random failures...
     createKafkaProducer()
     createKafkaConsumers()
   }
