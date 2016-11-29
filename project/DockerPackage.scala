@@ -29,12 +29,12 @@ object DockerPackage {
     mappings in Universal += file("src/main/resources/logback.xml")       -> "conf/local/logback.xml",
     mappings in Universal += file("target/credstash/uat.conf")            -> "conf/uat/application.conf",
     mappings in Universal += file("target/credstash/prd.conf")            -> "conf/prd/application.conf",
-    mappings in Universal += file("target/credstash/prd-logback.xml")     -> "conf/uat/logback.xml",
-    mappings in Universal += file("target/credstash/uat-logback.xml")     -> "conf/prd/logback.xml",
+    mappings in Universal += file("target/credstash/uat-logback.xml")     -> "conf/uat/logback.xml",
+    mappings in Universal += file("target/credstash/prd-logback.xml")     -> "conf/prd/logback.xml",
     bashScriptExtraDefines += """addJava "-Dconfig.file=${app_home}/../conf/${ENV,,}/application.conf"""",
     bashScriptExtraDefines += """addJava "-Dlogback.configurationFile=${app_home}/../conf/${ENV,,}/logback.xml"""",
     bashScriptExtraDefines += """addJava "-Xms256M"""",
-    bashScriptExtraDefines += """addJava "-Xmx1536M""""
+    bashScriptExtraDefines += """addJava "-Xmx256M""""
   )
 
   implicit class DockerProject(project: Project) {
