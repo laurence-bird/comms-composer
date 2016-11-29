@@ -29,6 +29,8 @@ deployment:
     commands:
       - ci_scripts/publish_docker_image.sh
       - ci_scripts/deploy_to_ecs.sh -s composer UAT aws/container-definition.json
+      # TODO e2e tests
+      - ci_scripts/deploy_to_ecs.sh -s composer PRD aws/container-definition.json
       - ci_scripts/send_librato_deployment_event.sh
       - ci_scripts/comment_on_last_merged_pr.sh
 
