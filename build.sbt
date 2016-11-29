@@ -23,6 +23,7 @@ libraryDependencies ++= Seq(
   "com.chuusai" %% "shapeless" % "2.3.2",
   "ch.qos.logback" % "logback-classic" % "1.1.7",
   "io.logz.logback" % "logzio-logback-appender" % "1.0.11",
+  "me.moocar" % "logback-gelf" % "0.2",
   "org.scalatest" %% "scalatest" % "3.0.1" % Test,
   "org.apache.kafka" %% "kafka" % "0.10.0.1" % Test
 )
