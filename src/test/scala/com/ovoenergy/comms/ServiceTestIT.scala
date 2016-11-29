@@ -4,19 +4,20 @@ import java.time.OffsetDateTime
 import java.util
 import java.util.UUID
 
-import cakesolutions.kafka.{KafkaProducer, KafkaConsumer => KafkaCons}
-import cakesolutions.kafka.KafkaProducer.{Conf => ProdConf}
 import cakesolutions.kafka.KafkaConsumer.{Conf => ConsConf}
+import cakesolutions.kafka.KafkaProducer.{Conf => ProdConf}
+import cakesolutions.kafka.{KafkaProducer, KafkaConsumer => KafkaCons}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
-import com.ovoenergy.comms.kafka.Serialization
+import com.ovoenergy.comms.serialisation.Serialisation._
+import com.ovoenergy.comms.model._
 import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
-import org.scalatest._
+import org.scalatest.{Failed => _, _}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -94,6 +95,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   private def createKafkaTopics(): Unit = {
     import _root_.kafka.admin.AdminUtils
     import _root_.kafka.utils.ZkUtils
+
     import scala.concurrent.duration._
     import scala.util.control.NonFatal
 
@@ -118,14 +120,14 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   private def createKafkaProducer(): Unit = {
     orchestratedEmailProducer = KafkaProducer(
-      ProdConf(new StringSerializer, Serialization.avroSerializer[OrchestratedEmail], bootstrapServers = kafkaHosts))
+      ProdConf(new StringSerializer, avroSerializer[OrchestratedEmail], bootstrapServers = kafkaHosts))
   }
 
   private def createKafkaConsumers(): Unit = {
     composedEmailConsumer = {
       val consumer = KafkaCons(
         ConsConf(new StringDeserializer,
-                 Serialization.avroDeserializer[ComposedEmail],
+                 avroDeserializer[ComposedEmail],
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
@@ -137,7 +139,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     failedConsumer = {
       val consumer = KafkaCons(
         ConsConf(new StringDeserializer,
-                 Serialization.avroDeserializer[Failed],
+                 avroDeserializer[Failed],
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
@@ -177,7 +179,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     val event = OrchestratedEmail(
       Metadata(
         OffsetDateTime.now().toString,
-        UUID.randomUUID(),
+        UUID.randomUUID().toString,
         "customer123",
         "transaction123",
         "composer service test",
@@ -208,7 +210,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
       event.htmlBody should be("HTML HEADER HTML BODY 1.23")
       event.textBody should be(Some("TEXT HEADER TEXT BODY 1.23"))
       event.sender should be("Ovo Energy <no-reply@ovoenergy.com>")
-      event.metadata.transactionId should be("transaction123")
+      event.metadata.traceToken should be("transaction123")
       event.metadata.customerId should be("customer123")
     } finally {
       composedEmailConsumer.commitSync()

@@ -6,6 +6,7 @@ import java.util.UUID
 import cats.syntax.either._
 import cats.~>
 import com.ovoenergy.comms._
+import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.repo.{S3Client, S3TemplateRepo}
 
 import scala.util.control.NonFatal
@@ -43,13 +44,13 @@ object Interpreter extends Logging {
     }
 
   private def fail(reason: String, incomingEvent: OrchestratedEmail): Failed = {
-    warn(incomingEvent.metadata.transactionId)(s"Failed to compose email. Reason: $reason")
+    warn(incomingEvent.metadata.traceToken)(s"Failed to compose email. Reason: $reason")
     buildFailedEvent(reason, incomingEvent)
   }
 
   private def failWithException(exception: Throwable, incomingEvent: OrchestratedEmail): Failed = {
-    warnE(incomingEvent.metadata.transactionId)(s"Failed to compose email because an unexpected exception occurred",
-                                                exception)
+    warnE(incomingEvent.metadata.traceToken)(s"Failed to compose email because an unexpected exception occurred",
+                                             exception)
     buildFailedEvent(s"Exception occurred ($exception)", incomingEvent)
   }
 
@@ -57,9 +58,9 @@ object Interpreter extends Logging {
     // TODO add a convenience constructor to Metadata in comms-kafka-messages
     Metadata(
       OffsetDateTime.now().toString,
-      UUID.randomUUID(),
+      UUID.randomUUID().toString,
       incomingEvent.metadata.customerId,
-      incomingEvent.metadata.transactionId,
+      incomingEvent.metadata.traceToken,
       incomingEvent.metadata.friendlyDescription,
       "comms-composer",
       incomingEvent.metadata.canary,

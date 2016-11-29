@@ -5,8 +5,8 @@ import java.util.UUID
 
 import cats.free.Free
 import cats.free.Free.liftF
-import com.ovoenergy.comms.Channel.Email
-import com.ovoenergy.comms._
+import com.ovoenergy.comms.model.Channel._
+import com.ovoenergy.comms.model._
 
 object Composer {
 
@@ -28,10 +28,10 @@ object Composer {
 
   def buildEvent(incomingEvent: OrchestratedEmail, renderedEmail: RenderedEmail, sender: EmailSender) = ComposedEmail(
     metadata = Metadata(
-      timestampIso8601 = OffsetDateTime.now().toString,
-      kafkaMessageId = UUID.randomUUID(),
+      createdAt = OffsetDateTime.now().toString,
+      eventId = UUID.randomUUID().toString,
       customerId = incomingEvent.metadata.customerId,
-      transactionId = incomingEvent.metadata.transactionId,
+      traceToken = incomingEvent.metadata.traceToken,
       friendlyDescription = incomingEvent.metadata.friendlyDescription,
       source = "comms-composer",
       canary = incomingEvent.metadata.canary,

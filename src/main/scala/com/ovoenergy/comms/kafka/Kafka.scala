@@ -1,16 +1,17 @@
 package com.ovoenergy.comms.kafka
 
 import akka.Done
-import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.scaladsl.Consumer.Control
+import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.scaladsl.Source
 import cakesolutions.kafka.KafkaProducer
-import com.ovoenergy.comms.{ComposedEmail, Failed, Logging, OrchestratedEmail}
+import com.ovoenergy.comms.Logging
+import com.ovoenergy.comms.model.{ComposedEmail, Failed, OrchestratedEmail}
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 object Kafka extends Logging {
 
@@ -23,19 +24,19 @@ object Kafka extends Logging {
       processEvent: OrchestratedEmail => Either[Failed, ComposedEmail]): Source[Done, Control] = {
 
     def sendComposedEmail(composedEmail: ComposedEmail): Future[RecordMetadata] = {
-      info(composedEmail.metadata.transactionId)(s"Sending ComposedEmail event. Metadata: ${composedEmail.metadata}")
+      info(composedEmail.metadata.traceToken)(s"Sending ComposedEmail event. Metadata: ${composedEmail.metadata}")
       composedEmailEventOutput.producer.send(new ProducerRecord(composedEmailEventOutput.topic, composedEmail))
     }
 
     def sendFailed(failed: Failed): Future[RecordMetadata] = {
-      info(failed.metadata.transactionId)(s"Sending Failed event: $failed")
+      info(failed.metadata.traceToken)(s"Sending Failed event: $failed")
       failedEventOutput.producer.send(new ProducerRecord(failedEventOutput.topic, failed))
     }
 
     Consumer.committableSource(input.consumerSettings, Subscriptions.topics(input.topic)).mapAsync(1) { msg =>
       val future: Future[_] = msg.record.value match {
         case Some(orchestratedEmail) =>
-          info(orchestratedEmail.metadata.transactionId)(s"Processing event: $orchestratedEmail")
+          info(orchestratedEmail.metadata.traceToken)(s"Processing event: $orchestratedEmail")
           processEvent(orchestratedEmail) match {
             case Left(failed) => sendFailed(failed)
             case Right(result) => sendComposedEmail(result)

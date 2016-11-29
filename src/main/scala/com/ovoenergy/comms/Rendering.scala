@@ -2,23 +2,22 @@ package com.ovoenergy.comms
 
 import java.io.IOException
 import java.time.{Clock, ZonedDateTime}
-
-import com.github.jknack.handlebars.{Handlebars, Helper, Options}
-import com.github.jknack.handlebars.helper.DefaultHelperRegistry
-import com.github.jknack.handlebars.io.{AbstractTemplateLoader, StringTemplateSource, TemplateLoader, TemplateSource}
-
-import scala.collection.JavaConverters._
-import scala.collection.mutable
 import java.util.{Map => JMap}
 
-import cats.{Apply, Semigroup}
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import cats.instances.option._
 import cats.syntax.traverse._
+import cats.{Apply, Semigroup}
+import com.github.jknack.handlebars.helper.DefaultHelperRegistry
+import com.github.jknack.handlebars.io.{AbstractTemplateLoader, StringTemplateSource, TemplateLoader, TemplateSource}
+import com.github.jknack.handlebars.{Handlebars, Helper, Options}
 import com.ovoenergy.comms.email.{EmailTemplate, RenderedEmail}
+import com.ovoenergy.comms.model.{CommManifest, CustomerProfile}
 import shapeless.LabelledGeneric
 
+import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
 object Rendering extends Logging {

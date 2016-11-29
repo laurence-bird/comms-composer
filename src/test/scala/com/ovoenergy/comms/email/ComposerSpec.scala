@@ -4,6 +4,7 @@ import java.util.UUID
 
 import cats.{Id, ~>}
 import com.ovoenergy.comms._
+import com.ovoenergy.comms.model._
 import org.scalatest.{FlatSpec, Matchers}
 
 class ComposerSpec extends FlatSpec with Matchers {
@@ -33,10 +34,10 @@ class ComposerSpec extends FlatSpec with Matchers {
 
   val incomingEvent = OrchestratedEmail(
     metadata = Metadata(
-      timestampIso8601 = "2016-01-01T12:34:56Z",
-      kafkaMessageId = UUID.randomUUID(),
+      createdAt = "2016-01-01T12:34:56Z",
+      eventId = UUID.randomUUID().toString,
       customerId = "123-chris",
-      transactionId = "abc",
+      traceToken = "abc",
       friendlyDescription = "test message",
       source = "test",
       canary = true,

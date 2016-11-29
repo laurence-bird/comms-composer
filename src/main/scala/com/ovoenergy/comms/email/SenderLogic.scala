@@ -1,7 +1,7 @@
 package com.ovoenergy.comms.email
 
-import com.ovoenergy.comms.CommType
-import com.ovoenergy.comms.CommType.{Marketing, Regulatory, Service}
+import com.ovoenergy.comms.model.CommType._
+import com.ovoenergy.comms.model._
 
 object SenderLogic {
 

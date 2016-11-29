@@ -3,6 +3,7 @@ package com.ovoenergy.comms
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
 import com.ovoenergy.comms.email.EmailTemplate
+import com.ovoenergy.comms.model._
 import org.scalatest._
 
 class RenderingSpec extends FlatSpec with Matchers with EitherValues {

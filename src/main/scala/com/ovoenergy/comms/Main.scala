@@ -2,21 +2,23 @@ package com.ovoenergy.comms
 
 import akka.actor.ActorSystem
 import akka.kafka.ConsumerSettings
-import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import akka.stream.scaladsl.Sink
-import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import cakesolutions.kafka.KafkaProducer
 import cakesolutions.kafka.KafkaProducer.Conf
-import com.typesafe.config.ConfigFactory
-import org.slf4j.LoggerFactory
-import com.ovoenergy.comms.kafka.{Kafka, Serialization}
 import cats.instances.either._
 import com.amazonaws.auth._
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.AmazonS3Client
 import com.ovoenergy.comms.email.{Composer, Interpreter}
+import com.ovoenergy.comms.kafka.Kafka
+import com.ovoenergy.comms.model.{ComposedEmail, Failed, OrchestratedEmail}
 import com.ovoenergy.comms.repo.AmazonS3ClientWrapper
+import com.ovoenergy.comms.serialisation.Serialisation._
+import com.typesafe.config.ConfigFactory
+import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import org.slf4j.LoggerFactory
 
 object Main extends App {
 
@@ -54,7 +56,7 @@ object Main extends App {
 
   val input = {
     val consumerSettings =
-      ConsumerSettings(actorSystem, new StringDeserializer, Serialization.orchestratedEmailDeserializer)
+      ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedEmail])
         .withBootstrapServers(kafkaBootstrapServers)
         .withGroupId(config.getString("kafka.group.id"))
     val topic = config.getString("kafka.topics.orchestrated.email")
@@ -62,14 +64,14 @@ object Main extends App {
   }
   val composedEmailEventOutput = {
     val producer = KafkaProducer(
-      Conf(new StringSerializer, Serialization.composedEmailSerializer, bootstrapServers = kafkaBootstrapServers)
+      Conf(new StringSerializer, avroSerializer[ComposedEmail], bootstrapServers = kafkaBootstrapServers)
     )
     val topic = config.getString("kafka.topics.composed.email")
     Kafka.Output(topic, producer)
   }
   val failedEmailEventOutput = {
     val producer = KafkaProducer(
-      Conf(new StringSerializer, Serialization.failedSerializer, bootstrapServers = kafkaBootstrapServers)
+      Conf(new StringSerializer, avroSerializer[Failed], bootstrapServers = kafkaBootstrapServers)
     )
     val topic = config.getString("kafka.topics.failed")
     Kafka.Output(topic, producer)
