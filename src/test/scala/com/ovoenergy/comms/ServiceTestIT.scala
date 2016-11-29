@@ -1,6 +1,6 @@
 package com.ovoenergy.comms
 
-import java.time.{LocalDateTime, OffsetDateTime}
+import java.time.OffsetDateTime
 import java.util
 import java.util.UUID
 
@@ -41,6 +41,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   var failedConsumer: KafkaConsumer[String, Option[Failed]] = _
 
   override protected def beforeAll(): Unit = {
+    uploadTemplateToS3()
     createKafkaTopics()
     Thread.sleep(3000L) // hopefully this will stop the random failures...
     createKafkaProducer()
@@ -54,25 +55,38 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   }
 
   it should "compose an email" taggedAs DockerComposeTag in {
-    uploadTemplateToS3()
+    sendOrchestratedEmailEvent(CommManifest(
+                                 CommType.Service,
+                                 "composer-service-test",
+                                 "0.1"
+                               ),
+                               Map(
+                                 "amount" -> "1.23"
+                               ))
+    verifyComposedEmailEvent()
+    expectNoFailedEvent()
+  }
+
+  it should "send a failed event if some template data is missing" taggedAs DockerComposeTag in {
     sendOrchestratedEmailEvent(
       CommManifest(
         CommType.Service,
         "composer-service-test",
         "0.1"
-      ))
-    verifyComposedEmailEvent()
-    expectNoFailedEvent()
+      ),
+      Map.empty
+    )
+    expectNoComposedEmailEvent()
+    expectNFailedEvents(1)
   }
 
   it should "send a failed event if the template does not exist" taggedAs DockerComposeTag in {
-    uploadTemplateToS3()
-    sendOrchestratedEmailEvent(
-      CommManifest(
-        CommType.Service,
-        "no-such-template",
-        "9.9"
-      ))
+    sendOrchestratedEmailEvent(CommManifest(
+                                 CommType.Service,
+                                 "no-such-template",
+                                 "9.9"
+                               ),
+                               Map.empty)
     expectNoComposedEmailEvent()
     expectNFailedEvents(1)
   }
@@ -159,7 +173,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     s3.putObject("ovo-comms-templates", "service/fragments/email/text/header.txt", "TEXT HEADER")
   }
 
-  private def sendOrchestratedEmailEvent(commManifest: CommManifest): Unit = {
+  private def sendOrchestratedEmailEvent(commManifest: CommManifest, data: Map[String, String]): Unit = {
     val event = OrchestratedEmail(
       Metadata(
         OffsetDateTime.now().toString,
@@ -177,9 +191,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
         "Chris",
         "Birchall"
       ),
-      Map(
-        "amount" -> "1.23"
-      )
+      data
     )
     val future = orchestratedEmailProducer.send(new ProducerRecord(orchestratedEmailTopic, event))
     val result = Await.result(future, atMost = 5.seconds)

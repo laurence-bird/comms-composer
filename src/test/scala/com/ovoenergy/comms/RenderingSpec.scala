@@ -126,6 +126,24 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     "thing".r.findAllMatchIn(errorMessage) should have size 1
   }
 
+  it should "fail if the template references non-existent data, even if the previous rendering of that template succeeded" in {
+    val manifest = CommManifest(CommType.Service, "missing-data-2", "0.1")
+    val template = EmailTemplate(
+      sender = None,
+      subject = Mustache("Hi {{profile.firstName}}"),
+      htmlBody = Mustache("You bought a {{thing}}. The amount was £{{amount}}."),
+      textBody = Some(Mustache("You bought a {{thing}}. The amount was £{{amount}}.")),
+      htmlFragments = Map.empty,
+      textFragments = Map.empty
+    )
+    val validData = Map("amount" -> "1.23", "thing" -> "widget")
+    render(manifest, template, validData, profile, emailAddress) should be('right)
+
+    val invalidData = Map("amount" -> "1.23")
+    val errorMessage = render(manifest, template, invalidData, profile, emailAddress).left.value
+    errorMessage should include("thing")
+  }
+
   it should "fail if the template references a non-existent partial" in {
     val manifest = CommManifest(CommType.Service, "missing-partials", "0.1")
     val template = EmailTemplate(
