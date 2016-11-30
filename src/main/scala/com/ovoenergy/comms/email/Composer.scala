@@ -1,8 +1,5 @@
 package com.ovoenergy.comms.email
 
-import java.time.OffsetDateTime
-import java.util.UUID
-
 import cats.free.Free
 import cats.free.Free.liftF
 import com.ovoenergy.comms.model.Channel._
