@@ -55,17 +55,7 @@ object Interpreter extends Logging {
   }
 
   private def buildFailedEvent(reason: String, incomingEvent: OrchestratedEmail): Failed = Failed(
-    // TODO add a convenience constructor to Metadata in comms-kafka-messages
-    Metadata(
-      OffsetDateTime.now().toString,
-      UUID.randomUUID().toString,
-      incomingEvent.metadata.customerId,
-      incomingEvent.metadata.traceToken,
-      incomingEvent.metadata.friendlyDescription,
-      "comms-composer",
-      incomingEvent.metadata.canary,
-      Some(incomingEvent.metadata)
-    ),
+    Metadata.fromSourceMetadata("conms-composer", incomingEvent.metadata),
     reason
   )
 

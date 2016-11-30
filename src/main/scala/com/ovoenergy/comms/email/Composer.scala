@@ -27,16 +27,7 @@ object Composer {
     liftF(LookupSender(template, commType))
 
   def buildEvent(incomingEvent: OrchestratedEmail, renderedEmail: RenderedEmail, sender: EmailSender) = ComposedEmail(
-    metadata = Metadata(
-      createdAt = OffsetDateTime.now().toString,
-      eventId = UUID.randomUUID().toString,
-      customerId = incomingEvent.metadata.customerId,
-      traceToken = incomingEvent.metadata.traceToken,
-      friendlyDescription = incomingEvent.metadata.friendlyDescription,
-      source = "comms-composer",
-      canary = incomingEvent.metadata.canary,
-      sourceMetadata = Some(incomingEvent.metadata)
-    ),
+    metadata = Metadata.fromSourceMetadata("comms-composer", incomingEvent.metadata),
     sender = sender.toString,
     recipient = incomingEvent.recipientEmailAddress,
     subject = renderedEmail.subject,
