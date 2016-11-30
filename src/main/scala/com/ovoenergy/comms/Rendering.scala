@@ -4,7 +4,6 @@ import java.io.IOException
 import java.time.{Clock, ZonedDateTime}
 
 import com.github.jknack.handlebars.{Handlebars, Helper, Options}
-import com.github.jknack.handlebars.cache.ConcurrentMapTemplateCache
 import com.github.jknack.handlebars.helper.DefaultHelperRegistry
 import com.github.jknack.handlebars.io.{AbstractTemplateLoader, StringTemplateSource, TemplateLoader, TemplateSource}
 
@@ -108,6 +107,9 @@ object Rendering extends Logging {
   /*
    Builds a "filename" for a Mustache template.
    This is not actually a filename. It's actually a key for use by the template cache.
+
+   In fact we are not using a template cache, so the filename is not even used as a cache key,
+   but it's still nice to have a unique, human-readable identifier for a Mustache template.
    */
   private def buildFilename(commManifest: CommManifest, suffixes: String*): String =
     (Seq(commManifest.commType, commManifest.name, commManifest.version) ++ suffixes).mkString("::")
@@ -126,8 +128,6 @@ object Rendering extends Logging {
     // TODO revisit this, it's a bit horrible. Should emailAddress be inside CustomerProfile to start with?
     (map + ("emailAddress" -> emailAddress)).asJava
   }
-
-  private val templateCache = new ConcurrentMapTemplateCache()
 
   /*
   Custom template loader for supplying the fragments (headers/footers) we have downloaded from S3
@@ -169,7 +169,7 @@ object Rendering extends Logging {
         case Some(templateLoader) => new Handlebars(templateLoader)
         case None => new Handlebars()
       }
-      base.`with`(templateCache).`with`(helperRegistry)
+      base.`with`(helperRegistry)
     }
 
     def render(filename: String, template: Mustache)(context: JMap[String, AnyRef]): ErrorsOr[String] = {

@@ -1,3 +1,3 @@
 package com.ovoenergy.comms
 
-case class Mustache(content: String)
+case class Mustache(content: String) extends AnyVal
