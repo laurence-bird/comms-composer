@@ -6,26 +6,26 @@ trait Logging {
 
   val log = LoggerFactory.getLogger(getClass)
 
-  private val TransactionId = "transactionId"
+  private val TraceToken = "traceToken"
 
-  def info(transactionId: String)(message: String): Unit = {
-    withMDC(transactionId)(log.info(message))
+  def info(traceToken: String)(message: String): Unit = {
+    withMDC(traceToken)(log.info(message))
   }
 
-  def warn(transactionId: String)(message: String): Unit = {
-    withMDC(transactionId)(log.warn(message))
+  def warn(traceToken: String)(message: String): Unit = {
+    withMDC(traceToken)(log.warn(message))
   }
 
-  def warnE(transactionId: String)(message: String, exception: Throwable): Unit = {
-    withMDC(transactionId)(log.warn(message, exception))
+  def warnE(traceToken: String)(message: String, exception: Throwable): Unit = {
+    withMDC(traceToken)(log.warn(message, exception))
   }
 
-  private def withMDC(transactionId: String)(block: => Unit): Unit = {
-    MDC.put(TransactionId, transactionId)
+  private def withMDC(traceToken: String)(block: => Unit): Unit = {
+    MDC.put(TraceToken, traceToken)
     try {
       block
     } finally {
-      MDC.remove(TransactionId)
+      MDC.remove(TraceToken)
     }
   }
 
