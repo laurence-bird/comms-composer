@@ -1,5 +1,3 @@
-import DockerPackage._
-
 name := "composer"
 organization := "com.ovoenergy"
 
@@ -13,9 +11,10 @@ testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF", "-u", testReports
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 
+val kafkaMessagesVersion = "0.0.11"
 libraryDependencies ++= Seq(
-  "com.ovoenergy" %% "comms-kafka-messages" % "0.0.11",
-  "com.ovoenergy" %% "comms-kafka-serialisation" % "0.0.11",
+  "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion,
+  "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaMessagesVersion,
   "com.github.jknack" % "handlebars" % "4.0.6",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57",
   "net.cakesolutions" %% "scala-kafka-client" % "0.10.0.0",
@@ -30,23 +29,19 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" %% "kafka" % "0.10.0.1" % Test
 )
 
+enablePlugins(JavaServerAppPackaging, DockerPlugin)
+
 scalafmtConfig in ThisBuild := Some(file(".scalafmt.conf"))
 reformatOnCompileSettings
 
 // Service tests
 enablePlugins(DockerComposePlugin)
 testTagsToExecute := "DockerComposeTag"
-
 dockerImageCreationTask := (publishLocal in Docker).value
-
-credstashInputDir := file("conf")
 
 lazy val ipAddress: String = {
   val addr = "./get_ip_address.sh".!!.trim
   println(s"My IP address appears to be $addr")
   addr
 }
-
 variablesForSubstitution := Map("IP_ADDRESS" -> ipAddress)
-
-lazy val root = (project in file(".")).withDocker
