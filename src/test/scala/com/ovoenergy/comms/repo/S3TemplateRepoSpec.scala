@@ -1,7 +1,8 @@
 package com.ovoenergy.comms.repo
 
+import com.ovoenergy.comms.Mustache
 import com.ovoenergy.comms.email.{EmailSender, EmailTemplate}
-import com.ovoenergy.comms.{CommManifest, CommType, Mustache}
+import com.ovoenergy.comms.model.{CommManifest, CommType}
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
 
 class S3TemplateRepoSpec extends FlatSpec with Matchers with EitherValues {

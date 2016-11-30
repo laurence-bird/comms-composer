@@ -2,11 +2,11 @@ package com.ovoenergy.comms.repo
 
 import cats.Apply
 import cats.data.{NonEmptyList, ReaderT, Validated, ValidatedNel}
-import cats.instances.list._
-import cats.syntax.traverse._
 import cats.instances.option._
-import com.ovoenergy.comms.email.{EmailSender, EmailTemplate}
+import cats.syntax.traverse._
 import com.ovoenergy.comms._
+import com.ovoenergy.comms.email.{EmailSender, EmailTemplate}
+import com.ovoenergy.comms.model._
 
 import scala.util.matching.Regex
 

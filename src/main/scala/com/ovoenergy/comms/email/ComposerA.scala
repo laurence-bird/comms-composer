@@ -1,6 +1,6 @@
 package com.ovoenergy.comms.email
 
-import com.ovoenergy.comms._
+import com.ovoenergy.comms.model._
 
 sealed trait ComposerA[T]
 
