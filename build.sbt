@@ -11,7 +11,7 @@ testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF", "-u", testReports
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 
-val kafkaMessagesVersion = "0.0.11"
+val kafkaMessagesVersion = "0.0.12"
 libraryDependencies ++= Seq(
   "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion,
   "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaMessagesVersion,
