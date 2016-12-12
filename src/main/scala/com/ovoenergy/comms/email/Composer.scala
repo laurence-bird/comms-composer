@@ -34,9 +34,13 @@ object Composer {
 
   def program(event: OrchestratedEmail): Composer[ComposedEmail] = {
     for {
-      template <- retrieveTemplate(Email, event.commManifest)
-      rendered <- render(event.commManifest, template, event.data, event.customerProfile, event.recipientEmailAddress)
-      sender <- lookupSender(template, event.commManifest.commType)
+      template <- retrieveTemplate(Email, event.metadata.commManifest)
+      rendered <- render(event.metadata.commManifest,
+                         template,
+                         event.templateData,
+                         event.customerProfile,
+                         event.recipientEmailAddress)
+      sender <- lookupSender(template, event.metadata.commManifest.commType)
     } yield buildEvent(event, rendered, sender)
   }
 

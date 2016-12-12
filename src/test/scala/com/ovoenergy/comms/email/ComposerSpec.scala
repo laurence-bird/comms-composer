@@ -38,15 +38,15 @@ class ComposerSpec extends FlatSpec with Matchers {
       eventId = UUID.randomUUID().toString,
       customerId = "123-chris",
       traceToken = "abc",
+      commManifest = CommManifest(CommType.Service, "test-template", "0.1"),
       friendlyDescription = "test message",
       source = "test",
       canary = true,
       sourceMetadata = None
     ),
-    commManifest = CommManifest(CommType.Service, "test-template", "0.1"),
     recipientEmailAddress = "chris@foo.com",
     customerProfile = CustomerProfile("Joe", "Bloggs"),
-    data = Map.empty
+    templateData = Map.empty
   )
 
   it should "compose an email" in {
