@@ -64,7 +64,8 @@ object Rendering extends Logging {
                                 recipientEmailAddress: String): Either[String, RenderedEmail] = {
 
     val context: JMap[String, AnyRef] = (data +
-      ("profile" -> profileToMap(customerProfile, recipientEmailAddress)) +
+      ("profile" -> profileToMap(customerProfile)) +
+      ("recipient" -> Map("emailAddress" -> recipientEmailAddress).asJava) +
       ("system" -> systemVariables(clock))).asJava
 
     val subject: ErrorsOr[String] = {
@@ -116,16 +117,14 @@ object Rendering extends Logging {
   /*
   Use shapeless to turn the CustomerProfile case class into a Map[String, String]
    */
-  private def profileToMap(profile: CustomerProfile, emailAddress: String): JMap[String, String] = {
+  private def profileToMap(profile: CustomerProfile): JMap[String, String] = {
     import shapeless.ops.record._
     val generic = LabelledGeneric[CustomerProfile]
     val fieldsHlist = Fields[generic.Repr].apply(generic.to(profile))
     val fieldsList = fieldsHlist.toList[(Symbol, String)]
-    val map: Map[String, String] = fieldsList.map {
+    fieldsList.map {
       case (sym, value) => (sym.name, value)
-    }.toMap
-    // TODO revisit this, it's a bit horrible. Should emailAddress be inside CustomerProfile to start with?
-    (map + ("emailAddress" -> emailAddress)).asJava
+    }.toMap.asJava
   }
 
   /*

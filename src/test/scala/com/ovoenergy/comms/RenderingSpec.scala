@@ -93,12 +93,12 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     result.textBody should be(Some("TEXT HEADER Joe 1.23 TEXT BODY Joe 1.23 TEXT FOOTER Joe 1.23"))
   }
 
-  it should "add the recipient email address to the customer profile" in {
-    val manifest = CommManifest(CommType.Service, "profile-email-address", "0.1")
+  it should "make the recipient email address available to the email template as 'recipient.emailAddress'" in {
+    val manifest = CommManifest(CommType.Service, "recipient-email-address", "0.1")
     val template = EmailTemplate(
       sender = None,
       subject = Mustache("SUBJECT"),
-      htmlBody = Mustache("HTML BODY {{profile.emailAddress}}"),
+      htmlBody = Mustache("HTML BODY {{recipient.emailAddress}}"),
       textBody = None,
       htmlFragments = Map.empty,
       textFragments = Map.empty
