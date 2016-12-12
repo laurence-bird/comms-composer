@@ -183,12 +183,12 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
         UUID.randomUUID().toString,
         "customer123",
         "transaction123",
+        commManifest,
         "composer service test",
         "ServiceSpec",
         canary = true,
         None
       ),
-      commManifest,
       "chris.birchall@ovoenergy.com",
       CustomerProfile(
         "Chris",
