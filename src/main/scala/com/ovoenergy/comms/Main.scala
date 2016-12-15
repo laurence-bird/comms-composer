@@ -1,8 +1,11 @@
 package com.ovoenergy.comms
 
-import akka.actor.ActorSystem
+import akka.Done
+import akka.actor.{Actor, ActorSystem, Props, Terminated}
 import akka.kafka.ConsumerSettings
-import akka.stream.scaladsl.Sink
+import akka.kafka.scaladsl.Consumer.Control
+import akka.stream.impl.StreamLayout.Combine
+import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import cakesolutions.kafka.KafkaProducer
 import cakesolutions.kafka.KafkaProducer.Conf
@@ -19,6 +22,8 @@ import com.ovoenergy.comms.serialisation.Serialisation._
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.Future
 
 object Main extends App {
 
@@ -84,11 +89,30 @@ object Main extends App {
   }
 
   val decider: Supervision.Decider = { e =>
-    log.error("Restarting due to error", e)
-    Supervision.Restart
+    log.error("Stopping due to error", e)
+    Supervision.Stop
   }
 
-  emailStream.runWith(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))
+  val control = emailStream
+    .withAttributes(ActorAttributes.supervisionStrategy(decider))
+    .toMat(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))(Keep.left)
+    .run()
   log.info("Started email stream")
 
+  import scala.concurrent.duration._
+  val kafkaActorResolve = actorSystem.actorSelection("system/kafka-consumer-1").resolveOne(1.second)
+  kafkaActorResolve.foreach { actorRef =>
+    log.info(s"Creating an actor to watch $actorRef")
+    actorSystem.actorOf(Props(new Actor {
+      context.watch(actorRef)
+      def receive: Receive = {
+        case Terminated(actor) => log.error(s"Uh oh! $actor just died!")
+      }
+    }), "kafka-watcher")
+  }
+  kafkaActorResolve.failed.foreach(e => log.warn("Failed to resolve Kafka consumer actor", e))
+
+  control.isShutdown.foreach { _ =>
+    log.error("ARGH! The source has shut down. We might want to kill the JVM at this point.")
+  }
 }
