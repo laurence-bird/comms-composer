@@ -1,7 +1,6 @@
 package com.ovoenergy.comms
 
-import akka.Done
-import akka.actor.{Actor, ActorSystem, Props, Terminated}
+import akka.actor.ActorSystem
 import akka.kafka.ConsumerSettings
 import akka.kafka.scaladsl.Consumer.Control
 import akka.stream.impl.StreamLayout.Combine
@@ -93,26 +92,15 @@ object Main extends App {
     Supervision.Stop
   }
 
+  log.info("Creating email stream")
   val control = emailStream
     .withAttributes(ActorAttributes.supervisionStrategy(decider))
     .toMat(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))(Keep.left)
     .run()
   log.info("Started email stream")
 
-  import scala.concurrent.duration._
-  val kafkaActorResolve = actorSystem.actorSelection("system/kafka-consumer-1").resolveOne(1.second)
-  kafkaActorResolve.foreach { actorRef =>
-    log.info(s"Creating an actor to watch $actorRef")
-    actorSystem.actorOf(Props(new Actor {
-      context.watch(actorRef)
-      def receive: Receive = {
-        case Terminated(actor) => log.error(s"Uh oh! $actor just died!")
-      }
-    }), "kafka-watcher")
-  }
-  kafkaActorResolve.failed.foreach(e => log.warn("Failed to resolve Kafka consumer actor", e))
-
   control.isShutdown.foreach { _ =>
-    log.error("ARGH! The source has shut down. We might want to kill the JVM at this point.")
+    log.error("ARGH! The Kafka source has shut down. Killing the JVM and nuking from orbit.")
+    System.exit(1)
   }
 }
