@@ -25,12 +25,13 @@ object Kafka extends Logging {
 
     def sendComposedEmail(composedEmail: ComposedEmail): Future[RecordMetadata] = {
       info(composedEmail.metadata.traceToken)(s"Sending ComposedEmail event. Metadata: ${composedEmail.metadata}")
-      composedEmailEventOutput.producer.send(new ProducerRecord(composedEmailEventOutput.topic, composedEmail))
+      composedEmailEventOutput.producer.send(
+        new ProducerRecord(composedEmailEventOutput.topic, composedEmail.metadata.customerId, composedEmail))
     }
 
     def sendFailed(failed: Failed): Future[RecordMetadata] = {
       info(failed.metadata.traceToken)(s"Sending Failed event: $failed")
-      failedEventOutput.producer.send(new ProducerRecord(failedEventOutput.topic, failed))
+      failedEventOutput.producer.send(new ProducerRecord(failedEventOutput.topic, failed.metadata.customerId, failed))
     }
 
     Consumer.committableSource(input.consumerSettings, Subscriptions.topics(input.topic)).mapAsync(1) { msg =>
