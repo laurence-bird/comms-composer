@@ -4,6 +4,7 @@ import akka.Done
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.scaladsl.Consumer.Control
 import akka.kafka.{ConsumerSettings, Subscriptions}
+import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.Source
 import cakesolutions.kafka.KafkaProducer
 import com.ovoenergy.comms.Logging
@@ -33,21 +34,29 @@ object Kafka extends Logging {
       failedEventOutput.producer.send(new ProducerRecord(failedEventOutput.topic, failed))
     }
 
-    Consumer.committableSource(input.consumerSettings, Subscriptions.topics(input.topic)).mapAsync(1) { msg =>
-      val future: Future[_] = msg.record.value match {
-        case Some(orchestratedEmail) =>
-          info(orchestratedEmail.metadata.traceToken)(s"Processing event: $orchestratedEmail")
-          processEvent(orchestratedEmail) match {
-            case Left(failed) => sendFailed(failed)
-            case Right(result) => sendComposedEmail(result)
-          }
-        case None =>
-          Future.successful(())
-      }
-      future flatMap { _ =>
-        msg.committableOffset.commitScaladsl()
-      }
+    val decider: Supervision.Decider = { e =>
+      log.error("Kafka consumer actor exploded!", e)
+      Supervision.Stop
     }
+
+    Consumer
+      .committableSource(input.consumerSettings, Subscriptions.topics(input.topic))
+      .withAttributes(ActorAttributes.supervisionStrategy(decider))
+      .mapAsync(1) { msg =>
+        val future: Future[_] = msg.record.value match {
+          case Some(orchestratedEmail) =>
+            info(orchestratedEmail.metadata.traceToken)(s"Processing event: $orchestratedEmail")
+            processEvent(orchestratedEmail) match {
+              case Left(failed) => sendFailed(failed)
+              case Right(result) => sendComposedEmail(result)
+            }
+          case None =>
+            Future.successful(())
+        }
+        future flatMap { _ =>
+          msg.committableOffset.commitScaladsl()
+        }
+      }
   }
 
 }
