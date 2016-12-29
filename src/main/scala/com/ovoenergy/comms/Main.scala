@@ -67,14 +67,18 @@ object Main extends App {
     val topic = config.getString("kafka.topics.orchestrated.email")
     Kafka.Input(topic, consumerSettings)
   }
-  val composedEmailEventOutput = {
+
+  // These outputs are only lazy for the sake of the service tests.
+  // We need to construct the producer after the topic has been created,
+  // otherwise the tests randomly fail.
+  lazy val composedEmailEventOutput = {
     val producer = KafkaProducer(
       Conf(new StringSerializer, avroSerializer[ComposedEmail], bootstrapServers = kafkaBootstrapServers)
     )
     val topic = config.getString("kafka.topics.composed.email")
     Kafka.Output(topic, producer)
   }
-  val failedEmailEventOutput = {
+  lazy val failedEmailEventOutput = {
     val producer = KafkaProducer(
       Conf(new StringSerializer, avroSerializer[Failed], bootstrapServers = kafkaBootstrapServers)
     )

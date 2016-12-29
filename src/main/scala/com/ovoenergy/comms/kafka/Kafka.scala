@@ -20,8 +20,8 @@ object Kafka extends Logging {
   case class Output[T](topic: String, producer: KafkaProducer[String, T])
 
   def buildStream(input: Input[Option[OrchestratedEmail]],
-                  composedEmailEventOutput: Output[ComposedEmail],
-                  failedEventOutput: Output[Failed])(
+                  composedEmailEventOutput: => Output[ComposedEmail],
+                  failedEventOutput: => Output[Failed])(
       processEvent: OrchestratedEmail => Either[Failed, ComposedEmail]): Source[Done, Control] = {
 
     def sendComposedEmail(composedEmail: ComposedEmail): Future[RecordMetadata] = {
