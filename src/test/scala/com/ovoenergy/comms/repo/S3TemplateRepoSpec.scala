@@ -43,15 +43,14 @@ class S3TemplateRepoSpec extends FlatSpec with Matchers with EitherValues {
       ))
     val template = S3TemplateRepo.getEmailTemplate(commManifest).run(s3client)
     template should be(
-      Right(
-        EmailTemplate(
-          subject = Mustache("the subject"),
-          htmlBody = Mustache("the HTML body"),
-          textBody = Some(Mustache("the text body")),
-          sender = Some(EmailSender("custom sender", "foo@ovoenergy.com")),
-          htmlFragments = Map.empty,
-          textFragments = Map.empty
-        )))
+      Right(EmailTemplate(
+        subject = Mustache("the subject"),
+        htmlBody = Mustache("the HTML body"),
+        textBody = Some(Mustache("the text body")),
+        sender = Some(EmailSender("custom sender", "foo@ovoenergy.com")),
+        htmlFragments = Map.empty,
+        textFragments = Map.empty
+      )))
   }
 
   it should "validate the custom sender if it is present" in {
@@ -93,20 +92,19 @@ class S3TemplateRepoSpec extends FlatSpec with Matchers with EitherValues {
     )
     val template = S3TemplateRepo.getEmailTemplate(commManifest).run(s3client)
     template should be(
-      Right(
-        EmailTemplate(
-          subject = Mustache("the subject"),
-          htmlBody = Mustache("the HTML body"),
-          textBody = None,
-          sender = None,
-          htmlFragments = Map(
-            "header" -> Mustache("the HTML header"),
-            "thing" -> Mustache("another HTML fragment")
-          ),
-          textFragments = Map(
-            "header" -> Mustache("the text header")
-          )
-        )))
+      Right(EmailTemplate(
+        subject = Mustache("the subject"),
+        htmlBody = Mustache("the HTML body"),
+        textBody = None,
+        sender = None,
+        htmlFragments = Map(
+          "header" -> Mustache("the HTML header"),
+          "thing" -> Mustache("another HTML fragment")
+        ),
+        textFragments = Map(
+          "header" -> Mustache("the text header")
+        )
+      )))
   }
 
 }

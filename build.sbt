@@ -31,9 +31,6 @@ libraryDependencies ++= Seq(
 
 enablePlugins(JavaServerAppPackaging, DockerPlugin)
 
-scalafmtConfig in ThisBuild := Some(file(".scalafmt.conf"))
-reformatOnCompileSettings
-
 // Service tests
 enablePlugins(DockerComposePlugin)
 testTagsToExecute := "DockerComposeTag"
@@ -45,3 +42,12 @@ lazy val ipAddress: String = {
   addr
 }
 variablesForSubstitution := Map("IP_ADDRESS" -> ipAddress)
+
+val scalafmtAll = taskKey[Unit]("Run scalafmt with no arguments")
+scalafmtAll := {
+  import org.scalafmt.bootstrap.ScalafmtBootstrap
+  streams.value.log.info("Running scalafmt ...")
+  ScalafmtBootstrap.main(Seq("--quiet"))
+  streams.value.log.info("Done")
+}
+(compile in Compile) := (compile in Compile).dependsOn(scalafmtAll).value

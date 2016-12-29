@@ -122,9 +122,12 @@ object Rendering extends Logging {
     val generic = LabelledGeneric[CustomerProfile]
     val fieldsHlist = Fields[generic.Repr].apply(generic.to(profile))
     val fieldsList = fieldsHlist.toList[(Symbol, String)]
-    fieldsList.map {
-      case (sym, value) => (sym.name, value)
-    }.toMap.asJava
+    fieldsList
+      .map {
+        case (sym, value) => (sym.name, value)
+      }
+      .toMap
+      .asJava
   }
 
   /*
