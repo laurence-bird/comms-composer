@@ -11,10 +11,9 @@ testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF", "-u", testReports
 resolvers += Resolver.bintrayRepo("ovotech", "maven")
 resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 
-val kafkaMessagesVersion = "0.0.14"
 libraryDependencies ++= Seq(
-  "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion,
-  "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaMessagesVersion,
+  "com.ovoenergy" %% "comms-kafka-messages" % "0.0.28",
+  "com.ovoenergy" %% "comms-kafka-serialisation" % "1.0",
   "com.github.jknack" % "handlebars" % "4.0.6",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57",
   "net.cakesolutions" %% "scala-kafka-client" % "0.10.0.0",
