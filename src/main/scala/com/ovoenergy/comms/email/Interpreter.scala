@@ -26,7 +26,7 @@ object Interpreter extends Logging {
               S3TemplateRepo
                 .getEmailTemplate(commManifest)
                 .run(s3client)
-                .leftMap(reason => fail(reason, incomingEvent, TemplateDownloadFailed))
+                .leftMap(err => fail(err, incomingEvent, TemplateDownloadFailed))
             case Render(commManifest, template, data, customerProfile, recipientEmailAddress) =>
               Rendering
                 .renderEmail(Clock.systemDefaultZone())(commManifest,
@@ -34,7 +34,7 @@ object Interpreter extends Logging {
                                                         data,
                                                         customerProfile,
                                                         recipientEmailAddress)
-                .leftMap(reason => fail(reason, incomingEvent, MissingTemplateData))
+                .leftMap(templateErrors => fail(templateErrors.reason, incomingEvent, templateErrors.errorCode))
             case LookupSender(template, commType) =>
               Right(SenderLogic.chooseSender(template, commType))
           }

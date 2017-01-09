@@ -121,10 +121,10 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> "1.23")
 
-    val errorMessage = render(manifest, template, data, profile, emailAddress).left.value
-    errorMessage should include("profile.prefix")
-    errorMessage should include("thing")
-    "thing".r.findAllMatchIn(errorMessage) should have size 1
+    val renderingErrors = render(manifest, template, data, profile, emailAddress).left.value
+    renderingErrors.reason should include("profile.prefix")
+    renderingErrors.reason should include("thing")
+    "thing".r.findAllMatchIn(renderingErrors.reason) should have size 1
   }
 
   it should "fail if the template references non-existent data, even if the previous rendering of that template succeeded" in {
@@ -142,7 +142,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
     val invalidData = Map("amount" -> "1.23")
     val errorMessage = render(manifest, template, invalidData, profile, emailAddress).left.value
-    errorMessage should include("thing")
+    errorMessage.reason should include("thing")
   }
 
   it should "fail if the template references a non-existent partial" in {
