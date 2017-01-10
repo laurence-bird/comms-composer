@@ -13,7 +13,8 @@ import com.github.jknack.handlebars.helper.DefaultHelperRegistry
 import com.github.jknack.handlebars.io.{AbstractTemplateLoader, StringTemplateSource, TemplateLoader, TemplateSource}
 import com.github.jknack.handlebars.{Handlebars, Helper, Options}
 import com.ovoenergy.comms.email.{EmailTemplate, RenderedEmail}
-import com.ovoenergy.comms.model.{CommManifest, CustomerProfile}
+import com.ovoenergy.comms.model.ErrorCode.{InvalidTemplate, MissingTemplateData}
+import com.ovoenergy.comms.model.{CommManifest, CustomerProfile, ErrorCode}
 import shapeless.LabelledGeneric
 
 import scala.collection.JavaConverters._
@@ -23,17 +24,22 @@ import scala.util.{Failure, Success, Try}
 object Rendering extends Logging {
 
   private sealed trait FragmentType
+
   private object FragmentType {
+
     case object Html extends FragmentType
+
     case object Text extends FragmentType
+
   }
 
-  private final case class Errors(missingKeys: Set[String], exceptions: Seq[Throwable]) {
+  case class RenderingErrors(reason: String, errorCode: ErrorCode)
+  private final case class Errors(missingKeys: Set[String], exceptions: Seq[Throwable], errorCode: ErrorCode) {
     def toErrorMessage: String = {
       val missingKeysMsg = {
         if (missingKeys.nonEmpty)
           s"""The template referenced the following non-existent keys:
-             |${missingKeys.map(k => s" - $k").mkString("\n")}
+              |${missingKeys.map(k => s" - $k").mkString("\n")}
            """.stripMargin
         else
           ""
@@ -52,16 +58,17 @@ object Rendering extends Logging {
   private object Errors {
     implicit val semigroup: Semigroup[Errors] = new Semigroup[Errors] {
       override def combine(x: Errors, y: Errors): Errors =
-        Errors(x.missingKeys ++ y.missingKeys, x.exceptions ++ y.exceptions)
+        Errors(x.missingKeys ++ y.missingKeys, x.exceptions ++ y.exceptions, x.errorCode)
     }
   }
+
   private type ErrorsOr[A] = Validated[Errors, A]
 
   def renderEmail(clock: Clock)(commManifest: CommManifest,
                                 template: EmailTemplate,
                                 data: Map[String, String],
                                 customerProfile: CustomerProfile,
-                                recipientEmailAddress: String): Either[String, RenderedEmail] = {
+                                recipientEmailAddress: String): Either[RenderingErrors, RenderedEmail] = {
 
     val context: JMap[String, AnyRef] = (data +
       ("profile" -> profileToMap(customerProfile)) +
@@ -92,7 +99,7 @@ object Rendering extends Logging {
         case (s, h, t) => RenderedEmail(s, h, t)
       }
 
-    missingKeysOrResult.leftMap(errors => errors.toErrorMessage).toEither
+    missingKeysOrResult.leftMap(errors => RenderingErrors(errors.toErrorMessage, errors.errorCode)).toEither
   }
 
   private def systemVariables(clock: Clock): JMap[String, String] = {
@@ -182,9 +189,9 @@ object Rendering extends Logging {
           if (missingKeys.isEmpty)
             Valid(result)
           else
-            Invalid(Errors(missingKeys = missingKeys.toSet, exceptions = Nil))
+            Invalid(Errors(missingKeys = missingKeys.toSet, exceptions = Nil, MissingTemplateData))
         case Failure(e) =>
-          Invalid(Errors(missingKeys = Set.empty, exceptions = List(e)))
+          Invalid(Errors(missingKeys = Set.empty, exceptions = List(e), InvalidTemplate))
       }
     }
 
