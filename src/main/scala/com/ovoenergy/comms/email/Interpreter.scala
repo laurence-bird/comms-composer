@@ -58,6 +58,7 @@ object Interpreter extends Logging {
   private def buildFailedEvent(reason: String, incomingEvent: OrchestratedEmail, errorCode: ErrorCode): Failed =
     Failed(
       Metadata.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+      incomingEvent.internalMetadata,
       reason,
       errorCode
     )
