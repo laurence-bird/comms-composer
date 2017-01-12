@@ -25,6 +25,7 @@ object Composer {
 
   def buildEvent(incomingEvent: OrchestratedEmail, renderedEmail: RenderedEmail, sender: EmailSender) = ComposedEmail(
     metadata = Metadata.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+    internalMetadata = incomingEvent.internalMetadata,
     sender = sender.toString,
     recipient = incomingEvent.recipientEmailAddress,
     subject = renderedEmail.subject,

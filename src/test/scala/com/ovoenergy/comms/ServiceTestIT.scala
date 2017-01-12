@@ -187,8 +187,10 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
         "composer service test",
         "ServiceSpec",
         canary = true,
-        None
+        None,
+        "SomeTriggerSource"
       ),
+      InternalMetadata(UUID.randomUUID().toString),
       "chris.birchall@ovoenergy.com",
       CustomerProfile(
         "Chris",
