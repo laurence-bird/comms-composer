@@ -42,11 +42,13 @@ class ComposerSpec extends FlatSpec with Matchers {
       friendlyDescription = "test message",
       source = "test",
       canary = true,
-      sourceMetadata = None
+      sourceMetadata = None,
+      triggerSource = "Laurence"
     ),
     recipientEmailAddress = "chris@foo.com",
     customerProfile = CustomerProfile("Joe", "Bloggs"),
-    templateData = Map.empty
+    templateData = Map.empty,
+    internalMetadata = InternalMetadata("HI")
   )
 
   it should "compose an email" in {
