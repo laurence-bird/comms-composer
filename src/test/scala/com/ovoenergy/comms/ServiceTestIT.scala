@@ -12,6 +12,8 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.serialisation.Serialisation._
+import com.ovoenergy.comms.serialisation.Decoders._
+import io.circe.generic.auto._
 import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerRecord

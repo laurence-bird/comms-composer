@@ -19,6 +19,8 @@ import com.ovoenergy.comms.kafka.Kafka
 import com.ovoenergy.comms.model.{ComposedEmail, Failed, OrchestratedEmail}
 import com.ovoenergy.comms.repo.AmazonS3ClientWrapper
 import com.ovoenergy.comms.serialisation.Serialisation._
+import com.ovoenergy.comms.serialisation.Decoders._
+import io.circe.generic.auto._
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
