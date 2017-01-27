@@ -13,13 +13,14 @@ resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 
 libraryDependencies ++= Seq(
   "com.ovoenergy" %% "comms-kafka-messages" % "0.0.29",
-  "com.ovoenergy" %% "comms-kafka-serialisation" % "1.0",
+  "com.ovoenergy" %% "comms-kafka-serialisation" % "2.0",
+  "io.circe" %% "circe-generic" % "0.7.0",
   "com.github.jknack" % "handlebars" % "4.0.6",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57",
   "net.cakesolutions" %% "scala-kafka-client" % "0.10.0.0",
   "com.typesafe.akka" %% "akka-stream-kafka" % "0.13",
   "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
-  "org.typelevel" %% "cats-free" % "0.8.1",
+  "org.typelevel" %% "cats-free" % "0.9.0",
   "com.chuusai" %% "shapeless" % "2.3.2",
   "ch.qos.logback" % "logback-classic" % "1.1.7",
   "io.logz.logback" % "logzio-logback-appender" % "1.0.11",
