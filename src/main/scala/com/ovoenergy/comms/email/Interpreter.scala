@@ -16,7 +16,7 @@ object Interpreter extends Logging {
 
   type FailedOr[A] = Either[Failed, A]
 
-  def build(s3client: S3Client)(incomingEvent: OrchestratedEmail): ComposerA ~> FailedOr =
+  def build(s3client: S3Client)(incomingEvent: OrchestratedEmailV2): ComposerA ~> FailedOr =
     new (ComposerA ~> FailedOr) {
       override def apply[A](op: ComposerA[A]): FailedOr[A] = {
         try {
@@ -44,18 +44,18 @@ object Interpreter extends Logging {
       }
     }
 
-  private def fail(reason: String, incomingEvent: OrchestratedEmail, errorCode: ErrorCode): Failed = {
+  private def fail(reason: String, incomingEvent: OrchestratedEmailV2, errorCode: ErrorCode): Failed = {
     warn(incomingEvent.metadata.traceToken)(s"Failed to compose email. Reason: $reason")
     buildFailedEvent(reason, incomingEvent, errorCode)
   }
 
-  private def failWithException(exception: Throwable, incomingEvent: OrchestratedEmail): Failed = {
+  private def failWithException(exception: Throwable, incomingEvent: OrchestratedEmailV2): Failed = {
     warnE(incomingEvent.metadata.traceToken)(s"Failed to compose email because an unexpected exception occurred",
                                              exception)
     buildFailedEvent(s"Exception occurred ($exception)", incomingEvent, CompositionError)
   }
 
-  private def buildFailedEvent(reason: String, incomingEvent: OrchestratedEmail, errorCode: ErrorCode): Failed =
+  private def buildFailedEvent(reason: String, incomingEvent: OrchestratedEmailV2, errorCode: ErrorCode): Failed =
     Failed(
       Metadata.fromSourceMetadata("comms-composer", incomingEvent.metadata),
       incomingEvent.internalMetadata,

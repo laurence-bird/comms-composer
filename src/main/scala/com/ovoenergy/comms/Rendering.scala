@@ -14,10 +14,12 @@ import com.github.jknack.handlebars.io.{AbstractTemplateLoader, StringTemplateSo
 import com.github.jknack.handlebars.{Handlebars, Helper, Options}
 import com.ovoenergy.comms.email.{EmailTemplate, RenderedEmail}
 import com.ovoenergy.comms.model.ErrorCode.{InvalidTemplate, MissingTemplateData}
-import com.ovoenergy.comms.model.{CommManifest, CustomerProfile, ErrorCode}
-import shapeless.LabelledGeneric
+import com.ovoenergy.comms.model.TemplateData.TD
+import com.ovoenergy.comms.model.{CommManifest, CustomerProfile, ErrorCode, TemplateData}
+import shapeless.{Inl, Inr, LabelledGeneric}
 
 import scala.collection.JavaConverters._
+import scala.collection.immutable.Iterable
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
@@ -66,11 +68,26 @@ object Rendering extends Logging {
 
   def renderEmail(clock: Clock)(commManifest: CommManifest,
                                 template: EmailTemplate,
-                                data: Map[String, String],
+                                data: Map[String, TemplateData],
                                 customerProfile: CustomerProfile,
                                 recipientEmailAddress: String): Either[RenderingErrors, RenderedEmail] = {
 
-    val context: JMap[String, AnyRef] = (data +
+    def extractValueFromTemplateData(templateData: TemplateData): AnyRef = {
+      log.info(s"Attempting to parse template $templateData")
+      templateData.value match {
+        case (Inl(stringValue)) => stringValue
+        case (Inr(Inl(sequence))) => sequence.map(extractValueFromTemplateData).asJava
+        case (Inr(Inr(Inl(map)))) =>
+          map.map({ case (key, value) => key -> extractValueFromTemplateData(value) }).asJava
+        case (Inr(Inr(Inr(_)))) => throw new Exception("Unable to extract value from template data")
+      }
+    }
+
+    val dataAsStrings = data.map({
+      case (key, templateData) => key -> extractValueFromTemplateData(templateData)
+    })
+
+    val context: JMap[String, AnyRef] = (dataAsStrings +
       ("profile" -> profileToMap(customerProfile)) +
       ("recipient" -> Map("emailAddress" -> recipientEmailAddress).asJava) +
       ("system" -> systemVariables(clock))).asJava

@@ -15,7 +15,7 @@ object Composer {
 
   def render(commManifest: CommManifest,
              template: EmailTemplate,
-             data: Map[String, String],
+             data: Map[String, TemplateData],
              customerProfile: CustomerProfile,
              recipientEmailAddress: String): Composer[RenderedEmail] =
     liftF(Render(commManifest, template, data, customerProfile, recipientEmailAddress))
@@ -23,17 +23,18 @@ object Composer {
   def lookupSender(template: EmailTemplate, commType: CommType): Composer[EmailSender] =
     liftF(LookupSender(template, commType))
 
-  def buildEvent(incomingEvent: OrchestratedEmail, renderedEmail: RenderedEmail, sender: EmailSender) = ComposedEmail(
-    metadata = Metadata.fromSourceMetadata("comms-composer", incomingEvent.metadata),
-    internalMetadata = incomingEvent.internalMetadata,
-    sender = sender.toString,
-    recipient = incomingEvent.recipientEmailAddress,
-    subject = renderedEmail.subject,
-    htmlBody = renderedEmail.htmlBody,
-    textBody = renderedEmail.textBody
-  )
+  def buildEvent(incomingEvent: OrchestratedEmailV2, renderedEmail: RenderedEmail, sender: EmailSender) =
+    ComposedEmail(
+      metadata = Metadata.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+      internalMetadata = incomingEvent.internalMetadata,
+      sender = sender.toString,
+      recipient = incomingEvent.recipientEmailAddress,
+      subject = renderedEmail.subject,
+      htmlBody = renderedEmail.htmlBody,
+      textBody = renderedEmail.textBody
+    )
 
-  def program(event: OrchestratedEmail): Composer[ComposedEmail] = {
+  def program(event: OrchestratedEmailV2) = {
     for {
       template <- retrieveTemplate(Email, event.metadata.commManifest)
       rendered <- render(event.metadata.commManifest,

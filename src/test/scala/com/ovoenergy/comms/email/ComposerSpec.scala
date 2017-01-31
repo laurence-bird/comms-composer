@@ -32,7 +32,7 @@ class ComposerSpec extends FlatSpec with Matchers {
     }
   }
 
-  val incomingEvent = OrchestratedEmail(
+  val incomingEvent = OrchestratedEmailV2(
     metadata = Metadata(
       createdAt = "2016-01-01T12:34:56Z",
       eventId = UUID.randomUUID().toString,

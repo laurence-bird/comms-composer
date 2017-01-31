@@ -2,14 +2,33 @@ package com.ovoenergy.comms
 
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
-import com.ovoenergy.comms.email.EmailTemplate
-import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.Rendering.RenderingErrors
+import com.ovoenergy.comms.email.{EmailTemplate, RenderedEmail}
+import com.ovoenergy.comms.model.TemplateData.TD
+import com.ovoenergy.comms.model.{TemplateData, _}
 import org.scalatest._
+import org.scalatest.Assertions.fail
+import shapeless.Coproduct
 
 class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   val profile = CustomerProfile("Joe", "Bloggs")
   val emailAddress = "joe.bloggs@ovoenergy.com"
+  val eachTemplate = EmailTemplate(
+    sender = None,
+    subject = Mustache(
+      "Thanks for your payment of " +
+        "{{#each payments}}" +
+        "{{this.amount}}" +
+        "{{else}}" +
+        "NA" +
+        "{{/each}}"
+    ),
+    htmlBody = Mustache("You paid"),
+    textBody = Some(Mustache("The amounts were")),
+    htmlFragments = Map.empty,
+    textFragments = Map.empty
+  )
 
   val render = Rendering.renderEmail(Clock.systemDefaultZone()) _
 
@@ -23,7 +42,8 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
       htmlFragments = Map.empty,
       textFragments = Map.empty
     )
-    val data = Map("amount" -> "1.23")
+
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
     val result = render(manifest, template, data, profile, emailAddress).right.value
     result.subject should be("Thanks for your payment of £1.23")
@@ -61,7 +81,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
         "footer" -> Mustache("TEXT FOOTER")
       )
     )
-    val data = Map("amount" -> "1.23")
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
     val result = render(manifest, template, data, profile, emailAddress).right.value
     result.subject should be("Thanks for your payment of £1.23")
@@ -85,7 +105,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
         "footer" -> Mustache("TEXT FOOTER {{profile.firstName}} {{amount}}")
       )
     )
-    val data = Map("amount" -> "1.23")
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
     val result = render(manifest, template, data, profile, emailAddress).right.value
     result.subject should be("SUBJECT Joe 1.23")
@@ -103,7 +123,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
       htmlFragments = Map.empty,
       textFragments = Map.empty
     )
-    val data = Map("amount" -> "1.23")
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
     val result = render(manifest, template, data, profile, emailAddress).right.value
     result.htmlBody should be("HTML BODY joe.bloggs@ovoenergy.com")
@@ -119,7 +139,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
       htmlFragments = Map.empty,
       textFragments = Map.empty
     )
-    val data = Map("amount" -> "1.23")
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
     val renderingErrors = render(manifest, template, data, profile, emailAddress).left.value
     renderingErrors.reason should include("profile.prefix")
@@ -137,10 +157,10 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
       htmlFragments = Map.empty,
       textFragments = Map.empty
     )
-    val validData = Map("amount" -> "1.23", "thing" -> "widget")
+    val validData = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")),
+                        "thing" -> TemplateData(Coproduct[TemplateData.TD]("widget")))
     render(manifest, template, validData, profile, emailAddress) should be('right)
-
-    val invalidData = Map("amount" -> "1.23")
+    val invalidData = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val errorMessage = render(manifest, template, invalidData, profile, emailAddress).left.value
     errorMessage.reason should include("thing")
   }
@@ -161,7 +181,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
         "footer" -> Mustache("TEXT FOOTER")
       )
     )
-    val data = Map("amount" -> "1.23")
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
     render(manifest, template, data, profile, emailAddress) should be('left)
   }
@@ -185,7 +205,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
         "footer" -> Mustache("TEXT FOOTER {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}")
       )
     )
-    val data = Map("amount" -> "1.23")
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
     val result = Rendering.renderEmail(clock)(manifest, template, data, profile, emailAddress).right.value
@@ -193,5 +213,103 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     result.htmlBody should be("HTML HEADER 31/12/2015 1.23 HTML BODY 31/12/2015 1.23 HTML FOOTER 31/12/2015 1.23")
     result.textBody should be(
       Some("TEXT HEADER 31/12/2015 1.23 TEXT BODY 31/12/2015 1.23 TEXT FOOTER 31/12/2015 1.23"))
+  }
+
+  it should "render template with each and embedded if using this type reference" in {
+    val manifest = CommManifest(CommType.Service, "simple", "0.1")
+    val template = EmailTemplate(
+      sender = None,
+      subject = Mustache(
+        "Thanks for your payments of " +
+          "{{#each amounts}}" +
+          "{{#if this.transaction}}" +
+          "{{currency}}{{this.amount}} (transactionId: {{this.transaction.id}}) " +
+          "{{else}}" +
+          "{{currency}}{{this.amount}} " +
+          "{{/if}}" +
+          "{{/each}}"),
+      htmlBody = Mustache("You paid"),
+      textBody = Some(Mustache("The amounts were")),
+      htmlFragments = Map.empty,
+      textFragments = Map.empty
+    )
+
+    //Create
+    val templateData = {
+      Map(
+        "currency" -> TemplateData(Coproduct[TemplateData.TD]("£")),
+        "amounts" -> TemplateData(
+          Coproduct[TemplateData.TD](Seq(
+            TemplateData(Coproduct[TemplateData.TD](Map(
+              "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")),
+              "transaction" -> TemplateData(
+                Coproduct[TemplateData.TD](Map("id" -> TemplateData(Coproduct[TemplateData.TD]("5453ffsdfsdf")))))
+            ))),
+            TemplateData(Coproduct[TemplateData.TD](Map(
+              "amount" -> TemplateData(Coproduct[TemplateData.TD]("100.23"))
+            )))
+          )))
+      )
+    }
+
+    val result: Either[RenderingErrors, RenderedEmail] =
+      render(manifest, template, templateData, profile, emailAddress)
+    if (result.isLeft) fail(result.left.value.reason)
+    else {
+      result.right.value.subject should be("Thanks for your payments of £1.23 (transactionId: 5453ffsdfsdf) £100.23 ")
+      result.right.value.htmlBody should be("You paid")
+      result.right.value.textBody should be(Some("The amounts were"))
+    }
+  }
+  it should "render the else block of an if" in {
+    val manifest = CommManifest(CommType.Service, "simple", "0.1")
+    val template = EmailTemplate(
+      sender = None,
+      subject = Mustache(
+        "Thanks for your payment of " +
+          "{{#if payment}}" +
+          "{{payment.amount}}" +
+          "{{else}}" +
+          "£0.00" +
+          "{{/if}}"
+      ),
+      htmlBody = Mustache("You paid"),
+      textBody = Some(Mustache("The amounts were")),
+      htmlFragments = Map.empty,
+      textFragments = Map.empty
+    )
+    val templateData = Map.empty[String, TemplateData]
+
+    render(manifest, template, templateData, profile, emailAddress).right.value.subject shouldBe "Thanks for your payment of £0.00"
+  }
+
+  it should "render the else block of an each" in {
+    val manifest = CommManifest(CommType.Service, "simple", "0.1")
+    val templateData = Map(
+      "payments" -> TemplateData(Coproduct[TemplateData.TD](Seq[TemplateData]()))
+    )
+
+    render(manifest, eachTemplate, templateData, profile, emailAddress).right.value.subject shouldBe "Thanks for your payment of NA"
+  }
+
+  it should "Known issue with missing each parameter" in {
+    val manifest = CommManifest(CommType.Service, "simple", "0.1")
+    val templateData = Map[String, TemplateData]()
+
+    render(manifest, eachTemplate, templateData, profile, emailAddress).right.value.subject shouldBe "Thanks for your payment of "
+  }
+  it should "validate missing field from each context" in {
+    val manifest = CommManifest(CommType.Service, "simple", "0.1")
+    val templateData = Map(
+      "payments" -> TemplateData(
+        Coproduct[TemplateData.TD](
+          Seq(
+            TemplateData(Coproduct[TemplateData.TD](Map("someKey" -> TemplateData(Coproduct[TemplateData.TD]("HI")))))
+          )))
+    )
+
+    render(manifest, eachTemplate, templateData, profile, emailAddress).left.value.reason should (include(
+      "The template referenced the following non-existent keys:") and include("- this.amount"))
+
   }
 }

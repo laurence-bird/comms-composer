@@ -8,21 +8,21 @@ import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.Source
 import cakesolutions.kafka.KafkaProducer
 import com.ovoenergy.comms.Logging
-import com.ovoenergy.comms.model.{ComposedEmail, Failed, OrchestratedEmail}
+import com.ovoenergy.comms.model.{ComposedEmail, Failed, OrchestratedEmail, OrchestratedEmailV2}
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object Kafka extends Logging {
+object ComposerStream extends Logging {
 
   case class Input[T](topic: String, consumerSettings: ConsumerSettings[String, T])
   case class Output[T](topic: String, producer: KafkaProducer[String, T])
 
-  def buildStream(input: Input[Option[OrchestratedEmail]],
-                  composedEmailEventOutput: => Output[ComposedEmail],
-                  failedEventOutput: => Output[Failed])(
-      processEvent: OrchestratedEmail => Either[Failed, ComposedEmail]): Source[Done, Control] = {
+  def build(input: Input[Option[OrchestratedEmailV2]],
+            composedEmailEventOutput: => Output[ComposedEmail],
+            failedEventOutput: => Output[Failed])(
+      processEvent: OrchestratedEmailV2 => Either[Failed, ComposedEmail]): Source[Done, Control] = {
 
     def sendComposedEmail(composedEmail: ComposedEmail): Future[RecordMetadata] = {
       info(composedEmail.metadata.traceToken)(s"Sending ComposedEmail event. Metadata: ${composedEmail.metadata}")
