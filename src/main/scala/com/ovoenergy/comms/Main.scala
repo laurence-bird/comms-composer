@@ -8,13 +8,14 @@ import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import cakesolutions.kafka.KafkaProducer
 import cakesolutions.kafka.KafkaProducer.Conf
 import cats.instances.either._
-import com.ovoenergy.comms.aws.S3ClientFactory
+import com.ovoenergy.comms.aws.TemplateContextFactory
 import com.ovoenergy.comms.email.{Composer, Interpreter}
 import com.ovoenergy.comms.kafka.ComposerStream.Input
 import com.ovoenergy.comms.kafka.{ComposerStream, ComposerStreamV1}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.serialisation.Serialisation._
 import com.ovoenergy.comms.serialisation.Decoders._
+import com.ovoenergy.comms.templates.TemplatesContext
 import io.circe.generic.auto._
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
@@ -34,7 +35,7 @@ object Main extends App {
 
   val config = ConfigFactory.load()
 
-  val s3Client = S3ClientFactory(runningInDockerCompose, config.getString("aws.region"))
+  val templateContext = TemplateContextFactory(runningInDockerCompose, config.getString("aws.region"))
 
   implicit val actorSystem = ActorSystem("kafka")
   implicit val materializer = ActorMaterializer()
@@ -70,7 +71,7 @@ object Main extends App {
     ComposerStream.Output(topic, producer)
   }
 
-  val interpreterFactory = Interpreter.build(s3Client) _
+  val interpreterFactory = Interpreter.build(templateContext) _
   val emailStream = ComposerStream.build(input, composedEmailEventOutput, failedEmailEventOutput) {
     (orchestratedEmail: OrchestratedEmailV2) =>
       val interpreter = interpreterFactory(orchestratedEmail)

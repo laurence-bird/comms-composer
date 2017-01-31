@@ -11,18 +11,18 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.serialisation.Serialisation._
 import com.ovoenergy.comms.serialisation.Decoders._
-import io.circe.generic.auto._
+import com.ovoenergy.comms.serialisation.Serialisation._
 import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
+import io.circe.generic.auto._
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
+import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.scalatest.{Failed => _, _}
 import shapeless.Coproduct
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 import scala.concurrent.duration._
 
 object DockerComposeTag extends Tag("DockerComposeTag")
@@ -194,7 +194,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
     // fragments
     s3.putObject("ovo-comms-templates", "service/fragments/email/html/header.html", "HTML HEADER")
-    s3.putObject("ovo-comms-templates", "service/fragments/email/text/header.txt", "TEXT HEADER")
+    s3.putObject("ovo-comms-templates", "service/fragments/email/txt/header.txt", "TEXT HEADER")
   }
 
   def metadata(commManifest: CommManifest) = Metadata(

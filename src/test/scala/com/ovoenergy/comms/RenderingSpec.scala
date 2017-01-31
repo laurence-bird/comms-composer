@@ -2,10 +2,14 @@ package com.ovoenergy.comms
 
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
+import cats.Id
+import cats.data.Validated.Valid
 import com.ovoenergy.comms.Rendering.RenderingErrors
-import com.ovoenergy.comms.email.{EmailTemplate, RenderedEmail}
+import com.ovoenergy.comms.email.RenderedEmail
 import com.ovoenergy.comms.model.TemplateData.TD
 import com.ovoenergy.comms.model.{TemplateData, _}
+import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
+import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 import org.scalatest._
 import org.scalatest.Assertions.fail
 import shapeless.Coproduct
@@ -14,33 +18,31 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   val profile = CustomerProfile("Joe", "Bloggs")
   val emailAddress = "joe.bloggs@ovoenergy.com"
-  val eachTemplate = EmailTemplate(
+  val requiredFields = Valid(RequiredTemplateData.obj(Map[String, RequiredTemplateData]()))
+  val eachTemplate = EmailTemplate[Id](
     sender = None,
-    subject = Mustache(
+    subject = HandlebarsTemplate(
       "Thanks for your payment of " +
         "{{#each payments}}" +
         "{{this.amount}}" +
         "{{else}}" +
         "NA" +
-        "{{/each}}"
+        "{{/each}}",
+      requiredFields
     ),
-    htmlBody = Mustache("You paid"),
-    textBody = Some(Mustache("The amounts were")),
-    htmlFragments = Map.empty,
-    textFragments = Map.empty
+    htmlBody = HandlebarsTemplate("You paid", requiredFields),
+    textBody = Some(HandlebarsTemplate("The amounts were", requiredFields))
   )
 
   val render = Rendering.renderEmail(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
     val manifest = CommManifest(CommType.Service, "simple", "0.1")
-    val template = EmailTemplate(
+    val template = EmailTemplate[Id](
       sender = None,
-      subject = Mustache("Thanks for your payment of £{{amount}}"),
-      htmlBody = Mustache("You paid £{{amount}}"),
-      textBody = Some(Mustache("The amount was £{{amount}}")),
-      htmlFragments = Map.empty,
-      textFragments = Map.empty
+      subject = HandlebarsTemplate("Thanks for your payment of £{{amount}}", requiredFields),
+      htmlBody = HandlebarsTemplate("You paid £{{amount}}", requiredFields),
+      textBody = Some(HandlebarsTemplate("The amount was £{{amount}}", requiredFields))
     )
 
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
@@ -51,77 +53,40 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     result.textBody should be(Some("The amount was £1.23"))
   }
 
-  it should "fail to render an invalid Mustache template" in {
+  it should "fail to render an invalid HandlebarsTemplate template" in {
     val manifest = CommManifest(CommType.Service, "broken", "0.1")
-    val template = EmailTemplate(
+    val template = EmailTemplate[Id](
       sender = None,
-      subject = Mustache("hey check this out {{"),
-      htmlBody = Mustache(""),
-      textBody = Some(Mustache("")),
-      htmlFragments = Map.empty,
-      textFragments = Map.empty
+      subject = HandlebarsTemplate("hey check this out {{", requiredFields),
+      htmlBody = HandlebarsTemplate("", requiredFields),
+      textBody = Some(HandlebarsTemplate("", requiredFields))
     )
-
     render(manifest, template, Map.empty, profile, emailAddress) should be('left)
-  }
-
-  it should "render a template with partials" in {
-    val manifest = CommManifest(CommType.Service, "partials", "0.1")
-    val template = EmailTemplate(
-      sender = None,
-      subject = Mustache("Thanks for your payment of £{{amount}}"),
-      htmlBody = Mustache("{{> header}} You paid £{{amount}} {{> footer}}"),
-      textBody = Some(Mustache("{{> header}} The amount was £{{amount}} {{> footer}}")),
-      htmlFragments = Map(
-        "header" -> Mustache("HTML HEADER"),
-        "footer" -> Mustache("HTML FOOTER")
-      ),
-      textFragments = Map(
-        "header" -> Mustache("TEXT HEADER"),
-        "footer" -> Mustache("TEXT FOOTER")
-      )
-    )
-    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
-
-    val result = render(manifest, template, data, profile, emailAddress).right.value
-    result.subject should be("Thanks for your payment of £1.23")
-    result.htmlBody should be("HTML HEADER You paid £1.23 HTML FOOTER")
-    result.textBody should be(Some("TEXT HEADER The amount was £1.23 TEXT FOOTER"))
   }
 
   it should "render a template that references fields in the customer profile" in {
     val manifest = CommManifest(CommType.Service, "profile-fields", "0.1")
-    val template = EmailTemplate(
+    val template = EmailTemplate[Id](
       sender = None,
-      subject = Mustache("SUBJECT {{profile.firstName}} {{amount}}"),
-      htmlBody = Mustache("{{> header}} HTML BODY {{profile.firstName}} {{amount}} {{> footer}}"),
-      textBody = Some(Mustache("{{> header}} TEXT BODY {{profile.firstName}} {{amount}} {{> footer}}")),
-      htmlFragments = Map(
-        "header" -> Mustache("HTML HEADER {{profile.firstName}} {{amount}}"),
-        "footer" -> Mustache("HTML FOOTER {{profile.firstName}} {{amount}}")
-      ),
-      textFragments = Map(
-        "header" -> Mustache("TEXT HEADER {{profile.firstName}} {{amount}}"),
-        "footer" -> Mustache("TEXT FOOTER {{profile.firstName}} {{amount}}")
-      )
+      subject = HandlebarsTemplate("SUBJECT {{profile.firstName}} {{amount}}", requiredFields),
+      htmlBody = HandlebarsTemplate("HTML BODY {{profile.firstName}} {{amount}}", requiredFields),
+      textBody = Some(HandlebarsTemplate("TEXT BODY {{profile.firstName}} {{amount}}", requiredFields))
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
     val result = render(manifest, template, data, profile, emailAddress).right.value
     result.subject should be("SUBJECT Joe 1.23")
-    result.htmlBody should be("HTML HEADER Joe 1.23 HTML BODY Joe 1.23 HTML FOOTER Joe 1.23")
-    result.textBody should be(Some("TEXT HEADER Joe 1.23 TEXT BODY Joe 1.23 TEXT FOOTER Joe 1.23"))
+    result.htmlBody should be("HTML BODY Joe 1.23")
+    result.textBody should be(Some("TEXT BODY Joe 1.23"))
   }
 
   it should "make the recipient email address available to the email template as 'recipient.emailAddress'" in {
     val manifest = CommManifest(CommType.Service, "recipient-email-address", "0.1")
-    val template = EmailTemplate(
+    val template = EmailTemplate[Id](
       sender = None,
-      subject = Mustache("SUBJECT"),
-      htmlBody = Mustache("HTML BODY {{recipient.emailAddress}}"),
-      textBody = None,
-      htmlFragments = Map.empty,
-      textFragments = Map.empty
+      subject = HandlebarsTemplate("SUBJECT", requiredFields),
+      htmlBody = HandlebarsTemplate("HTML BODY {{recipient.emailAddress}}", requiredFields),
+      textBody = None
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
@@ -131,13 +96,11 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   it should "fail if the template references non-existent data" in {
     val manifest = CommManifest(CommType.Service, "missing-data", "0.1")
-    val template = EmailTemplate(
+    val template = EmailTemplate[Id](
       sender = None,
-      subject = Mustache("Hi {{profile.prefix}} {{profile.lastName}}"),
-      htmlBody = Mustache("You bought a {{thing}}. The amount was £{{amount}}."),
-      textBody = Some(Mustache("You bought a {{thing}}. The amount was £{{amount}}.")),
-      htmlFragments = Map.empty,
-      textFragments = Map.empty
+      subject = HandlebarsTemplate("Hi {{profile.prefix}} {{profile.lastName}}", requiredFields),
+      htmlBody = HandlebarsTemplate("You bought a {{thing}}. The amount was £{{amount}}.", requiredFields),
+      textBody = Some(HandlebarsTemplate("You bought a {{thing}}. The amount was £{{amount}}.", requiredFields))
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
@@ -149,13 +112,11 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   it should "fail if the template references non-existent data, even if the previous rendering of that template succeeded" in {
     val manifest = CommManifest(CommType.Service, "missing-data-2", "0.1")
-    val template = EmailTemplate(
+    val template = EmailTemplate[Id](
       sender = None,
-      subject = Mustache("Hi {{profile.firstName}}"),
-      htmlBody = Mustache("You bought a {{thing}}. The amount was £{{amount}}."),
-      textBody = Some(Mustache("You bought a {{thing}}. The amount was £{{amount}}.")),
-      htmlFragments = Map.empty,
-      textFragments = Map.empty
+      subject = HandlebarsTemplate("Hi {{profile.firstName}}", requiredFields),
+      htmlBody = HandlebarsTemplate("You bought a {{thing}}. The amount was £{{amount}}.", requiredFields),
+      textBody = Some(HandlebarsTemplate("You bought a {{thing}}. The amount was £{{amount}}.", requiredFields))
     )
     val validData = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")),
                         "thing" -> TemplateData(Coproduct[TemplateData.TD]("widget")))
@@ -165,61 +126,32 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     errorMessage.reason should include("thing")
   }
 
-  it should "fail if the template references a non-existent partial" in {
-    val manifest = CommManifest(CommType.Service, "missing-partials", "0.1")
-    val template = EmailTemplate(
-      sender = None,
-      subject = Mustache("Thanks for your payment of £{{amount}}"),
-      htmlBody = Mustache("{{> yolo}} You paid £{{amount}} {{> footer}}"),
-      textBody = Some(Mustache("{{> yolo}} The amount was £{{amount}} {{> footer}}")),
-      htmlFragments = Map(
-        "header" -> Mustache("HTML HEADER"),
-        "footer" -> Mustache("HTML FOOTER")
-      ),
-      textFragments = Map(
-        "header" -> Mustache("TEXT HEADER"),
-        "footer" -> Mustache("TEXT FOOTER")
-      )
-    )
-    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
-
-    render(manifest, template, data, profile, emailAddress) should be('left)
-  }
-
   it should "render a template that references fields in the system data" in {
     val manifest = CommManifest(CommType.Service, "system-data-fields", "0.1")
-    val template = EmailTemplate(
+    val template = EmailTemplate[Id](
       sender = None,
-      subject = Mustache("SUBJECT {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}"),
-      htmlBody = Mustache(
-        "{{> header}} HTML BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}} {{> footer}}"),
+      subject = HandlebarsTemplate("SUBJECT {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
+                                   requiredFields),
+      htmlBody = HandlebarsTemplate("HTML BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
+                                    requiredFields),
       textBody = Some(
-        Mustache(
-          "{{> header}} TEXT BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}} {{> footer}}")),
-      htmlFragments = Map(
-        "header" -> Mustache("HTML HEADER {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}"),
-        "footer" -> Mustache("HTML FOOTER {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}")
-      ),
-      textFragments = Map(
-        "header" -> Mustache("TEXT HEADER {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}"),
-        "footer" -> Mustache("TEXT FOOTER {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}")
-      )
+        HandlebarsTemplate("TEXT BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
+                           requiredFields))
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
     val result = Rendering.renderEmail(clock)(manifest, template, data, profile, emailAddress).right.value
     result.subject should be("SUBJECT 31/12/2015 1.23")
-    result.htmlBody should be("HTML HEADER 31/12/2015 1.23 HTML BODY 31/12/2015 1.23 HTML FOOTER 31/12/2015 1.23")
-    result.textBody should be(
-      Some("TEXT HEADER 31/12/2015 1.23 TEXT BODY 31/12/2015 1.23 TEXT FOOTER 31/12/2015 1.23"))
+    result.htmlBody should be("HTML BODY 31/12/2015 1.23")
+    result.textBody should be(Some("TEXT BODY 31/12/2015 1.23"))
   }
 
   it should "render template with each and embedded if using this type reference" in {
     val manifest = CommManifest(CommType.Service, "simple", "0.1")
-    val template = EmailTemplate(
+    val template = EmailTemplate[Id](
       sender = None,
-      subject = Mustache(
+      subject = HandlebarsTemplate(
         "Thanks for your payments of " +
           "{{#each amounts}}" +
           "{{#if this.transaction}}" +
@@ -227,11 +159,11 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
           "{{else}}" +
           "{{currency}}{{this.amount}} " +
           "{{/if}}" +
-          "{{/each}}"),
-      htmlBody = Mustache("You paid"),
-      textBody = Some(Mustache("The amounts were")),
-      htmlFragments = Map.empty,
-      textFragments = Map.empty
+          "{{/each}}",
+        requiredFields
+      ),
+      htmlBody = HandlebarsTemplate("You paid", requiredFields),
+      textBody = Some(HandlebarsTemplate("The amounts were", requiredFields))
     )
 
     //Create
@@ -263,20 +195,19 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
   }
   it should "render the else block of an if" in {
     val manifest = CommManifest(CommType.Service, "simple", "0.1")
-    val template = EmailTemplate(
+    val template = EmailTemplate[Id](
       sender = None,
-      subject = Mustache(
+      subject = HandlebarsTemplate(
         "Thanks for your payment of " +
           "{{#if payment}}" +
           "{{payment.amount}}" +
           "{{else}}" +
           "£0.00" +
-          "{{/if}}"
+          "{{/if}}",
+        requiredFields
       ),
-      htmlBody = Mustache("You paid"),
-      textBody = Some(Mustache("The amounts were")),
-      htmlFragments = Map.empty,
-      textFragments = Map.empty
+      htmlBody = HandlebarsTemplate("You paid", requiredFields),
+      textBody = Some(HandlebarsTemplate("The amounts were", requiredFields))
     )
     val templateData = Map.empty[String, TemplateData]
 

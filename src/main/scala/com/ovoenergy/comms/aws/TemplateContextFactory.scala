@@ -2,11 +2,9 @@ package com.ovoenergy.comms.aws
 
 import com.amazonaws.auth._
 import com.amazonaws.auth.profile.ProfileCredentialsProvider
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.s3.AmazonS3Client
-import com.ovoenergy.comms.repo.AmazonS3ClientWrapper
+import com.ovoenergy.comms.templates.TemplatesContext
 
-object S3ClientFactory {
+object TemplateContextFactory {
 
   def apply(runningInDockerCompose: Boolean, region: String) = {
     val awsCredentials: AWSCredentialsProvider = {
@@ -18,8 +16,6 @@ object S3ClientFactory {
           new ProfileCredentialsProvider()
         )
     }
-    val underlying: AmazonS3Client =
-      new AmazonS3Client(awsCredentials).withRegion(Regions.fromName(region))
-    new AmazonS3ClientWrapper(underlying)
+    TemplatesContext.nonCachingContext(awsCredentials)
   }
 }

@@ -8,14 +8,16 @@ import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import cats.instances.option._
 import cats.syntax.traverse._
-import cats.{Apply, Semigroup}
+import cats.{Apply, Id, Semigroup}
 import com.github.jknack.handlebars.helper.DefaultHelperRegistry
 import com.github.jknack.handlebars.io.{AbstractTemplateLoader, StringTemplateSource, TemplateLoader, TemplateSource}
 import com.github.jknack.handlebars.{Handlebars, Helper, Options}
-import com.ovoenergy.comms.email.{EmailTemplate, RenderedEmail}
+import com.ovoenergy.comms.email.RenderedEmail
 import com.ovoenergy.comms.model.ErrorCode.{InvalidTemplate, MissingTemplateData}
 import com.ovoenergy.comms.model.TemplateData.TD
 import com.ovoenergy.comms.model.{CommManifest, CustomerProfile, ErrorCode, TemplateData}
+import com.ovoenergy.comms.templates.model.HandlebarsTemplate
+import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 import shapeless.{Inl, Inr, LabelledGeneric}
 
 import scala.collection.JavaConverters._
@@ -67,7 +69,7 @@ object Rendering extends Logging {
   private type ErrorsOr[A] = Validated[Errors, A]
 
   def renderEmail(clock: Clock)(commManifest: CommManifest,
-                                template: EmailTemplate,
+                                template: EmailTemplate[Id],
                                 data: Map[String, TemplateData],
                                 customerProfile: CustomerProfile,
                                 recipientEmailAddress: String): Either[RenderingErrors, RenderedEmail] = {
@@ -93,20 +95,18 @@ object Rendering extends Logging {
       ("system" -> systemVariables(clock))).asJava
 
     val subject: ErrorsOr[String] = {
-      val handlebars = new HandlebarsWrapper(customTemplateLoader = None)
+      val handlebars = new HandlebarsWrapper()
       val filename = buildFilename(commManifest, "subject")
       handlebars.render(filename, template.subject)(context)
     }
     val htmlBody: ErrorsOr[String] = {
-      val templateLoader = new FragmentTemplateLoader(commManifest, template.htmlFragments, FragmentType.Html)
-      val handlebars = new HandlebarsWrapper(Some(templateLoader))
+      val handlebars = new HandlebarsWrapper()
       val filename = buildFilename(commManifest, "htmlBody")
       handlebars.render(filename, template.htmlBody)(context)
     }
     val textBody: Option[ErrorsOr[String]] =
       template.textBody map { tb =>
-        val templateLoader = new FragmentTemplateLoader(commManifest, template.textFragments, FragmentType.Text)
-        val handlebars = new HandlebarsWrapper(Some(templateLoader))
+        val handlebars = new HandlebarsWrapper()
         val filename = buildFilename(commManifest, "textBody")
         handlebars.render(filename, tb)(context)
       }
@@ -153,29 +153,10 @@ object Rendering extends Logging {
       .toMap
       .asJava
   }
-
-  /*
-  Custom template loader for supplying the fragments (headers/footers) we have downloaded from S3
-   */
-  private class FragmentTemplateLoader(commManifest: CommManifest,
-                                       fragments: Map[String, Mustache],
-                                       fragmentType: FragmentType)
-      extends AbstractTemplateLoader {
-    override def sourceAt(partialName: String): TemplateSource = {
-      fragments.get(partialName) match {
-        case Some(mustache) =>
-          val filename = buildFilename(commManifest, "fragments", fragmentType.toString, partialName)
-          new StringTemplateSource(filename, mustache.content)
-        case None =>
-          throw new IOException(s"Template references a non-existent $fragmentType fragment: $partialName")
-      }
-    }
-  }
-
   /*
   Wrapper for Handlebars that keeps track of any references to missing keys
    */
-  private class HandlebarsWrapper(customTemplateLoader: Option[TemplateLoader]) {
+  private class HandlebarsWrapper() {
     private val missingKeys = mutable.Set.empty[String]
 
     private val helperRegistry = {
@@ -188,18 +169,11 @@ object Rendering extends Logging {
       })
       reg
     }
+    private val handlebars = new Handlebars().`with`(helperRegistry)
 
-    private val handlebars = {
-      val base = customTemplateLoader match {
-        case Some(templateLoader) => new Handlebars(templateLoader)
-        case None => new Handlebars()
-      }
-      base.`with`(helperRegistry)
-    }
-
-    def render(filename: String, template: Mustache)(context: JMap[String, AnyRef]): ErrorsOr[String] = {
+    def render(filename: String, template: HandlebarsTemplate)(context: JMap[String, AnyRef]): ErrorsOr[String] = {
       Try {
-        val compiledTemplate = handlebars.compile(new StringTemplateSource(filename, template.content))
+        val compiledTemplate = handlebars.compile(new StringTemplateSource(filename, template.rawExpandedContent))
         compiledTemplate.apply(context)
       } match { // note: Try has a `fold` function in Scala 2.12 :)
         case Success(result) =>

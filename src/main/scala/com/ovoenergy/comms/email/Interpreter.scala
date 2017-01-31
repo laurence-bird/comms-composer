@@ -1,14 +1,14 @@
 package com.ovoenergy.comms.email
 
-import java.time.{Clock, OffsetDateTime}
-import java.util.UUID
+import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
 import com.ovoenergy.comms._
-import com.ovoenergy.comms.model.ErrorCode.{CompositionError, MissingTemplateData, TemplateDownloadFailed}
+import com.ovoenergy.comms.model.ErrorCode.{CompositionError, TemplateDownloadFailed}
 import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.repo.{S3Client, S3TemplateRepo}
+import com.ovoenergy.comms.repo.S3TemplateRepo
+import com.ovoenergy.comms.templates.TemplatesContext
 
 import scala.util.control.NonFatal
 
@@ -16,7 +16,7 @@ object Interpreter extends Logging {
 
   type FailedOr[A] = Either[Failed, A]
 
-  def build(s3client: S3Client)(incomingEvent: OrchestratedEmailV2): ComposerA ~> FailedOr =
+  def build(context: TemplatesContext)(incomingEvent: OrchestratedEmailV2): ComposerA ~> FailedOr =
     new (ComposerA ~> FailedOr) {
       override def apply[A](op: ComposerA[A]): FailedOr[A] = {
         try {
@@ -25,7 +25,7 @@ object Interpreter extends Logging {
               // only supporting email for now
               S3TemplateRepo
                 .getEmailTemplate(commManifest)
-                .run(s3client)
+                .run(context)
                 .leftMap(err => fail(err, incomingEvent, TemplateDownloadFailed))
             case Render(commManifest, template, data, customerProfile, recipientEmailAddress) =>
               Rendering

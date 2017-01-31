@@ -2,29 +2,31 @@ package com.ovoenergy.comms.email
 
 import java.util.UUID
 
+import cats.data.Validated.Valid
 import cats.{Id, ~>}
 import com.ovoenergy.comms._
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.templates.model.{EmailSender, HandlebarsTemplate, RequiredTemplateData}
+import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 import org.scalatest.{FlatSpec, Matchers}
 
 class ComposerSpec extends FlatSpec with Matchers {
 
   val testInterpreter: ComposerA ~> Id = new (ComposerA ~> Id) {
+    val requiredFields = Valid(RequiredTemplateData.obj(Map[String, RequiredTemplateData]()))
 
-    override def apply[A](op: ComposerA[A]): Id[A] = op match {
+    override def apply[A](op: ComposerA[A]) = op match {
       case RetrieveTemplate(_, _) =>
-        EmailTemplate(
+        EmailTemplate[Id](
           sender = None,
-          subject = Mustache("Hello {{firstName}}"),
-          htmlBody = Mustache("<h2>Thanks for your payment of £{{amount}}</h2>"),
-          textBody = None,
-          htmlFragments = Map.empty,
-          textFragments = Map.empty
+          subject = HandlebarsTemplate("Hello {{firstName}}", requiredFields),
+          htmlBody = HandlebarsTemplate("<h2>Thanks for your payment of £{{amount}}</h2>", requiredFields),
+          textBody = None
         )
       case Render(_, template, _, _, _) =>
         RenderedEmail(
-          subject = template.subject.content.replaceAllLiterally("{{firstName}}", "Chris"),
-          htmlBody = template.htmlBody.content.replaceAllLiterally("{{amount}}", "1.23"),
+          subject = template.subject.rawExpandedContent.replaceAllLiterally("{{firstName}}", "Chris"),
+          htmlBody = template.htmlBody.rawExpandedContent.replaceAllLiterally("{{amount}}", "1.23"),
           textBody = None
         )
       case LookupSender(_, _) =>
