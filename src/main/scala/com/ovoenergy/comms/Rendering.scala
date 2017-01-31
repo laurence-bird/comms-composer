@@ -75,7 +75,6 @@ object Rendering extends Logging {
                                 recipientEmailAddress: String): Either[RenderingErrors, RenderedEmail] = {
 
     def extractValueFromTemplateData(templateData: TemplateData): AnyRef = {
-      log.info(s"Attempting to parse template $templateData")
       templateData.value match {
         case (Inl(stringValue)) => stringValue
         case (Inr(Inl(sequence))) => sequence.map(extractValueFromTemplateData).asJava
