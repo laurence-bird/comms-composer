@@ -34,7 +34,6 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   val config =
     ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
   val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email.v2")
-  val orchestratedEmailV1Topic = config.getString("kafka.topics.orchestrated.email.v1")
   val composedEmailTopic = config.getString("kafka.topics.composed.email")
   val failedTopic = config.getString("kafka.topics.failed")
   val kafkaHosts = "localhost:29092"
@@ -42,7 +41,6 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   val s3Endpoint = "http://localhost:4569"
 
   var orchestratedEmailProducer: KafkaProducer[String, OrchestratedEmailV2] = _
-  var orchestratedEmailV1Producer: KafkaProducer[String, OrchestratedEmail] = _
   var composedEmailConsumer: KafkaConsumer[String, Option[ComposedEmail]] = _
   var failedConsumer: KafkaConsumer[String, Option[Failed]] = _
 
@@ -50,14 +48,13 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     uploadTemplateToS3()
     createKafkaTopics()
     Thread.sleep(3000L) // hopefully this will stop the random failures...
-    createKafkaProducers()
+    createKafkaProducer()
     createKafkaConsumers()
     Thread.sleep(3000L) // yeah this one will definitely fix everything
   }
 
   override protected def afterAll(): Unit = {
     orchestratedEmailProducer.close()
-    orchestratedEmailV1Producer.close()
     composedEmailConsumer.close()
     failedConsumer.close()
   }
@@ -70,19 +67,6 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
                                  ),
                                  Map(
                                    "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23"))
-                                 ))
-    verifyComposedEmailEvent()
-    expectNoFailedEvent()
-  }
-
-  it should "also consume using the old orchestrated events" taggedAs DockerComposeTag in {
-    sendOrchestratedEmailEventV1(CommManifest(
-                                   CommType.Service,
-                                   "composer-service-test",
-                                   "0.1"
-                                 ),
-                                 Map(
-                                   "amount" -> "1.23"
                                  ))
     verifyComposedEmailEvent()
     expectNoFailedEvent()
@@ -128,7 +112,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
       try {
         notStarted = !AdminUtils.topicExists(zkUtils, orchestratedEmailTopic)
       } catch {
-        case NonFatal(ex) => Thread.sleep(100)
+        case NonFatal(_) => Thread.sleep(100)
       }
     }
     if (notStarted) fail("Services did not start within 10 seconds")
@@ -138,11 +122,9 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     AdminUtils.createTopic(zkUtils, failedTopic, 1, 1)
   }
 
-  private def createKafkaProducers(): Unit = {
+  private def createKafkaProducer(): Unit = {
     orchestratedEmailProducer = KafkaProducer(
       ProdConf(new StringSerializer, avroSerializer[OrchestratedEmailV2], bootstrapServers = kafkaHosts))
-    orchestratedEmailV1Producer = KafkaProducer(
-      ProdConf(new StringSerializer, avroSerializer[OrchestratedEmail], bootstrapServers = kafkaHosts))
   }
 
   private def createKafkaConsumers(): Unit = {
@@ -215,14 +197,6 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     "Chris",
     "Birchall"
   )
-  def v1(commManifest: CommManifest, templateData: Map[String, String]) =
-    OrchestratedEmail(
-      metadata(commManifest),
-      internalMetadata,
-      recepientEmailAddress,
-      profile,
-      templateData
-    )
   def v2(commManifest: CommManifest, templateData: Map[String, TemplateData]) =
     OrchestratedEmailV2(
       metadata(commManifest),
@@ -231,13 +205,6 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
       profile,
       templateData
     )
-
-  private def sendOrchestratedEmailEventV1(commManifest: CommManifest, templateData: Map[String, String]): Unit = {
-    val event = v1(commManifest, templateData)
-    val future = orchestratedEmailV1Producer.send(new ProducerRecord(orchestratedEmailV1Topic, event))
-    val result = Await.result(future, atMost = 5.seconds)
-    println(s"Sent Kafka V1 message: $result")
-  }
 
   private def sendOrchestratedEmailEventV2(commManifest: CommManifest, templateData: Map[String, TemplateData]): Unit = {
     val event = v2(commManifest, templateData)

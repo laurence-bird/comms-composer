@@ -2,25 +2,21 @@ package com.ovoenergy.comms
 
 import akka.actor.{Actor, ActorSystem, Props, Terminated}
 import akka.kafka.ConsumerSettings
-import akka.kafka.scaladsl.Consumer.Control
-import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.scaladsl.Sink
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import cakesolutions.kafka.KafkaProducer
 import cakesolutions.kafka.KafkaProducer.Conf
 import cats.instances.either._
 import com.ovoenergy.comms.aws.TemplateContextFactory
 import com.ovoenergy.comms.email.{Composer, Interpreter}
-import com.ovoenergy.comms.kafka.ComposerStream.Input
-import com.ovoenergy.comms.kafka.{ComposerStream, ComposerStreamV1}
+import com.ovoenergy.comms.kafka.ComposerStream
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.serialisation.Serialisation._
 import com.ovoenergy.comms.serialisation.Decoders._
-import com.ovoenergy.comms.templates.TemplatesContext
 import io.circe.generic.auto._
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
-import shapeless.Coproduct
 
 object Main extends App {
 
@@ -83,44 +79,6 @@ object Main extends App {
     Supervision.Stop
   }
 
-  // TODO: this whole block and the ComposerStreamV1 object can be removed once we have migrated all producers to TriggeredV2
-  // **************************************************************************************************************** //
-  val inputV1 = {
-    val consumerSettings =
-      ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedEmail])
-        .withBootstrapServers(kafkaBootstrapServers)
-        .withGroupId(config.getString("kafka.group.id"))
-    val topic = config.getString("kafka.topics.orchestrated.email.v1")
-    ComposerStream.Input(topic, consumerSettings)
-  }
-
-  val converter = (o: OrchestratedEmail) => {
-    OrchestratedEmailV2(
-      o.metadata,
-      o.internalMetadata,
-      o.recipientEmailAddress,
-      o.customerProfile,
-      o.templateData.mapValues { value =>
-        TemplateData(Coproduct[TemplateData.TD](value))
-      }
-    )
-  }
-
-  val emailStreamV1 = ComposerStreamV1.build(inputV1, converter, composedEmailEventOutput, failedEmailEventOutput) {
-    orchestratedEmail =>
-      val interpreter = interpreterFactory(orchestratedEmail)
-      Composer.program(orchestratedEmail).foldMap(interpreter)
-  }
-  val controlv1: Control = emailStreamV1
-    .withAttributes(ActorAttributes.supervisionStrategy(decider))
-    .to(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))
-    .run()
-  controlv1.isShutdown.foreach { _ =>
-    log.error("ARGH! The Kafka source has shut down (V1). Killing the JVM and nuking from orbit.")
-    System.exit(1)
-  }
-
-  // **************************************************************************************************************** //
   log.info("Creating email streams")
 
   val control = emailStream
