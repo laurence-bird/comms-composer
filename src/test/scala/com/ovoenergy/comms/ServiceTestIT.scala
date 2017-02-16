@@ -192,7 +192,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     "SomeTriggerSource"
   )
   val internalMetadata = InternalMetadata(UUID.randomUUID().toString)
-  val recepientEmailAddress = "chris.birchall@ovoenergy.com"
+  val recipientEmailAddress = "chris.birchall@ovoenergy.com"
   val profile = CustomerProfile(
     "Chris",
     "Birchall"
@@ -201,9 +201,10 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     OrchestratedEmailV2(
       metadata(commManifest),
       internalMetadata,
-      recepientEmailAddress,
+      recipientEmailAddress,
       profile,
-      templateData
+      templateData,
+      expireAt = None
     )
 
   private def sendOrchestratedEmailEventV2(commManifest: CommManifest, templateData: Map[String, TemplateData]): Unit = {
