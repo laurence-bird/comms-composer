@@ -50,7 +50,8 @@ class ComposerSpec extends FlatSpec with Matchers {
     recipientEmailAddress = "chris@foo.com",
     customerProfile = CustomerProfile("Joe", "Bloggs"),
     templateData = Map.empty,
-    internalMetadata = InternalMetadata("HI")
+    internalMetadata = InternalMetadata("HI"),
+    expireAt = None
   )
 
   it should "compose an email" in {

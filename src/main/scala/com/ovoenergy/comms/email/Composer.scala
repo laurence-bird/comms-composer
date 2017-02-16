@@ -36,7 +36,8 @@ object Composer {
       recipient = incomingEvent.recipientEmailAddress,
       subject = renderedEmail.subject,
       htmlBody = renderedEmail.htmlBody,
-      textBody = renderedEmail.textBody
+      textBody = renderedEmail.textBody,
+      expireAt = incomingEvent.expireAt
     )
 
   def program(event: OrchestratedEmailV2) = {
