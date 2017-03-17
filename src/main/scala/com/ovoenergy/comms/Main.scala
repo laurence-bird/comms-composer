@@ -1,5 +1,8 @@
 package com.ovoenergy.comms
 
+import java.util.concurrent.TimeUnit
+import java.time.{Duration => JDuration}
+
 import akka.actor.{Actor, ActorSystem, Props, Terminated}
 import akka.kafka.ConsumerSettings
 import akka.stream.scaladsl.Sink
@@ -9,7 +12,7 @@ import cakesolutions.kafka.KafkaProducer.Conf
 import cats.instances.either._
 import com.ovoenergy.comms.aws.TemplateContextFactory
 import com.ovoenergy.comms.email.{Composer, Interpreter}
-import com.ovoenergy.comms.kafka.ComposerStream
+import com.ovoenergy.comms.kafka.{ComposerStream, Retry}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.serialisation.Serialisation._
 import com.ovoenergy.comms.serialisation.Decoders._
@@ -17,6 +20,8 @@ import io.circe.generic.auto._
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.duration.FiniteDuration
 
 object Main extends App {
 
@@ -31,11 +36,16 @@ object Main extends App {
 
   val config = ConfigFactory.load()
 
+  private implicit class RichDuration(val duration: JDuration) extends AnyVal {
+    def toFiniteDuration: FiniteDuration = FiniteDuration.apply(duration.toNanos, TimeUnit.NANOSECONDS)
+  }
+
   val templateContext = TemplateContextFactory(runningInDockerCompose, config.getString("aws.region"))
 
   implicit val actorSystem = ActorSystem("kafka")
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = actorSystem.dispatcher
+  implicit val scheduler = actorSystem.scheduler
 
   val kafkaBootstrapServers = config.getString("kafka.bootstrap.servers")
 
@@ -48,6 +58,14 @@ object Main extends App {
     ComposerStream.Input(topic, consumerSettings)
   }
 
+  val kafkaProducerRetryConfig = Retry.RetryConfig(
+    attempts = config.getInt("kafka.producer.retry.attempts"),
+    backoff = Retry.Backoff.exponential(
+      config.getDuration("kafka.producer.retry.initialInterval").toFiniteDuration,
+      config.getDouble("kafka.producer.retry.exponent")
+    )
+  )
+
   // These outputs are only lazy for the sake of the service tests.
   // We need to construct the producer after the topic has been created,
   // otherwise the tests randomly fail.
@@ -56,7 +74,7 @@ object Main extends App {
       Conf(new StringSerializer, avroSerializer[ComposedEmail], bootstrapServers = kafkaBootstrapServers)
     )
     val topic = config.getString("kafka.topics.composed.email")
-    ComposerStream.Output(topic, producer)
+    ComposerStream.Output(topic, producer, kafkaProducerRetryConfig)
   }
 
   lazy val failedEmailEventOutput = {
@@ -64,7 +82,7 @@ object Main extends App {
       Conf(new StringSerializer, avroSerializer[Failed], bootstrapServers = kafkaBootstrapServers)
     )
     val topic = config.getString("kafka.topics.failed")
-    ComposerStream.Output(topic, producer)
+    ComposerStream.Output(topic, producer, kafkaProducerRetryConfig)
   }
 
   val interpreterFactory = Interpreter.build(templateContext) _
