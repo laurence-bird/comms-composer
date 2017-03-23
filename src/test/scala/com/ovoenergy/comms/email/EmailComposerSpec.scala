@@ -10,20 +10,20 @@ import com.ovoenergy.comms.templates.model.{EmailSender, HandlebarsTemplate, Req
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 import org.scalatest.{FlatSpec, Matchers}
 
-class ComposerSpec extends FlatSpec with Matchers {
+class EmailComposerSpec extends FlatSpec with Matchers {
 
-  val testInterpreter: ComposerA ~> Id = new (ComposerA ~> Id) {
+  val testInterpreter: EmailComposerA ~> Id = new (EmailComposerA ~> Id) {
     val requiredFields = Valid(RequiredTemplateData.obj(Map[String, RequiredTemplateData]()))
 
-    override def apply[A](op: ComposerA[A]) = op match {
-      case RetrieveTemplate(_, _) =>
+    override def apply[A](op: EmailComposerA[A]) = op match {
+      case RetrieveTemplate(_) =>
         EmailTemplate[Id](
           sender = None,
           subject = HandlebarsTemplate("Hello {{firstName}}", requiredFields),
           htmlBody = HandlebarsTemplate("<h2>Thanks for your payment of £{{amount}}</h2>", requiredFields),
           textBody = None
         )
-      case Render(_, template, _, _, _) =>
+      case Render(_, template) =>
         RenderedEmail(
           subject = template.subject.rawExpandedContent.replaceAllLiterally("{{firstName}}", "Chris"),
           htmlBody = template.htmlBody.rawExpandedContent.replaceAllLiterally("{{amount}}", "1.23"),
@@ -55,7 +55,7 @@ class ComposerSpec extends FlatSpec with Matchers {
   )
 
   it should "compose an email" in {
-    val event: ComposedEmail = Composer.program(incomingEvent).foldMap(testInterpreter)
+    val event: ComposedEmail = EmailComposer.program(incomingEvent).foldMap(testInterpreter)
     event.sender should be("Ovo Energy <no-reply@ovoenergy.com>")
     event.recipient should be("chris@foo.com")
     event.subject should be("Hello Chris")

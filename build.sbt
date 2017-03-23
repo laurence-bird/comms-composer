@@ -12,7 +12,7 @@ resolvers += Resolver.bintrayRepo("ovotech", "maven")
 resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 
 libraryDependencies ++= Seq(
-  "com.ovoenergy" %% "comms-kafka-messages" % "1.3",
+  "com.ovoenergy" %% "comms-kafka-messages" % "1.12",
   "com.ovoenergy" %% "comms-kafka-serialisation" % "2.1",
   "io.circe" %% "circe-generic" % "0.7.0",
   "com.github.jknack" % "handlebars" % "4.0.6",
@@ -25,7 +25,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.7",
   "io.logz.logback" % "logzio-logback-appender" % "1.0.11",
   "me.moocar" % "logback-gelf" % "0.2",
-  "com.ovoenergy" %% "comms-templates" % "0.1.1",
+  "com.ovoenergy" %% "comms-templates" % "0.2",
   "org.scalatest" %% "scalatest" % "3.0.1" % Test,
   "org.apache.kafka" %% "kafka" % "0.10.0.1" % Test
 )

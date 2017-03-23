@@ -3,7 +3,7 @@ package com.ovoenergy.comms
 import java.util.concurrent.TimeUnit
 import java.time.{Duration => JDuration}
 
-import akka.actor.{Actor, ActorSystem, Props, Terminated}
+import akka.actor.ActorSystem
 import akka.kafka.ConsumerSettings
 import akka.stream.scaladsl.Sink
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
@@ -11,11 +11,12 @@ import cakesolutions.kafka.KafkaProducer
 import cakesolutions.kafka.KafkaProducer.Conf
 import cats.instances.either._
 import com.ovoenergy.comms.aws.TemplateContextFactory
-import com.ovoenergy.comms.email.{Composer, Interpreter}
-import com.ovoenergy.comms.kafka.{ComposerStream, Retry}
+import com.ovoenergy.comms.email.EmailComposer
+import com.ovoenergy.comms.kafka.{ComposerGraph, Retry}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.serialisation.Serialisation._
 import com.ovoenergy.comms.serialisation.Decoders._
+import com.ovoenergy.comms.sms.SMSComposer
 import io.circe.generic.auto._
 import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
@@ -48,14 +49,24 @@ object Main extends App {
   implicit val scheduler = actorSystem.scheduler
 
   val kafkaBootstrapServers = config.getString("kafka.bootstrap.servers")
+  val kafkaGroupId = config.getString("kafka.group.id")
 
-  val input = {
+  val orchestratedEmailInput = {
     val consumerSettings =
       ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedEmailV2])
         .withBootstrapServers(kafkaBootstrapServers)
-        .withGroupId(config.getString("kafka.group.id"))
+        .withGroupId(kafkaGroupId)
     val topic = config.getString("kafka.topics.orchestrated.email.v2")
-    ComposerStream.Input(topic, consumerSettings)
+    ComposerGraph.Input(topic, consumerSettings)
+  }
+
+  val orchestratedSMSInput = {
+    val consumerSettings =
+      ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedSMS])
+        .withBootstrapServers(kafkaBootstrapServers)
+        .withGroupId(kafkaGroupId)
+    val topic = config.getString("kafka.topics.orchestrated.sms")
+    ComposerGraph.Input(topic, consumerSettings)
   }
 
   val kafkaProducerRetryConfig = Retry.RetryConfig(
@@ -74,22 +85,35 @@ object Main extends App {
       Conf(new StringSerializer, avroSerializer[ComposedEmail], bootstrapServers = kafkaBootstrapServers)
     )
     val topic = config.getString("kafka.topics.composed.email")
-    ComposerStream.Output(topic, producer, kafkaProducerRetryConfig)
+    ComposerGraph.Output(topic, producer, kafkaProducerRetryConfig)
   }
 
-  lazy val failedEmailEventOutput = {
+  lazy val composedSMSEventOutput = {
+    val producer = KafkaProducer(
+      Conf(new StringSerializer, avroSerializer[ComposedSMS], bootstrapServers = kafkaBootstrapServers)
+    )
+    val topic = config.getString("kafka.topics.composed.sms")
+    ComposerGraph.Output(topic, producer, kafkaProducerRetryConfig)
+  }
+
+  lazy val failedEventOutput = {
     val producer = KafkaProducer(
       Conf(new StringSerializer, avroSerializer[Failed], bootstrapServers = kafkaBootstrapServers)
     )
     val topic = config.getString("kafka.topics.failed")
-    ComposerStream.Output(topic, producer, kafkaProducerRetryConfig)
+    ComposerGraph.Output(topic, producer, kafkaProducerRetryConfig)
   }
 
-  val interpreterFactory = Interpreter.build(templateContext) _
-  val emailStream = ComposerStream.build(input, composedEmailEventOutput, failedEmailEventOutput) {
+  val emailInterpreter = Interpreters.emailInterpreter(templateContext)
+  val emailGraph = ComposerGraph.build(orchestratedEmailInput, composedEmailEventOutput, failedEventOutput) {
     (orchestratedEmail: OrchestratedEmailV2) =>
-      val interpreter = interpreterFactory(orchestratedEmail)
-      Composer.program(orchestratedEmail).foldMap(interpreter)
+      EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
+  }
+
+  val smsInterpreter = Interpreters.smsInterpreter(templateContext)
+  val smsGraph = ComposerGraph.build(orchestratedSMSInput, composedSMSEventOutput, failedEventOutput) {
+    (orchestratedSMS: OrchestratedSMS) =>
+      SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
   }
 
   val decider: Supervision.Decider = { e =>
@@ -97,30 +121,23 @@ object Main extends App {
     Supervision.Stop
   }
 
-  log.info("Creating email streams")
+  log.info("Creating graphs")
 
-  val control = emailStream
-    .withAttributes(ActorAttributes.supervisionStrategy(decider))
-    .to(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))
-    .run()
+  Seq(
+    (emailGraph, "email"),
+    (smsGraph, "SMS")
+  ) foreach {
+    case (graph, description) =>
+      val control = graph
+        .withAttributes(ActorAttributes.supervisionStrategy(decider))
+        .to(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))
+        .run()
 
-  log.info("Started email stream")
+      log.info(s"Started $description graph")
 
-  import scala.concurrent.duration._
-  val kafkaActorResolve = actorSystem.actorSelection("system/kafka-consumer-1").resolveOne(1.second)
-  kafkaActorResolve.foreach { actorRef =>
-    log.info(s"Creating an actor to watch $actorRef")
-    actorSystem.actorOf(Props(new Actor {
-      context.watch(actorRef)
-      def receive: Receive = {
-        case Terminated(actor) => log.error(s"Uh oh! $actor just died!")
+      control.isShutdown.foreach { _ =>
+        log.error("ARGH! The Kafka source has shut down. Killing the JVM and nuking from orbit.")
+        System.exit(1)
       }
-    }), "kafka-watcher")
-  }
-  kafkaActorResolve.failed.foreach(e => log.warn("Failed to resolve Kafka consumer actor", e))
-
-  control.isShutdown.foreach { _ =>
-    log.error("ARGH! The Kafka source has shut down. Killing the JVM and nuking from orbit.")
-    System.exit(1)
   }
 }

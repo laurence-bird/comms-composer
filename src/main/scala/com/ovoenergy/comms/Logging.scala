@@ -1,5 +1,6 @@
 package com.ovoenergy.comms
 
+import com.ovoenergy.comms.types.HasMetadata
 import org.slf4j.{LoggerFactory, MDC}
 
 trait Logging {
@@ -8,20 +9,20 @@ trait Logging {
 
   private val TraceToken = "traceToken"
 
-  def info(traceToken: String)(message: String): Unit = {
-    withMDC(traceToken)(log.info(message))
+  def info[A <: HasMetadata](a: A)(message: String): Unit = {
+    withMDC(a)(log.info(message))
   }
 
-  def warn(traceToken: String)(message: String): Unit = {
-    withMDC(traceToken)(log.warn(message))
+  def warn[A <: HasMetadata](a: A)(message: String): Unit = {
+    withMDC(a)(log.warn(message))
   }
 
-  def warnE(traceToken: String)(message: String, exception: Throwable): Unit = {
-    withMDC(traceToken)(log.warn(message, exception))
+  def warnE[A <: HasMetadata](a: A)(message: String, exception: Throwable): Unit = {
+    withMDC(a)(log.warn(message, exception))
   }
 
-  private def withMDC(traceToken: String)(block: => Unit): Unit = {
-    MDC.put(TraceToken, traceToken)
+  private def withMDC[A <: HasMetadata](a: A)(block: => Unit): Unit = {
+    MDC.put(TraceToken, a.metadata.traceToken)
     try {
       block
     } finally {

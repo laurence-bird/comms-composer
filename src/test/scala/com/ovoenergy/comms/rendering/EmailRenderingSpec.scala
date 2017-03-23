@@ -1,25 +1,25 @@
-package com.ovoenergy.comms
+package com.ovoenergy.comms.rendering
 
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
 import cats.Id
 import cats.data.Validated.Valid
-import com.ovoenergy.comms.Rendering.RenderingErrors
 import com.ovoenergy.comms.email.RenderedEmail
-import com.ovoenergy.comms.model.TemplateData.TD
 import com.ovoenergy.comms.model.{TemplateData, _}
-import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
+import com.ovoenergy.comms.rendering.Rendering.FailedToRender
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
+import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
 import org.scalatest._
-import org.scalatest.Assertions.fail
 import shapeless.Coproduct
 
-class RenderingSpec extends FlatSpec with Matchers with EitherValues {
+class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
+
+  behavior of "rendering an email"
 
   val profile = CustomerProfile("Joe", "Bloggs")
   val emailAddress = "joe.bloggs@ovoenergy.com"
   val requiredFields = Valid(RequiredTemplateData.obj(Map[String, RequiredTemplateData]()))
-  val eachTemplate = EmailTemplate[Id](
+  val emailTemplate = EmailTemplate[Id](
     sender = None,
     subject = HandlebarsTemplate(
       "Thanks for your payment of " +
@@ -34,7 +34,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     textBody = Some(HandlebarsTemplate("The amounts were", requiredFields))
   )
 
-  val render = Rendering.renderEmail(Clock.systemDefaultZone()) _
+  val renderEmail = Rendering.renderEmail(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
     val manifest = CommManifest(CommType.Service, "simple", "0.1")
@@ -47,7 +47,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
 
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = render(manifest, template, data, profile, emailAddress).right.value
+    val result = renderEmail(manifest, template, data, profile, emailAddress).right.value
     result.subject should be("Thanks for your payment of £1.23")
     result.htmlBody should be("You paid £1.23")
     result.textBody should be(Some("The amount was £1.23"))
@@ -61,7 +61,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
       htmlBody = HandlebarsTemplate("", requiredFields),
       textBody = Some(HandlebarsTemplate("", requiredFields))
     )
-    render(manifest, template, Map.empty, profile, emailAddress) should be('left)
+    renderEmail(manifest, template, Map.empty, profile, emailAddress) should be('left)
   }
 
   it should "render a template that references fields in the customer profile" in {
@@ -74,7 +74,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = render(manifest, template, data, profile, emailAddress).right.value
+    val result = renderEmail(manifest, template, data, profile, emailAddress).right.value
     result.subject should be("SUBJECT Joe 1.23")
     result.htmlBody should be("HTML BODY Joe 1.23")
     result.textBody should be(Some("TEXT BODY Joe 1.23"))
@@ -90,7 +90,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = render(manifest, template, data, profile, emailAddress).right.value
+    val result = renderEmail(manifest, template, data, profile, emailAddress).right.value
     result.htmlBody should be("HTML BODY joe.bloggs@ovoenergy.com")
   }
 
@@ -104,7 +104,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val renderingErrors = render(manifest, template, data, profile, emailAddress).left.value
+    val renderingErrors = renderEmail(manifest, template, data, profile, emailAddress).left.value
     renderingErrors.reason should include("profile.prefix")
     renderingErrors.reason should include("thing")
     "thing".r.findAllMatchIn(renderingErrors.reason) should have size 1
@@ -120,9 +120,9 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val validData = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")),
                         "thing" -> TemplateData(Coproduct[TemplateData.TD]("widget")))
-    render(manifest, template, validData, profile, emailAddress) should be('right)
+    renderEmail(manifest, template, validData, profile, emailAddress) should be('right)
     val invalidData = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
-    val errorMessage = render(manifest, template, invalidData, profile, emailAddress).left.value
+    val errorMessage = renderEmail(manifest, template, invalidData, profile, emailAddress).left.value
     errorMessage.reason should include("thing")
   }
 
@@ -184,8 +184,8 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
       )
     }
 
-    val result: Either[RenderingErrors, RenderedEmail] =
-      render(manifest, template, templateData, profile, emailAddress)
+    val result: Either[FailedToRender, RenderedEmail] =
+      renderEmail(manifest, template, templateData, profile, emailAddress)
     if (result.isLeft) fail(result.left.value.reason)
     else {
       result.right.value.subject should be("Thanks for your payments of £1.23 (transactionId: 5453ffsdfsdf) £100.23 ")
@@ -211,7 +211,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val templateData = Map.empty[String, TemplateData]
 
-    render(manifest, template, templateData, profile, emailAddress).right.value.subject shouldBe "Thanks for your payment of £0.00"
+    renderEmail(manifest, template, templateData, profile, emailAddress).right.value.subject shouldBe "Thanks for your payment of £0.00"
   }
 
   it should "render the else block of an each" in {
@@ -220,14 +220,14 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
       "payments" -> TemplateData(Coproduct[TemplateData.TD](Seq[TemplateData]()))
     )
 
-    render(manifest, eachTemplate, templateData, profile, emailAddress).right.value.subject shouldBe "Thanks for your payment of NA"
+    renderEmail(manifest, emailTemplate, templateData, profile, emailAddress).right.value.subject shouldBe "Thanks for your payment of NA"
   }
 
   it should "Known issue with missing each parameter" in {
     val manifest = CommManifest(CommType.Service, "simple", "0.1")
     val templateData = Map[String, TemplateData]()
 
-    render(manifest, eachTemplate, templateData, profile, emailAddress).right.value.subject shouldBe "Thanks for your payment of "
+    renderEmail(manifest, emailTemplate, templateData, profile, emailAddress).right.value.subject shouldBe "Thanks for your payment of "
   }
   it should "validate missing field from each context" in {
     val manifest = CommManifest(CommType.Service, "simple", "0.1")
@@ -239,7 +239,7 @@ class RenderingSpec extends FlatSpec with Matchers with EitherValues {
           )))
     )
 
-    render(manifest, eachTemplate, templateData, profile, emailAddress).left.value.reason should (include(
+    renderEmail(manifest, emailTemplate, templateData, profile, emailAddress).left.value.reason should (include(
       "The template referenced the following non-existent keys:") and include("- this.amount"))
 
   }

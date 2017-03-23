@@ -9,44 +9,40 @@ import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.Source
 import cakesolutions.kafka.KafkaProducer
 import com.ovoenergy.comms.Logging
-import com.ovoenergy.comms.model.{ComposedEmail, Failed, OrchestratedEmailV2}
+import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.types.HasMetadata
 import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-object ComposerStream extends Logging {
+object ComposerGraph extends Logging {
 
   case class Input[T](topic: String, consumerSettings: ConsumerSettings[String, T])
   case class Output[T](topic: String, producer: KafkaProducer[String, T], retryConfig: Retry.RetryConfig)
 
-  def build(input: Input[Option[OrchestratedEmailV2]],
-            composedEmailEventOutput: => Output[ComposedEmail],
-            failedEventOutput: => Output[Failed])(processEvent: OrchestratedEmailV2 => Either[Failed, ComposedEmail])(
-      implicit scheduler: Scheduler): Source[Done, Control] = {
+  def build[InEvent <: HasMetadata, OutEvent <: HasMetadata](input: Input[Option[InEvent]],
+                                                             output: => Output[OutEvent],
+                                                             failedEventOutput: => Output[Failed])(
+      processEvent: InEvent => Either[Failed, OutEvent])(implicit scheduler: Scheduler): Source[Done, Control] = {
 
-    def sendComposedEmail(composedEmail: ComposedEmail): Future[RecordMetadata] = {
-      info(composedEmail.metadata.traceToken)(s"Sending ComposedEmail event. Metadata: ${composedEmail.metadata}")
+    def sendOutputEvent(event: OutEvent): Future[RecordMetadata] = {
+      info(event)(s"Sending ComposedEmail event")
 
       Retry.retryAsync(
-        config = composedEmailEventOutput.retryConfig,
-        onFailure = e =>
-          warnE(composedEmail.metadata.traceToken)(
-            s"Failed to send Kafka event to topic ${composedEmailEventOutput.topic}",
-            e)
+        config = output.retryConfig,
+        onFailure = e => warnE(event)(s"Failed to send Kafka event to topic ${output.topic}", e)
       ) { () =>
-        composedEmailEventOutput.producer.send(
-          new ProducerRecord(composedEmailEventOutput.topic, composedEmail.metadata.customerId, composedEmail))
+        output.producer.send(new ProducerRecord(output.topic, event.metadata.customerId, event))
       }
     }
 
     def sendFailed(failed: Failed): Future[RecordMetadata] = {
-      info(failed.metadata.traceToken)(s"Sending Failed event: $failed")
+      info(failed)(s"Sending Failed event: $failed")
 
       Retry.retryAsync(
         config = failedEventOutput.retryConfig,
-        onFailure =
-          e => warnE(failed.metadata.traceToken)(s"Failed to send Kafka event to topic ${failedEventOutput.topic}", e)
+        onFailure = e => warnE(failed)(s"Failed to send Kafka event to topic ${failedEventOutput.topic}", e)
       ) { () =>
         failedEventOutput.producer.send(
           new ProducerRecord(failedEventOutput.topic, failed.metadata.customerId, failed))
@@ -63,11 +59,11 @@ object ComposerStream extends Logging {
       .withAttributes(ActorAttributes.supervisionStrategy(decider))
       .mapAsync(1) { msg =>
         val future: Future[_] = msg.record.value match {
-          case Some(orchestratedEmail) =>
-            info(orchestratedEmail.metadata.traceToken)(s"Processing event: $orchestratedEmail")
-            processEvent(orchestratedEmail) match {
+          case Some(inputEvent) =>
+            info(inputEvent)(s"Processing event: $inputEvent")
+            processEvent(inputEvent) match {
               case Left(failed) => sendFailed(failed)
-              case Right(result) => sendComposedEmail(result)
+              case Right(result) => sendOutputEvent(result)
             }
           case None =>
             Future.successful(())

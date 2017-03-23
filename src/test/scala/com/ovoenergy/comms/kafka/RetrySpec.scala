@@ -3,7 +3,7 @@ package com.ovoenergy.comms.kafka
 import java.io.IOException
 
 import akka.actor.ActorSystem
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.ConfigFactory
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 
@@ -65,7 +65,7 @@ class RetrySpec extends FlatSpec with Matchers with BeforeAndAfterAll with Scala
 
   behavior of "#retryAsync"
 
-  val actorSystem        = ActorSystem("test", ConfigFactory.empty())
+  val actorSystem = ActorSystem("test", ConfigFactory.empty())
   implicit val scheduler = actorSystem.scheduler
 
   override def afterAll(): Unit = {
