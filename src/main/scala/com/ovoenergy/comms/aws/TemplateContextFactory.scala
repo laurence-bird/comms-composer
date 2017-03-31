@@ -16,6 +16,6 @@ object TemplateContextFactory {
           new ProfileCredentialsProvider()
         )
     }
-    TemplatesContext.nonCachingContext(awsCredentials)
+    TemplatesContext.cachingContext(awsCredentials)
   }
 }

@@ -2,7 +2,6 @@ package com.ovoenergy.comms.email
 
 import java.util.UUID
 
-import cats.data.Validated.Valid
 import cats.{Id, ~>}
 import com.ovoenergy.comms._
 import com.ovoenergy.comms.model._
@@ -13,7 +12,7 @@ import org.scalatest.{FlatSpec, Matchers}
 class EmailComposerSpec extends FlatSpec with Matchers {
 
   val testInterpreter: EmailComposerA ~> Id = new (EmailComposerA ~> Id) {
-    val requiredFields = Valid(RequiredTemplateData.obj(Map[String, RequiredTemplateData]()))
+    val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
     override def apply[A](op: EmailComposerA[A]) = op match {
       case RetrieveTemplate(_) =>

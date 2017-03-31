@@ -3,7 +3,6 @@ package com.ovoenergy.comms.rendering
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
 import cats.Id
-import cats.data.Validated.Valid
 import com.ovoenergy.comms.email.RenderedEmail
 import com.ovoenergy.comms.model.{TemplateData, _}
 import com.ovoenergy.comms.rendering.Rendering.FailedToRender
@@ -18,7 +17,7 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   val profile = CustomerProfile("Joe", "Bloggs")
   val emailAddress = "joe.bloggs@ovoenergy.com"
-  val requiredFields = Valid(RequiredTemplateData.obj(Map[String, RequiredTemplateData]()))
+  val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
   val emailTemplate = EmailTemplate[Id](
     sender = None,
     subject = HandlebarsTemplate(
