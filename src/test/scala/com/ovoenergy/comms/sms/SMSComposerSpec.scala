@@ -2,7 +2,6 @@ package com.ovoenergy.comms.sms
 
 import java.util.UUID
 
-import cats.data.Validated.Valid
 import cats.{Id, ~>}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
@@ -12,7 +11,7 @@ import org.scalatest.{FlatSpec, Matchers}
 class SMSComposerSpec extends FlatSpec with Matchers {
 
   val testInterpreter: SMSComposerA ~> Id = new (SMSComposerA ~> Id) {
-    val requiredFields = Valid(RequiredTemplateData.obj(Map[String, RequiredTemplateData]()))
+    val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
     override def apply[A](op: SMSComposerA[A]) = op match {
       case RetrieveTemplate(_) =>

@@ -3,7 +3,6 @@ package com.ovoenergy.comms.rendering
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
 import cats.Id
-import cats.data.Validated.Valid
 import com.ovoenergy.comms.model.{TemplateData, _}
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
@@ -16,7 +15,7 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   val profile = CustomerProfile("Joe", "Bloggs")
   val phoneNumber = "+447123123456"
-  val requiredFields = Valid(RequiredTemplateData.obj(Map[String, RequiredTemplateData]()))
+  val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
   val renderSMS = Rendering.renderSMS(Clock.systemDefaultZone()) _
 
