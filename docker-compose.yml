@@ -14,6 +14,9 @@ services:
       ENV: LOCAL
       KAFKA_HOSTS: kafka:29092
       DOCKER_COMPOSE: "true"
+    volumes:
+      # share AWS creds so that credstash works
+      - $HOME/.aws:/sbin/.aws
 
   fakes3:
     image: lphoward/fake-s3
