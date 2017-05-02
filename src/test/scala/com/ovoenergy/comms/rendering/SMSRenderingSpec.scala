@@ -27,7 +27,7 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
 
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderSMS(manifest, template, data, profile, phoneNumber).right.value
+    val result = renderSMS(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("You paid £1.23")
   }
 
@@ -38,7 +38,7 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderSMS(manifest, template, data, profile, phoneNumber).right.value
+    val result = renderSMS(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY Joe 1.23")
   }
 
@@ -49,7 +49,7 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderSMS(manifest, template, data, profile, phoneNumber).right.value
+    val result = renderSMS(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY +447123123456")
   }
 
@@ -61,7 +61,7 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val renderingErrors = renderSMS(manifest, template, data, profile, phoneNumber).left.value
+    val renderingErrors = renderSMS(manifest, template, data, Some(profile), phoneNumber).left.value
     renderingErrors.reason should include("profile.prefix")
     renderingErrors.reason should include("thing")
   }
@@ -75,8 +75,10 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
-    val result = Rendering.renderSMS(clock)(manifest, template, data, profile, phoneNumber).right.value
+    val result = Rendering.renderSMS(clock)(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY 31/12/2015 1.23")
   }
+
+  //TODO - Tests without profile
 
 }

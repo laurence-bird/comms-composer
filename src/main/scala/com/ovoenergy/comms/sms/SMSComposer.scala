@@ -10,22 +10,22 @@ object SMSComposer {
 
   type SMSComposer[A] = Free[SMSComposerA, A]
 
-  def retrieveTemplate(incomingEvent: OrchestratedSMS): SMSComposer[SMSTemplate[Id]] =
+  def retrieveTemplate(incomingEvent: OrchestratedSMSV2): SMSComposer[SMSTemplate[Id]] =
     liftF(RetrieveTemplate(incomingEvent))
 
-  def render(incomingEvent: OrchestratedSMS, template: SMSTemplate[Id]): SMSComposer[RenderedSMS] =
+  def render(incomingEvent: OrchestratedSMSV2, template: SMSTemplate[Id]): SMSComposer[RenderedSMS] =
     liftF(Render(incomingEvent, template))
 
-  def buildEvent(incomingEvent: OrchestratedSMS, renderedSMS: RenderedSMS): ComposedSMS =
-    ComposedSMS(
-      metadata = Metadata.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+  def buildEvent(incomingEvent: OrchestratedSMSV2, renderedSMS: RenderedSMS): ComposedSMSV2 =
+    ComposedSMSV2(
+      metadata = MetadataV2.fromSourceMetadata("comms-composer", incomingEvent.metadata),
       internalMetadata = incomingEvent.internalMetadata,
       recipient = incomingEvent.recipientPhoneNumber,
       textBody = renderedSMS.textBody,
       expireAt = incomingEvent.expireAt
     )
 
-  def program(event: OrchestratedSMS) = {
+  def program(event: OrchestratedSMSV2) = {
     for {
       template <- retrieveTemplate(event)
       rendered <- render(event, template)

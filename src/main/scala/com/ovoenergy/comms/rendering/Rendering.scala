@@ -23,7 +23,7 @@ object Rendering extends Logging {
   def renderEmail(clock: Clock)(commManifest: CommManifest,
                                 template: EmailTemplate[Id],
                                 data: Map[String, TemplateData],
-                                customerProfile: CustomerProfile,
+                                customerProfile: Option[CustomerProfile],
                                 recipientEmailAddress: String): Either[FailedToRender, RenderedEmail] = {
 
     val context = buildHandlebarsContext(
@@ -60,7 +60,7 @@ object Rendering extends Logging {
   def renderSMS(clock: Clock)(commManifest: CommManifest,
                               template: SMSTemplate[Id],
                               data: Map[String, TemplateData],
-                              customerProfile: CustomerProfile,
+                              customerProfile: Option[CustomerProfile],
                               recipientPhoneNumber: String): Either[FailedToRender, RenderedSMS] = {
 
     val context = buildHandlebarsContext(
@@ -82,7 +82,7 @@ object Rendering extends Logging {
   }
 
   private def buildHandlebarsContext(data: Map[String, TemplateData],
-                                     customerProfile: CustomerProfile,
+                                     customerProfile: Option[CustomerProfile],
                                      recipient: Map[String, String],
                                      clock: Clock): JMap[String, AnyRef] = {
 
@@ -130,15 +130,19 @@ object Rendering extends Logging {
    */
   import shapeless.ops.record._
   private val customerProfileGen = LabelledGeneric[CustomerProfile]
-  private def profileToMap(profile: CustomerProfile): JMap[String, String] = {
-    val fieldsHlist = Fields[customerProfileGen.Repr].apply(customerProfileGen.to(profile))
-    val fieldsList = fieldsHlist.toList[(Symbol, String)]
-    fieldsList
-      .map {
-        case (sym, value) => (sym.name, value)
+  private def profileToMap(customerProfile: Option[CustomerProfile]): JMap[String, String] = {
+    customerProfile
+      .map { profile =>
+        val fieldsHlist = Fields[customerProfileGen.Repr].apply(customerProfileGen.to(profile))
+        val fieldsList = fieldsHlist.toList[(Symbol, String)]
+        fieldsList
+          .map {
+            case (sym, value) => (sym.name, value)
+          }
+          .toMap
+          .asJava
       }
-      .toMap
-      .asJava
+      .getOrElse(Map().asJava)
   }
 
 }

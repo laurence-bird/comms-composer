@@ -34,19 +34,19 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   val config =
     ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
   val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email.v2")
-  val orchestratedSMSTopic = config.getString("kafka.topics.orchestrated.sms")
-  val composedEmailTopic = config.getString("kafka.topics.composed.email")
-  val composedSMSTopic = config.getString("kafka.topics.composed.sms")
-  val failedTopic = config.getString("kafka.topics.failed")
+  val orchestratedSMSTopic = config.getString("kafka.topics.orchestrated.sms.v1")
+  val composedEmailTopic = config.getString("kafka.topics.composed.email.v2")
+  val composedSMSTopic = config.getString("kafka.topics.composed.sms.v2")
+  val failedTopic = config.getString("kafka.topics.failed.v2")
   val kafkaHosts = "localhost:29092"
   val zkHosts = "localhost:32181"
   val s3Endpoint = "http://localhost:4569"
 
   var orchestratedEmailProducer: KafkaProducer[String, OrchestratedEmailV2] = _
   var orchestratedSMSProducer: KafkaProducer[String, OrchestratedSMS] = _
-  var composedEmailConsumer: KafkaConsumer[String, Option[ComposedEmail]] = _
-  var composedSMSConsumer: KafkaConsumer[String, Option[ComposedSMS]] = _
-  var failedConsumer: KafkaConsumer[String, Option[Failed]] = _
+  var composedEmailConsumer: KafkaConsumer[String, Option[ComposedEmailV2]] = _
+  var composedSMSConsumer: KafkaConsumer[String, Option[ComposedSMSV2]] = _
+  var failedConsumer: KafkaConsumer[String, Option[FailedV2]] = _
 
   override protected def beforeAll(): Unit = {
     uploadTemplateToS3()
@@ -127,7 +127,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     val zkUtils = ZkUtils(zkHosts, 30000, 5000, isZkSecurityEnabled = false)
 
     //Wait until kafka calls are not erroring and the service has created the topics it consumes from
-    val timeout = 10.seconds.fromNow
+    val timeout = 30.seconds.fromNow
     var notStarted = true
     while (timeout.hasTimeLeft && notStarted) {
       try {
@@ -136,7 +136,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
         case NonFatal(_) => Thread.sleep(100)
       }
     }
-    if (notStarted) fail("Services did not start within 10 seconds")
+    if (notStarted) fail("Services did not start within 30 seconds")
 
     // Create the output topics that we want to consume from
     for (topic <- Seq(composedEmailTopic, composedSMSTopic, failedTopic)) {
@@ -157,7 +157,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     composedEmailConsumer = {
       val consumer = KafkaCons(
         ConsConf(new StringDeserializer,
-                 avroDeserializer[ComposedEmail],
+                 avroDeserializer[ComposedEmailV2],
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
@@ -169,7 +169,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     composedSMSConsumer = {
       val consumer = KafkaCons(
         ConsConf(new StringDeserializer,
-                 avroDeserializer[ComposedSMS],
+                 avroDeserializer[ComposedSMSV2],
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
@@ -180,7 +180,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     failedConsumer = {
       val consumer = KafkaCons(
         ConsConf(new StringDeserializer,
-                 avroDeserializer[Failed],
+                 avroDeserializer[FailedV2],
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
@@ -275,7 +275,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   }
 
   private def verifyComposedEmailEvent(): Unit = {
-    val records = composedEmailConsumer.poll(3000L)
+    val records = composedEmailConsumer.poll(30000L)
     try {
       records.count() should be(1)
       val event = records.iterator().next().value().value
@@ -285,21 +285,19 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
       event.textBody should be(Some("TEXT HEADER TEXT BODY 1.23"))
       event.sender should be("Ovo Energy <no-reply@ovoenergy.com>")
       event.metadata.traceToken should be("transaction123")
-      event.metadata.customerId should be("customer123")
     } finally {
       composedEmailConsumer.commitSync()
     }
   }
 
   private def verifyComposedSMSEvent(): Unit = {
-    val records = composedSMSConsumer.poll(3000L)
+    val records = composedSMSConsumer.poll(30000L)
     try {
       records.count() should be(1)
       val event = records.iterator().next().value().value
 
       event.textBody should be("SMS HEADER SMS BODY 1.23")
       event.metadata.traceToken should be("transaction123")
-      event.metadata.customerId should be("customer123")
     } finally {
       composedSMSConsumer.commitSync()
     }
@@ -310,7 +308,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   private def expectNoComposedSMSEvent(): Unit = expectNoEvent(composedSMSConsumer)
 
   private def expectNoEvent(consumer: KafkaConsumer[_, _]): Unit = {
-    val records = consumer.poll(3000L)
+    val records = consumer.poll(10000L)
     try {
       records.count() should be(0)
     } finally {
@@ -321,7 +319,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   private def expectNoFailedEvent(): Unit = expectNFailedEvents(0)
 
   private def expectNFailedEvents(n: Int): Unit = {
-    val records = failedConsumer.poll(3000L)
+    val records = failedConsumer.poll(30000L)
     try {
       records.count() should be(n)
     } finally {

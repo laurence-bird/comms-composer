@@ -11,20 +11,20 @@ object EmailComposer {
 
   type EmailComposer[A] = Free[EmailComposerA, A]
 
-  def retrieveTemplate(incomingEvent: OrchestratedEmailV2): EmailComposer[EmailTemplate[Id]] =
+  def retrieveTemplate(incomingEvent: OrchestratedEmailV3): EmailComposer[EmailTemplate[Id]] =
     liftF(RetrieveTemplate(incomingEvent))
 
-  def render(incomingEvent: OrchestratedEmailV2, template: EmailTemplate[Id]): EmailComposer[RenderedEmail] =
+  def render(incomingEvent: OrchestratedEmailV3, template: EmailTemplate[Id]): EmailComposer[RenderedEmail] =
     liftF(Render(incomingEvent, template))
 
   def lookupSender(template: EmailTemplate[Id], commType: CommType): EmailComposer[EmailSender] =
     liftF(LookupSender(template, commType))
 
-  def buildEvent(incomingEvent: OrchestratedEmailV2,
+  def buildEvent(incomingEvent: OrchestratedEmailV3,
                  renderedEmail: RenderedEmail,
-                 sender: EmailSender): ComposedEmail =
-    ComposedEmail(
-      metadata = Metadata.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+                 sender: EmailSender): ComposedEmailV2 =
+    ComposedEmailV2(
+      metadata = MetadataV2.fromSourceMetadata("comms-composer", incomingEvent.metadata),
       internalMetadata = incomingEvent.internalMetadata,
       sender = sender.toString,
       recipient = incomingEvent.recipientEmailAddress,
@@ -34,7 +34,7 @@ object EmailComposer {
       expireAt = incomingEvent.expireAt
     )
 
-  def program(event: OrchestratedEmailV2) = {
+  def program(event: OrchestratedEmailV3) = {
     for {
       template <- retrieveTemplate(event)
       rendered <- render(event, template)

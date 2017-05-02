@@ -33,11 +33,10 @@ class EmailComposerSpec extends FlatSpec with Matchers {
     }
   }
 
-  val incomingEvent = OrchestratedEmailV2(
-    metadata = Metadata(
+  val incomingEvent = OrchestratedEmailV3(
+    metadata = MetadataV2(
       createdAt = "2016-01-01T12:34:56Z",
       eventId = UUID.randomUUID().toString,
-      customerId = "123-chris",
       traceToken = "abc",
       commManifest = CommManifest(CommType.Service, "test-template", "0.1"),
       friendlyDescription = "test message",
@@ -47,14 +46,14 @@ class EmailComposerSpec extends FlatSpec with Matchers {
       triggerSource = "Laurence"
     ),
     recipientEmailAddress = "chris@foo.com",
-    customerProfile = CustomerProfile("Joe", "Bloggs"),
+    customerProfile = Some(CustomerProfile("Joe", "Bloggs")),
     templateData = Map.empty,
     internalMetadata = InternalMetadata("HI"),
     expireAt = None
   )
 
   it should "compose an email" in {
-    val event: ComposedEmail = EmailComposer.program(incomingEvent).foldMap(testInterpreter)
+    val event: ComposedEmailV2 = EmailComposer.program(incomingEvent).foldMap(testInterpreter)
     event.sender should be("Ovo Energy <no-reply@ovoenergy.com>")
     event.recipient should be("chris@foo.com")
     event.subject should be("Hello Chris")
