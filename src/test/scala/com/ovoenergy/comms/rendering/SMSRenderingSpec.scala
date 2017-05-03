@@ -31,6 +31,21 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
     result.textBody should be("You paid £1.23")
   }
 
+  it should "render a simple template without a profile" in {
+    val manifest = CommManifest(CommType.Service, "simple", "0.1")
+    val template = SMSTemplate[Id](
+      textBody = HandlebarsTemplate("{{firstName}} you paid £{{amount}}", requiredFields)
+    )
+
+    val data = Map(
+      "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")),
+      "firstName" -> TemplateData(Coproduct[TemplateData.TD]("Barry"))
+    )
+
+    val result = renderSMS(manifest, template, data, None, phoneNumber).right.value
+    result.textBody should be("Barry you paid £1.23")
+  }
+
   it should "render a template that references fields in the customer profile" in {
     val manifest = CommManifest(CommType.Service, "profile-fields", "0.1")
     val template = SMSTemplate[Id](
@@ -40,6 +55,17 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
 
     val result = renderSMS(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY Joe 1.23")
+  }
+
+  it should "fail to render a template that references fields in the customer profile without a profile being provided" in {
+    val manifest = CommManifest(CommType.Service, "profile-fields", "0.1")
+    val template = SMSTemplate[Id](
+      textBody = HandlebarsTemplate("TEXT BODY {{profile.firstName}} {{amount}}", requiredFields)
+    )
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
+
+    val renderingErrors = renderSMS(manifest, template, data, None, phoneNumber).left.value
+    renderingErrors.reason should include("profile.firstName")
   }
 
   it should "make the recipient phone number available to the SMS template as 'recipient.phoneNumber'" in {
@@ -78,7 +104,4 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
     val result = Rendering.renderSMS(clock)(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY 31/12/2015 1.23")
   }
-
-  //TODO - Tests without profile
-
 }

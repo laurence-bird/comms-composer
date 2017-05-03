@@ -19,20 +19,28 @@ object ComposerGraphLegacy extends Logging {
 
   case class Input[T](topic: String, consumerSettings: ConsumerSettings[String, T])
 
-  def build[InEvent <: HasMetadata, OutEvent <: LoggableEvent](input: Input[Option[InEvent]],
-                                                               outputProducer: => OutEvent => Future[RecordMetadata],
-                                                               failedProducer: FailedV2 => Future[RecordMetadata])(
-      processEvent: InEvent => Either[FailedV2, OutEvent])(implicit scheduler: Scheduler, ec: ExecutionContext): Source[Done, Control] = {
+  def build[InEvent <: HasMetadata, OutEvent <: LoggableEvent](
+      input: Input[Option[InEvent]],
+      outputProducer: => OutEvent => Future[RecordMetadata],
+      failedProducer: FailedV2 => Future[RecordMetadata])(processEvent: InEvent => Either[FailedV2, OutEvent])(
+      implicit scheduler: Scheduler,
+      ec: ExecutionContext): Source[Done, Control] = {
 
     def sendOutput(event: OutEvent): Future[_] = {
-      outputProducer(event).recover{
-        case NonFatal(e) => warnE(event)("Unable to produce event, however, processing has completed so offset will be committed regardless", e)
+      outputProducer(event).recover {
+        case NonFatal(e) =>
+          warnT(event)(
+            "Unable to produce event, however, processing has completed so offset will be committed regardless",
+            e)
       }
     }
 
     def sendFailed(failed: FailedV2): Future[_] = {
-      failedProducer(failed).recover{
-        case NonFatal(e) => warnE(failed)("Unable to produce Failed event, however, processing has completed so offset will be committed regardless", e)
+      failedProducer(failed).recover {
+        case NonFatal(e) =>
+          warnT(failed)(
+            "Unable to produce Failed event, however, processing has completed so offset will be committed regardless",
+            e)
       }
     }
 
@@ -65,4 +73,3 @@ object ComposerGraphLegacy extends Logging {
   }
 
 }
-

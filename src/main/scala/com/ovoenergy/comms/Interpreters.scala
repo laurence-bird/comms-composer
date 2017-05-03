@@ -90,12 +90,12 @@ object Interpreters extends Logging {
   }
 
   private def failEmailWithException(exception: Throwable, event: OrchestratedEmailV3): FailedV2 = {
-    warnE(event)(s"Failed to compose Email because an unexpected exception occurred", exception)
+    warnT(event)(s"Failed to compose Email because an unexpected exception occurred", exception)
     buildFailedEvent(s"Exception occurred ($exception)", event.metadata, event.internalMetadata, CompositionError)
   }
 
   private def failSMSWithException(exception: Throwable, event: OrchestratedSMSV2): FailedV2 = {
-    warnE(event)(s"Failed to compose SMS because an unexpected exception occurred", exception)
+    warnT(event)(s"Failed to compose SMS because an unexpected exception occurred", exception)
     buildFailedEvent(s"Exception occurred ($exception)", event.metadata, event.internalMetadata, CompositionError)
   }
 

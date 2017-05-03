@@ -28,7 +28,7 @@ object ComposerGraph extends Logging {
     def sendOutput(event: OutEvent): Future[_] = {
       outputProducer(event).recover {
         case NonFatal(e) =>
-          warnE(event)(
+          warnT(event)(
             "Unable to produce event, however, processing has completed so offset will be committed regardless",
             e)
       }
@@ -37,7 +37,7 @@ object ComposerGraph extends Logging {
     def sendFailed(failed: FailedV2): Future[_] = {
       failedProducer(failed).recover {
         case NonFatal(e) =>
-          warnE(failed)(
+          warnT(failed)(
             "Unable to produce Failed event, however, processing has completed so offset will be committed regardless",
             e)
       }

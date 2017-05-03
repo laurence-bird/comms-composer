@@ -52,6 +52,26 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     result.textBody should be(Some("The amount was £1.23"))
   }
 
+  it should "render a simple template without a profile" in {
+    val manifest = CommManifest(CommType.Service, "simple", "0.1")
+    val template = EmailTemplate[Id](
+      sender = None,
+      subject = HandlebarsTemplate("{{firstName}} thanks for your payment of £{{amount}}", requiredFields),
+      htmlBody = HandlebarsTemplate("You paid £{{amount}}", requiredFields),
+      textBody = Some(HandlebarsTemplate("The amount was £{{amount}}", requiredFields))
+    )
+
+    val data = Map(
+      "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")),
+      "firstName" -> TemplateData(Coproduct[TemplateData.TD]("Jim"))
+    )
+
+    val result = renderEmail(manifest, template, data, None, emailAddress).right.value
+    result.subject should be("Jim thanks for your payment of £1.23")
+    result.htmlBody should be("You paid £1.23")
+    result.textBody should be(Some("The amount was £1.23"))
+  }
+
   it should "fail to render an invalid HandlebarsTemplate template" in {
     val manifest = CommManifest(CommType.Service, "broken", "0.1")
     val template = EmailTemplate[Id](
@@ -77,6 +97,20 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     result.subject should be("SUBJECT Joe 1.23")
     result.htmlBody should be("HTML BODY Joe 1.23")
     result.textBody should be(Some("TEXT BODY Joe 1.23"))
+  }
+
+  it should "fail to render a template that references fields in the customer profile where no profile provided" in {
+    val manifest = CommManifest(CommType.Service, "profile-fields", "0.1")
+    val template = EmailTemplate[Id](
+      sender = None,
+      subject = HandlebarsTemplate("SUBJECT {{profile.firstName}} {{amount}}", requiredFields),
+      htmlBody = HandlebarsTemplate("HTML BODY {{profile.firstName}} {{amount}}", requiredFields),
+      textBody = Some(HandlebarsTemplate("TEXT BODY {{profile.firstName}} {{amount}}", requiredFields))
+    )
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
+
+    val renderingErrors = renderEmail(manifest, template, data, None, emailAddress).left.value
+    renderingErrors.reason should include("profile.firstName")
   }
 
   it should "make the recipient email address available to the email template as 'recipient.emailAddress'" in {
@@ -242,6 +276,4 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
       "The template referenced the following non-existent keys:") and include("- this.amount"))
 
   }
-
-  //TODO - Add tests for rendering without profile
 }
