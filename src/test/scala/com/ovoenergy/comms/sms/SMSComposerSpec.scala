@@ -1,9 +1,11 @@
 package com.ovoenergy.comms.sms
 
+import java.time.Instant
 import java.util.UUID
 
 import cats.{Id, ~>}
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
 import org.scalatest.{FlatSpec, Matchers}
@@ -27,7 +29,7 @@ class SMSComposerSpec extends FlatSpec with Matchers {
 
   val incomingEvent = OrchestratedSMSV2(
     metadata = MetadataV2(
-      createdAt = "2016-01-01T12:34:56Z",
+      createdAt = Instant.now.toEpochMilli,
       eventId = UUID.randomUUID().toString,
       traceToken = "abc",
       commManifest = CommManifest(CommType.Service, "test-template", "0.1"),

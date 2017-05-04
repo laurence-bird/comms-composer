@@ -20,7 +20,7 @@ trait Logging {
   }
 
   def infoE[A <: LoggableEvent](a: A)(message: String): Unit = {
-    withMDC(a)(log.info(s"message${loggableEventToString(a)}"))
+    withMDC(a)(log.info(s"$message${loggableEventToString(a)}"))
   }
 
   def warn[A <: LoggableEvent](a: A)(message: String): Unit = {

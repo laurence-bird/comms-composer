@@ -2,6 +2,7 @@ package com.ovoenergy.comms.email
 
 import cats.Id
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.templates.model.EmailSender
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 

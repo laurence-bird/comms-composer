@@ -7,11 +7,12 @@ import cats.~>
 import com.ovoenergy.comms.email.{EmailComposerA, SenderLogic}
 import com.ovoenergy.comms.model.ErrorCode.{CompositionError, TemplateDownloadFailed}
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.email._
+import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.rendering.Rendering
 import com.ovoenergy.comms.repo.S3TemplateRepo
 import com.ovoenergy.comms.sms.SMSComposerA
 import com.ovoenergy.comms.templates.TemplatesContext
-import com.ovoenergy.comms.types.{HasInternalMetadata, HasMetadata}
 
 import scala.util.control.NonFatal
 

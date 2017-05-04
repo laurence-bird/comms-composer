@@ -1,7 +1,7 @@
 package com.ovoenergy.comms.sms
 
 import cats.Id
-import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 
 sealed trait SMSComposerA[T]

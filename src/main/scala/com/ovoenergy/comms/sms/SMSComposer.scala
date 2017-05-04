@@ -4,6 +4,7 @@ import cats.Id
 import cats.free.Free
 import cats.free.Free.liftF
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 
 object SMSComposer {

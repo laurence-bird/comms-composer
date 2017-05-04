@@ -1,7 +1,7 @@
 package com.ovoenergy.comms
 
 import java.util.concurrent.TimeUnit
-import java.time.{Duration => JDuration}
+import java.time.{OffsetDateTime, Duration => JDuration}
 
 import akka.actor.ActorSystem
 import akka.kafka.ConsumerSettings
@@ -12,6 +12,8 @@ import com.ovoenergy.comms.aws.TemplateContextFactory
 import com.ovoenergy.comms.email.EmailComposer
 import com.ovoenergy.comms.kafka.{ComposerGraph, ComposerGraphLegacy, Producer, Retry}
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.email._
+import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.serialisation.Serialisation._
 import com.ovoenergy.comms.serialisation.Decoders._
 import com.ovoenergy.comms.sms.SMSComposer
@@ -133,7 +135,7 @@ object Main extends App {
 
   private def metadataToV2(metadata: Metadata): MetadataV2 = {
     MetadataV2(
-      createdAt = metadata.createdAt,
+      createdAt = OffsetDateTime.parse(metadata.createdAt).toInstant.toEpochMilli,
       eventId = metadata.eventId,
       traceToken = metadata.traceToken,
       commManifest = metadata.commManifest,

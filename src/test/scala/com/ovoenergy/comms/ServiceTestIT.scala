@@ -11,6 +11,8 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.email._
+import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.serialisation.Decoders._
 import com.ovoenergy.comms.serialisation.Serialisation._
 import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
@@ -207,7 +209,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
       // DO NOT USE subscribe()! See https://github.com/dpkp/kafka-python/issues/690#issuecomment-220490765
-      consumer.assign(util.Arrays.asList(new TopicPartition(composedEmailTopic, 0)))
+      consumer.assign(List(new TopicPartition(composedEmailTopic, 0)).asJava)
       consumer
     }
 
@@ -218,7 +220,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
-      consumer.assign(util.Arrays.asList(new TopicPartition(composedSMSTopic, 0)))
+      consumer.assign(List(new TopicPartition(composedSMSTopic, 0)).asJava)
       consumer
     }
 
@@ -229,7 +231,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
-      consumer.assign(util.Arrays.asList(new TopicPartition(failedTopic, 0)))
+      consumer.assign(List(new TopicPartition(failedTopic, 0)).asJava)
       consumer
     }
   }
@@ -279,7 +281,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   )
 
   def metadata(commManifest: CommManifest) = MetadataV2(
-    OffsetDateTime.now().toString,
+    OffsetDateTime.now().toInstant.toEpochMilli,
     UUID.randomUUID().toString,
     "transaction123",
     commManifest,

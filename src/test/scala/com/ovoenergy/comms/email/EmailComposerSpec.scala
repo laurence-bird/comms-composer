@@ -1,10 +1,12 @@
 package com.ovoenergy.comms.email
 
+import java.time.Instant
 import java.util.UUID
 
 import cats.{Id, ~>}
 import com.ovoenergy.comms._
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.templates.model.{EmailSender, HandlebarsTemplate, RequiredTemplateData}
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 import org.scalatest.{FlatSpec, Matchers}
@@ -35,7 +37,7 @@ class EmailComposerSpec extends FlatSpec with Matchers {
 
   val incomingEvent = OrchestratedEmailV3(
     metadata = MetadataV2(
-      createdAt = "2016-01-01T12:34:56Z",
+      createdAt = Instant.now.toEpochMilli,
       eventId = UUID.randomUUID().toString,
       traceToken = "abc",
       commManifest = CommManifest(CommType.Service, "test-template", "0.1"),
