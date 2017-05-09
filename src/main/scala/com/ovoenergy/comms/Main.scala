@@ -15,7 +15,7 @@ import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.serialisation.Serialisation._
-import com.ovoenergy.comms.serialisation.Decoders._
+import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.sms.SMSComposer
 import io.circe.generic.auto._
 import com.typesafe.config.ConfigFactory
@@ -135,10 +135,11 @@ object Main extends App {
 
   private def metadataToV2(metadata: Metadata): MetadataV2 = {
     MetadataV2(
-      createdAt = OffsetDateTime.parse(metadata.createdAt).toInstant.toEpochMilli,
+      createdAt = OffsetDateTime.parse(metadata.createdAt).toInstant,
       eventId = metadata.eventId,
       traceToken = metadata.traceToken,
       commManifest = metadata.commManifest,
+      deliverTo = DeliverTo.fromCustomerId(metadata.customerId),
       friendlyDescription = metadata.friendlyDescription,
       source = metadata.source,
       canary = metadata.canary,
@@ -156,7 +157,7 @@ object Main extends App {
           recipientEmailAddress = orchestratedEmail.recipientEmailAddress,
           customerProfile = Some(orchestratedEmail.customerProfile),
           templateData = orchestratedEmail.templateData,
-          expireAt = orchestratedEmail.expireAt
+          expireAt = orchestratedEmail.expireAt.map(OffsetDateTime.parse(_).toInstant)
         )
         emailComposer(orchestratedEmailV3)
     }
@@ -170,7 +171,7 @@ object Main extends App {
           recipientPhoneNumber = orchestratedSMS.recipientPhoneNumber,
           customerProfile = Some(orchestratedSMS.customerProfile),
           templateData = orchestratedSMS.templateData,
-          expireAt = orchestratedSMS.expireAt
+          expireAt = orchestratedSMS.expireAt.map(OffsetDateTime.parse(_).toInstant)
         )
         smsComposer(orchestratedSMSV2)
     }

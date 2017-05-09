@@ -13,7 +13,7 @@ import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.model.sms._
-import com.ovoenergy.comms.serialisation.Decoders._
+import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.serialisation.Serialisation._
 import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
 import io.circe.generic.auto._
@@ -108,7 +108,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   }
 
   it should "send a failed event if some template data is missing" taggedAs DockerComposeTag in {
-    sendOrchestratedEmailLegacyEvent(
+    sendOrchestratedEmailEvent(
       CommManifest(
         CommType.Service,
         "composer-service-test",
@@ -121,7 +121,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   }
 
   it should "send a failed event if the template does not exist" taggedAs DockerComposeTag in {
-    sendOrchestratedEmailLegacyEvent(CommManifest(
+    sendOrchestratedEmailEvent(CommManifest(
                                        CommType.Service,
                                        "no-such-template",
                                        "9.9"
@@ -281,9 +281,10 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   )
 
   def metadata(commManifest: CommManifest) = MetadataV2(
-    OffsetDateTime.now().toInstant.toEpochMilli,
+    OffsetDateTime.now().toInstant,
     UUID.randomUUID().toString,
     "transaction123",
+    DeliverTo.fromCustomerId("customer123"),
     commManifest,
     "composer service test",
     "ServiceSpec",

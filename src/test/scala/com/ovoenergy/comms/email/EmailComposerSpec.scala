@@ -37,9 +37,10 @@ class EmailComposerSpec extends FlatSpec with Matchers {
 
   val incomingEvent = OrchestratedEmailV3(
     metadata = MetadataV2(
-      createdAt = Instant.now.toEpochMilli,
+      createdAt = Instant.now,
       eventId = UUID.randomUUID().toString,
       traceToken = "abc",
+      DeliverTo.fromCustomerId("customerId"),
       commManifest = CommManifest(CommType.Service, "test-template", "0.1"),
       friendlyDescription = "test message",
       source = "test",
