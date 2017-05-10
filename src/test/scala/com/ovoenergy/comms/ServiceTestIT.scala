@@ -122,11 +122,11 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   it should "send a failed event if the template does not exist" taggedAs DockerComposeTag in {
     sendOrchestratedEmailEvent(CommManifest(
-                                       CommType.Service,
-                                       "no-such-template",
-                                       "9.9"
-                                     ),
-                                     Map.empty)
+                                 CommType.Service,
+                                 "no-such-template",
+                                 "9.9"
+                               ),
+                               Map.empty)
     expectNoComposedEmailEvent()
     expectNFailedEvents(1)
   }
