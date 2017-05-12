@@ -12,8 +12,8 @@ resolvers += Resolver.bintrayRepo("ovotech", "maven")
 resolvers += Resolver.bintrayRepo("cakesolutions", "maven")
 
 libraryDependencies ++= Seq(
-  "com.ovoenergy" %% "comms-kafka-messages" % "1.18",
-  "com.ovoenergy" %% "comms-kafka-serialisation" % "2.2",
+  "com.ovoenergy" %% "comms-kafka-messages" % "1.19",
+  "com.ovoenergy" %% "comms-kafka-serialisation" % "2.3",
   "io.circe" %% "circe-generic" % "0.7.0",
   "com.github.jknack" % "handlebars" % "4.0.6",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57",
