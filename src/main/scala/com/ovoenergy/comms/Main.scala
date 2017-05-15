@@ -139,7 +139,7 @@ object Main extends App {
       eventId = metadata.eventId,
       traceToken = metadata.traceToken,
       commManifest = metadata.commManifest,
-      deliverTo = DeliverTo.fromCustomerId(metadata.customerId),
+      deliverTo = Customer(metadata.customerId),
       friendlyDescription = metadata.friendlyDescription,
       source = metadata.source,
       canary = metadata.canary,

@@ -8,6 +8,7 @@ import cats.syntax.traverse._
 import cats.{Apply, Id}
 import com.ovoenergy.comms.Logging
 import com.ovoenergy.comms.email.RenderedEmail
+import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.sms.RenderedSMS
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
@@ -34,16 +35,16 @@ object Rendering extends Logging {
     )
 
     val subject: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, Channel.Email, "subject")
+      val filename = buildFilename(commManifest, model.Email, "subject")
       HandlebarsWrapper.render(filename, template.subject)(context)
     }
     val htmlBody: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, Channel.Email, "htmlBody")
+      val filename = buildFilename(commManifest, model.Email, "htmlBody")
       HandlebarsWrapper.render(filename, template.htmlBody)(context)
     }
     val textBody: Option[ErrorsOr[String]] =
       template.textBody map { tb =>
-        val filename = buildFilename(commManifest, Channel.Email, "textBody")
+        val filename = buildFilename(commManifest, model.Email, "textBody")
         HandlebarsWrapper.render(filename, tb)(context)
       }
 
@@ -71,7 +72,7 @@ object Rendering extends Logging {
     )
 
     val textBody: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, Channel.SMS, "textBody")
+      val filename = buildFilename(commManifest, model.SMS, "textBody")
       HandlebarsWrapper.render(filename, template.textBody)(context)
     }
 

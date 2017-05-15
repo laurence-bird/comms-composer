@@ -10,6 +10,7 @@ import cakesolutions.kafka.{KafkaProducer, KafkaConsumer => KafkaCons}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
+import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.model.sms._
@@ -83,7 +84,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   it should "compose an email from legacy orchestrated event" taggedAs DockerComposeTag in {
     sendOrchestratedEmailLegacyEvent(CommManifest(
-                                       CommType.Service,
+                                       model.Service,
                                        "composer-service-test",
                                        "0.1"
                                      ),
@@ -96,7 +97,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   it should "compose an email" taggedAs DockerComposeTag in {
     sendOrchestratedEmailEvent(CommManifest(
-                                 CommType.Service,
+                                 model.Service,
                                  "composer-service-test",
                                  "0.1"
                                ),
@@ -110,7 +111,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   it should "send a failed event if some template data is missing" taggedAs DockerComposeTag in {
     sendOrchestratedEmailEvent(
       CommManifest(
-        CommType.Service,
+        model.Service,
         "composer-service-test",
         "0.1"
       ),
@@ -122,7 +123,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   it should "send a failed event if the template does not exist" taggedAs DockerComposeTag in {
     sendOrchestratedEmailEvent(CommManifest(
-                                 CommType.Service,
+                                 model.Service,
                                  "no-such-template",
                                  "9.9"
                                ),
@@ -133,7 +134,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   it should "compose an SMS from legacy orchestrated event" taggedAs DockerComposeTag in {
     sendOrchestratedSMSLegacyEvent(CommManifest(
-                                     CommType.Service,
+                                     model.Service,
                                      "composer-service-test",
                                      "0.1"
                                    ),
@@ -146,7 +147,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   it should "compose an SMS" taggedAs DockerComposeTag in {
     sendOrchestratedSMSEvent(CommManifest(
-                               CommType.Service,
+                               model.Service,
                                "composer-service-test",
                                "0.1"
                              ),
@@ -284,7 +285,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     OffsetDateTime.now().toInstant,
     UUID.randomUUID().toString,
     "transaction123",
-    DeliverTo.fromCustomerId("customer123"),
+    Customer("customer123"),
     commManifest,
     "composer service test",
     "ServiceSpec",

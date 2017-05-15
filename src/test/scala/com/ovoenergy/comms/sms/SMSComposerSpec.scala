@@ -4,6 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import cats.{Id, ~>}
+import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
@@ -32,8 +33,8 @@ class SMSComposerSpec extends FlatSpec with Matchers {
       createdAt = Instant.now,
       eventId = UUID.randomUUID().toString,
       traceToken = "abc",
-      DeliverTo.fromCustomerId("customerId"),
-      commManifest = CommManifest(CommType.Service, "test-template", "0.1"),
+      Customer("customerId"),
+      commManifest = CommManifest(model.Service, "test-template", "0.1"),
       friendlyDescription = "test message",
       source = "test",
       canary = true,

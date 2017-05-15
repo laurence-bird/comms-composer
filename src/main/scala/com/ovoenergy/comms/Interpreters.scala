@@ -5,7 +5,7 @@ import java.time.Clock
 import cats.syntax.either._
 import cats.~>
 import com.ovoenergy.comms.email.{EmailComposerA, SenderLogic}
-import com.ovoenergy.comms.model.ErrorCode.{CompositionError, TemplateDownloadFailed}
+import com.ovoenergy.comms.model.{CompositionError, TemplateDownloadFailed}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.model.sms._
