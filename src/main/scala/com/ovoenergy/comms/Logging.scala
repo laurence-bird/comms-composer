@@ -1,33 +1,42 @@
 package com.ovoenergy.comms
 
-import com.ovoenergy.comms.types.HasMetadata
-import org.slf4j.{LoggerFactory, MDC}
+import com.ovoenergy.comms.model.LoggableEvent
+import org.slf4j.{Logger, LoggerFactory, MDC}
 
 trait Logging {
 
-  val log = LoggerFactory.getLogger(getClass)
+  val log: Logger = LoggerFactory.getLogger(getClass)
 
-  private val TraceToken = "traceToken"
+  private def loggableEventToString(event: LoggableEvent): String = {
+    event.loggableString.map(ls => s": \n$ls").getOrElse("")
+  }
 
-  def info[A <: HasMetadata](a: A)(message: String): Unit = {
+  def debug[A <: LoggableEvent](a: A)(message: String): Unit = {
+    withMDC(a)(log.debug(message))
+  }
+
+  def info[A <: LoggableEvent](a: A)(message: String): Unit = {
     withMDC(a)(log.info(message))
   }
 
-  def warn[A <: HasMetadata](a: A)(message: String): Unit = {
+  def infoE[A <: LoggableEvent](a: A)(message: String): Unit = {
+    withMDC(a)(log.info(s"$message${loggableEventToString(a)}"))
+  }
+
+  def warn[A <: LoggableEvent](a: A)(message: String): Unit = {
     withMDC(a)(log.warn(message))
   }
 
-  def warnE[A <: HasMetadata](a: A)(message: String, exception: Throwable): Unit = {
-    withMDC(a)(log.warn(message, exception))
+  def warnT[A <: LoggableEvent](a: A)(message: String, throwable: Throwable): Unit = {
+    withMDC(a)(log.warn(message, throwable))
   }
 
-  private def withMDC[A <: HasMetadata](a: A)(block: => Unit): Unit = {
-    MDC.put(TraceToken, a.metadata.traceToken)
+  private def withMDC[A <: LoggableEvent](a: A)(block: => Unit): Unit = {
+    a.mdcMap.foreach { case (mdcParam, mdcValue) => MDC.put(mdcParam, mdcValue) }
     try {
       block
     } finally {
-      MDC.remove(TraceToken)
+      a.mdcMap.foreach { case (mdcParam, _) => MDC.remove(mdcParam) }
     }
   }
-
 }

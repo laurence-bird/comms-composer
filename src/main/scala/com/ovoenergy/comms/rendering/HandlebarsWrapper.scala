@@ -6,7 +6,7 @@ import com.github.jknack.handlebars.{Handlebars, Helper, Options}
 import java.util.{Map => JMap}
 
 import cats.data.Validated.{Invalid, Valid}
-import com.ovoenergy.comms.model.ErrorCode.{InvalidTemplate, MissingTemplateData}
+import com.ovoenergy.comms.model.{InvalidTemplate, MissingTemplateData}
 import com.ovoenergy.comms.templates.model.HandlebarsTemplate
 
 import scala.collection.mutable

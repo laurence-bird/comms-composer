@@ -8,6 +8,7 @@ import cats.syntax.traverse._
 import cats.{Apply, Id}
 import com.ovoenergy.comms.Logging
 import com.ovoenergy.comms.email.RenderedEmail
+import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.sms.RenderedSMS
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
@@ -23,7 +24,7 @@ object Rendering extends Logging {
   def renderEmail(clock: Clock)(commManifest: CommManifest,
                                 template: EmailTemplate[Id],
                                 data: Map[String, TemplateData],
-                                customerProfile: CustomerProfile,
+                                customerProfile: Option[CustomerProfile],
                                 recipientEmailAddress: String): Either[FailedToRender, RenderedEmail] = {
 
     val context = buildHandlebarsContext(
@@ -34,16 +35,16 @@ object Rendering extends Logging {
     )
 
     val subject: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, Channel.Email, "subject")
+      val filename = buildFilename(commManifest, model.Email, "subject")
       HandlebarsWrapper.render(filename, template.subject)(context)
     }
     val htmlBody: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, Channel.Email, "htmlBody")
+      val filename = buildFilename(commManifest, model.Email, "htmlBody")
       HandlebarsWrapper.render(filename, template.htmlBody)(context)
     }
     val textBody: Option[ErrorsOr[String]] =
       template.textBody map { tb =>
-        val filename = buildFilename(commManifest, Channel.Email, "textBody")
+        val filename = buildFilename(commManifest, model.Email, "textBody")
         HandlebarsWrapper.render(filename, tb)(context)
       }
 
@@ -60,7 +61,7 @@ object Rendering extends Logging {
   def renderSMS(clock: Clock)(commManifest: CommManifest,
                               template: SMSTemplate[Id],
                               data: Map[String, TemplateData],
-                              customerProfile: CustomerProfile,
+                              customerProfile: Option[CustomerProfile],
                               recipientPhoneNumber: String): Either[FailedToRender, RenderedSMS] = {
 
     val context = buildHandlebarsContext(
@@ -71,7 +72,7 @@ object Rendering extends Logging {
     )
 
     val textBody: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, Channel.SMS, "textBody")
+      val filename = buildFilename(commManifest, model.SMS, "textBody")
       HandlebarsWrapper.render(filename, template.textBody)(context)
     }
 
@@ -82,7 +83,7 @@ object Rendering extends Logging {
   }
 
   private def buildHandlebarsContext(data: Map[String, TemplateData],
-                                     customerProfile: CustomerProfile,
+                                     customerProfile: Option[CustomerProfile],
                                      recipient: Map[String, String],
                                      clock: Clock): JMap[String, AnyRef] = {
 
@@ -130,15 +131,19 @@ object Rendering extends Logging {
    */
   import shapeless.ops.record._
   private val customerProfileGen = LabelledGeneric[CustomerProfile]
-  private def profileToMap(profile: CustomerProfile): JMap[String, String] = {
-    val fieldsHlist = Fields[customerProfileGen.Repr].apply(customerProfileGen.to(profile))
-    val fieldsList = fieldsHlist.toList[(Symbol, String)]
-    fieldsList
-      .map {
-        case (sym, value) => (sym.name, value)
+  private def profileToMap(customerProfile: Option[CustomerProfile]): JMap[String, String] = {
+    customerProfile
+      .map { profile =>
+        val fieldsHlist = Fields[customerProfileGen.Repr].apply(customerProfileGen.to(profile))
+        val fieldsList = fieldsHlist.toList[(Symbol, String)]
+        fieldsList
+          .map {
+            case (sym, value) => (sym.name, value)
+          }
+          .toMap
+          .asJava
       }
-      .toMap
-      .asJava
+      .getOrElse(Map().asJava)
   }
 
 }

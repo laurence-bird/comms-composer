@@ -10,8 +10,11 @@ import cakesolutions.kafka.{KafkaProducer, KafkaConsumer => KafkaCons}
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
+import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.serialisation.Decoders._
+import com.ovoenergy.comms.model.email._
+import com.ovoenergy.comms.model.sms._
+import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.serialisation.Serialisation._
 import com.typesafe.config.{ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
 import io.circe.generic.auto._
@@ -22,8 +25,10 @@ import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializ
 import org.scalatest.{Failed => _, _}
 import shapeless.Coproduct
 
+import scala.annotation.tailrec
 import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.collection.JavaConverters._
 
 object DockerComposeTag extends Tag("DockerComposeTag")
 
@@ -33,20 +38,28 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   val config =
     ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
-  val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email.v2")
-  val orchestratedSMSTopic = config.getString("kafka.topics.orchestrated.sms")
-  val composedEmailTopic = config.getString("kafka.topics.composed.email")
-  val composedSMSTopic = config.getString("kafka.topics.composed.sms")
-  val failedTopic = config.getString("kafka.topics.failed")
+  val orchestratedEmailLegacyTopic = config.getString("kafka.topics.orchestrated.email.v2")
+  val orchestratedSMSLegacyTopic = config.getString("kafka.topics.orchestrated.sms.v1")
+
+  val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email.v3")
+  val orchestratedSMSTopic = config.getString("kafka.topics.orchestrated.sms.v2")
+
+  val composedEmailTopic = config.getString("kafka.topics.composed.email.v2")
+  val composedSMSTopic = config.getString("kafka.topics.composed.sms.v2")
+  val failedTopic = config.getString("kafka.topics.failed.v2")
   val kafkaHosts = "localhost:29092"
   val zkHosts = "localhost:32181"
   val s3Endpoint = "http://localhost:4569"
 
-  var orchestratedEmailProducer: KafkaProducer[String, OrchestratedEmailV2] = _
-  var orchestratedSMSProducer: KafkaProducer[String, OrchestratedSMS] = _
-  var composedEmailConsumer: KafkaConsumer[String, Option[ComposedEmail]] = _
-  var composedSMSConsumer: KafkaConsumer[String, Option[ComposedSMS]] = _
-  var failedConsumer: KafkaConsumer[String, Option[Failed]] = _
+  var orchestratedEmailLegacyProducer: KafkaProducer[String, OrchestratedEmailV2] = _
+  var orchestratedSMSLegacyProducer: KafkaProducer[String, OrchestratedSMS] = _
+
+  var orchestratedEmailProducer: KafkaProducer[String, OrchestratedEmailV3] = _
+  var orchestratedSMSProducer: KafkaProducer[String, OrchestratedSMSV2] = _
+
+  var composedEmailConsumer: KafkaConsumer[String, Option[ComposedEmailV2]] = _
+  var composedSMSConsumer: KafkaConsumer[String, Option[ComposedSMSV2]] = _
+  var failedConsumer: KafkaConsumer[String, Option[FailedV2]] = _
 
   override protected def beforeAll(): Unit = {
     uploadTemplateToS3()
@@ -58,16 +71,33 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   }
 
   override protected def afterAll(): Unit = {
+    orchestratedEmailLegacyProducer.close()
+    orchestratedSMSLegacyProducer.close()
+
     orchestratedEmailProducer.close()
     orchestratedSMSProducer.close()
+
     composedEmailConsumer.close()
     composedSMSConsumer.close()
     failedConsumer.close()
   }
 
+  it should "compose an email from legacy orchestrated event" taggedAs DockerComposeTag in {
+    sendOrchestratedEmailLegacyEvent(CommManifest(
+                                       model.Service,
+                                       "composer-service-test",
+                                       "0.1"
+                                     ),
+                                     Map(
+                                       "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23"))
+                                     ))
+    verifyComposedEmailEvent()
+    expectNoFailedEvent()
+  }
+
   it should "compose an email" taggedAs DockerComposeTag in {
     sendOrchestratedEmailEvent(CommManifest(
-                                 CommType.Service,
+                                 model.Service,
                                  "composer-service-test",
                                  "0.1"
                                ),
@@ -81,7 +111,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   it should "send a failed event if some template data is missing" taggedAs DockerComposeTag in {
     sendOrchestratedEmailEvent(
       CommManifest(
-        CommType.Service,
+        model.Service,
         "composer-service-test",
         "0.1"
       ),
@@ -93,7 +123,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
 
   it should "send a failed event if the template does not exist" taggedAs DockerComposeTag in {
     sendOrchestratedEmailEvent(CommManifest(
-                                 CommType.Service,
+                                 model.Service,
                                  "no-such-template",
                                  "9.9"
                                ),
@@ -102,9 +132,22 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     expectNFailedEvents(1)
   }
 
+  it should "compose an SMS from legacy orchestrated event" taggedAs DockerComposeTag in {
+    sendOrchestratedSMSLegacyEvent(CommManifest(
+                                     model.Service,
+                                     "composer-service-test",
+                                     "0.1"
+                                   ),
+                                   Map(
+                                     "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23"))
+                                   ))
+    verifyComposedSMSEvent()
+    expectNoFailedEvent()
+  }
+
   it should "compose an SMS" taggedAs DockerComposeTag in {
     sendOrchestratedSMSEvent(CommManifest(
-                               CommType.Service,
+                               model.Service,
                                "composer-service-test",
                                "0.1"
                              ),
@@ -122,12 +165,13 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     import scala.concurrent.duration._
     import scala.util.control.NonFatal
 
-    val inputTopics = List(orchestratedEmailTopic, orchestratedSMSTopic)
+    val inputTopics =
+      List(orchestratedEmailLegacyTopic, orchestratedSMSLegacyTopic, orchestratedEmailTopic, orchestratedSMSTopic)
 
     val zkUtils = ZkUtils(zkHosts, 30000, 5000, isZkSecurityEnabled = false)
 
     //Wait until kafka calls are not erroring and the service has created the topics it consumes from
-    val timeout = 10.seconds.fromNow
+    val timeout = 30.seconds.fromNow
     var notStarted = true
     while (timeout.hasTimeLeft && notStarted) {
       try {
@@ -136,7 +180,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
         case NonFatal(_) => Thread.sleep(100)
       }
     }
-    if (notStarted) fail("Services did not start within 10 seconds")
+    if (notStarted) fail("Services did not start within 30 seconds")
 
     // Create the output topics that we want to consume from
     for (topic <- Seq(composedEmailTopic, composedSMSTopic, failedTopic)) {
@@ -147,44 +191,48 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   }
 
   private def createKafkaProducers(): Unit = {
-    orchestratedEmailProducer = KafkaProducer(
+    orchestratedEmailLegacyProducer = KafkaProducer(
       ProdConf(new StringSerializer, avroSerializer[OrchestratedEmailV2], bootstrapServers = kafkaHosts))
-    orchestratedSMSProducer = KafkaProducer(
+    orchestratedEmailProducer = KafkaProducer(
+      ProdConf(new StringSerializer, avroSerializer[OrchestratedEmailV3], bootstrapServers = kafkaHosts))
+    orchestratedSMSLegacyProducer = KafkaProducer(
       ProdConf(new StringSerializer, avroSerializer[OrchestratedSMS], bootstrapServers = kafkaHosts))
+    orchestratedSMSProducer = KafkaProducer(
+      ProdConf(new StringSerializer, avroSerializer[OrchestratedSMSV2], bootstrapServers = kafkaHosts))
   }
 
   private def createKafkaConsumers(): Unit = {
     composedEmailConsumer = {
       val consumer = KafkaCons(
         ConsConf(new StringDeserializer,
-                 avroDeserializer[ComposedEmail],
+                 avroDeserializer[ComposedEmailV2],
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
       // DO NOT USE subscribe()! See https://github.com/dpkp/kafka-python/issues/690#issuecomment-220490765
-      consumer.assign(util.Arrays.asList(new TopicPartition(composedEmailTopic, 0)))
+      consumer.assign(List(new TopicPartition(composedEmailTopic, 0)).asJava)
       consumer
     }
 
     composedSMSConsumer = {
       val consumer = KafkaCons(
         ConsConf(new StringDeserializer,
-                 avroDeserializer[ComposedSMS],
+                 avroDeserializer[ComposedSMSV2],
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
-      consumer.assign(util.Arrays.asList(new TopicPartition(composedSMSTopic, 0)))
+      consumer.assign(List(new TopicPartition(composedSMSTopic, 0)).asJava)
       consumer
     }
 
     failedConsumer = {
       val consumer = KafkaCons(
         ConsConf(new StringDeserializer,
-                 avroDeserializer[Failed],
+                 avroDeserializer[FailedV2],
                  groupId = "test",
                  bootstrapServers = kafkaHosts,
                  maxPollRecords = 1))
-      consumer.assign(util.Arrays.asList(new TopicPartition(failedTopic, 0)))
+      consumer.assign(List(new TopicPartition(failedTopic, 0)).asJava)
       consumer
     }
   }
@@ -220,7 +268,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     s3.putObject("ovo-comms-templates", "service/fragments/sms/txt/header.txt", "SMS HEADER")
   }
 
-  def metadata(commManifest: CommManifest) = Metadata(
+  def metadataLegacy(commManifest: CommManifest) = Metadata(
     OffsetDateTime.now().toString,
     UUID.randomUUID().toString,
     "customer123",
@@ -232,6 +280,20 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     None,
     "SomeTriggerSource"
   )
+
+  def metadata(commManifest: CommManifest) = MetadataV2(
+    OffsetDateTime.now().toInstant,
+    UUID.randomUUID().toString,
+    "transaction123",
+    Customer("customer123"),
+    commManifest,
+    "composer service test",
+    "ServiceSpec",
+    canary = true,
+    None,
+    "SomeTriggerSource"
+  )
+
   val internalMetadata = InternalMetadata(UUID.randomUUID().toString)
   val recipientEmailAddress = "chris.birchall@ovoenergy.com"
   val recipientPhoneNumber = "+447123456789"
@@ -240,9 +302,9 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
     "Birchall"
   )
 
-  def orchestratedEmailEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]) =
+  def orchestratedEmailLegacyEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]) =
     OrchestratedEmailV2(
-      metadata(commManifest),
+      metadataLegacy(commManifest),
       internalMetadata,
       recipientEmailAddress,
       profile,
@@ -250,9 +312,19 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
       expireAt = None
     )
 
-  def orchestratedSMSEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]) =
-    OrchestratedSMS(
+  def orchestratedEmailEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]) =
+    OrchestratedEmailV3(
       metadata(commManifest),
+      internalMetadata,
+      recipientEmailAddress,
+      Some(profile),
+      templateData,
+      expireAt = None
+    )
+
+  def orchestratedSMSLegacyEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]) =
+    OrchestratedSMS(
+      metadataLegacy(commManifest),
       internalMetadata,
       recipientPhoneNumber,
       profile,
@@ -260,9 +332,35 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
       expireAt = None
     )
 
+  def orchestratedSMSEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]) =
+    OrchestratedSMSV2(
+      metadata(commManifest),
+      internalMetadata,
+      recipientPhoneNumber,
+      Some(profile),
+      templateData,
+      expireAt = None
+    )
+
+  private def sendOrchestratedEmailLegacyEvent(commManifest: CommManifest,
+                                               templateData: Map[String, TemplateData]): Unit = {
+    val event = orchestratedEmailLegacyEvent(commManifest, templateData)
+    val future = orchestratedEmailLegacyProducer.send(new ProducerRecord(orchestratedEmailLegacyTopic, event))
+    val result = Await.result(future, atMost = 5.seconds)
+    println(s"Sent Kafka message: $result")
+  }
+
   private def sendOrchestratedEmailEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]): Unit = {
     val event = orchestratedEmailEvent(commManifest, templateData)
     val future = orchestratedEmailProducer.send(new ProducerRecord(orchestratedEmailTopic, event))
+    val result = Await.result(future, atMost = 5.seconds)
+    println(s"Sent Kafka message: $result")
+  }
+
+  private def sendOrchestratedSMSLegacyEvent(commManifest: CommManifest,
+                                             templateData: Map[String, TemplateData]): Unit = {
+    val event = orchestratedSMSLegacyEvent(commManifest, templateData)
+    val future = orchestratedSMSLegacyProducer.send(new ProducerRecord(orchestratedSMSLegacyTopic, event))
     val result = Await.result(future, atMost = 5.seconds)
     println(s"Sent Kafka message: $result")
   }
@@ -275,31 +373,44 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   }
 
   private def verifyComposedEmailEvent(): Unit = {
-    val records = composedEmailConsumer.poll(3000L)
-    try {
-      records.count() should be(1)
-      val event = records.iterator().next().value().value
+    @tailrec
+    def poll(records: List[ComposedEmailV2], expNum: Int, deadLine: Deadline): List[ComposedEmailV2] = {
+      if (records.size >= expNum || !deadLine.hasTimeLeft) records
+      else
+        poll(
+          records ++ composedEmailConsumer.poll(1000L).iterator().asScala.toList.map(record => record.value().value),
+          expNum,
+          deadLine)
+    }
 
-      event.subject should be("SUBJECT Chris")
-      event.htmlBody should be("HTML HEADER HTML BODY 1.23")
-      event.textBody should be(Some("TEXT HEADER TEXT BODY 1.23"))
-      event.sender should be("Ovo Energy <no-reply@ovoenergy.com>")
-      event.metadata.traceToken should be("transaction123")
-      event.metadata.customerId should be("customer123")
+    try {
+      val records = poll(List(), 1, 30.seconds.fromNow)
+      records.size should be(1)
+      records.head.subject should be("SUBJECT Chris")
+      records.head.htmlBody should be("HTML HEADER HTML BODY 1.23")
+      records.head.textBody should be(Some("TEXT HEADER TEXT BODY 1.23"))
+      records.head.sender should be("Ovo Energy <no-reply@ovoenergy.com>")
+      records.head.metadata.traceToken should be("transaction123")
     } finally {
       composedEmailConsumer.commitSync()
     }
   }
 
   private def verifyComposedSMSEvent(): Unit = {
-    val records = composedSMSConsumer.poll(3000L)
-    try {
-      records.count() should be(1)
-      val event = records.iterator().next().value().value
+    @tailrec
+    def poll(records: List[ComposedSMSV2], expNum: Int, deadLine: Deadline): List[ComposedSMSV2] = {
+      if (records.size >= expNum || !deadLine.hasTimeLeft) records
+      else
+        poll(records ++ composedSMSConsumer.poll(1000L).iterator().asScala.toList.map(record => record.value().value),
+             expNum,
+             deadLine)
+    }
 
-      event.textBody should be("SMS HEADER SMS BODY 1.23")
-      event.metadata.traceToken should be("transaction123")
-      event.metadata.customerId should be("customer123")
+    try {
+      val records = poll(List(), 1, 30.seconds.fromNow)
+      records.size should be(1)
+      records.head.textBody should be("SMS HEADER SMS BODY 1.23")
+      records.head.metadata.traceToken should be("transaction123")
     } finally {
       composedSMSConsumer.commitSync()
     }
@@ -310,7 +421,7 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   private def expectNoComposedSMSEvent(): Unit = expectNoEvent(composedSMSConsumer)
 
   private def expectNoEvent(consumer: KafkaConsumer[_, _]): Unit = {
-    val records = consumer.poll(3000L)
+    val records = consumer.poll(10000L)
     try {
       records.count() should be(0)
     } finally {
@@ -321,9 +432,18 @@ class ServiceTestIT extends FlatSpec with Matchers with OptionValues with Before
   private def expectNoFailedEvent(): Unit = expectNFailedEvents(0)
 
   private def expectNFailedEvents(n: Int): Unit = {
-    val records = failedConsumer.poll(3000L)
+    @tailrec
+    def poll(records: List[FailedV2], expNum: Int, deadLine: Deadline): List[FailedV2] = {
+      if (records.size >= expNum || !deadLine.hasTimeLeft) records
+      else
+        poll(records ++ failedConsumer.poll(1000L).iterator().asScala.toList.map(record => record.value().value),
+             expNum,
+             deadLine)
+    }
+
     try {
-      records.count() should be(n)
+      val records = poll(List(), 1, 30.seconds.fromNow)
+      records.size should be(n)
     } finally {
       failedConsumer.commitSync()
     }

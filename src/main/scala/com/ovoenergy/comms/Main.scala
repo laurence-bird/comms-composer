@@ -1,21 +1,21 @@
 package com.ovoenergy.comms
 
 import java.util.concurrent.TimeUnit
-import java.time.{Duration => JDuration}
+import java.time.{OffsetDateTime, Duration => JDuration}
 
 import akka.actor.ActorSystem
 import akka.kafka.ConsumerSettings
 import akka.stream.scaladsl.Sink
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
-import cakesolutions.kafka.KafkaProducer
-import cakesolutions.kafka.KafkaProducer.Conf
 import cats.instances.either._
 import com.ovoenergy.comms.aws.TemplateContextFactory
 import com.ovoenergy.comms.email.EmailComposer
-import com.ovoenergy.comms.kafka.{ComposerGraph, Retry}
+import com.ovoenergy.comms.kafka.{ComposerGraph, ComposerGraphLegacy, Producer, Retry}
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.email._
+import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.serialisation.Serialisation._
-import com.ovoenergy.comms.serialisation.Decoders._
+import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.sms.SMSComposer
 import io.circe.generic.auto._
 import com.typesafe.config.ConfigFactory
@@ -51,21 +51,39 @@ object Main extends App {
   val kafkaBootstrapServers = config.getString("kafka.bootstrap.servers")
   val kafkaGroupId = config.getString("kafka.group.id")
 
-  val orchestratedEmailInput = {
+  val orchestratedEmailLegacyInput = {
     val consumerSettings =
       ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedEmailV2])
         .withBootstrapServers(kafkaBootstrapServers)
         .withGroupId(kafkaGroupId)
     val topic = config.getString("kafka.topics.orchestrated.email.v2")
+    ComposerGraphLegacy.Input(topic, consumerSettings)
+  }
+
+  val orchestratedEmailInput = {
+    val consumerSettings =
+      ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedEmailV3])
+        .withBootstrapServers(kafkaBootstrapServers)
+        .withGroupId(kafkaGroupId)
+    val topic = config.getString("kafka.topics.orchestrated.email.v3")
     ComposerGraph.Input(topic, consumerSettings)
   }
 
-  val orchestratedSMSInput = {
+  val orchestratedSMSLegacyInput = {
     val consumerSettings =
       ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedSMS])
         .withBootstrapServers(kafkaBootstrapServers)
         .withGroupId(kafkaGroupId)
-    val topic = config.getString("kafka.topics.orchestrated.sms")
+    val topic = config.getString("kafka.topics.orchestrated.sms.v1")
+    ComposerGraphLegacy.Input(topic, consumerSettings)
+  }
+
+  val orchestratedSMSInput = {
+    val consumerSettings =
+      ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedSMSV2])
+        .withBootstrapServers(kafkaBootstrapServers)
+        .withGroupId(kafkaGroupId)
+    val topic = config.getString("kafka.topics.orchestrated.sms.v2")
     ComposerGraph.Input(topic, consumerSettings)
   }
 
@@ -80,40 +98,92 @@ object Main extends App {
   // These outputs are only lazy for the sake of the service tests.
   // We need to construct the producer after the topic has been created,
   // otherwise the tests randomly fail.
-  lazy val composedEmailEventOutput = {
-    val producer = KafkaProducer(
-      Conf(new StringSerializer, avroSerializer[ComposedEmail], bootstrapServers = kafkaBootstrapServers)
+  lazy val composedEmailEventProducer = {
+    Producer[ComposedEmailV2](
+      hosts = kafkaBootstrapServers,
+      topic = config.getString("kafka.topics.composed.email.v2"),
+      serialiser = avroSerializer[ComposedEmailV2],
+      retryConfig = kafkaProducerRetryConfig
     )
-    val topic = config.getString("kafka.topics.composed.email")
-    ComposerGraph.Output(topic, producer, kafkaProducerRetryConfig)
   }
 
-  lazy val composedSMSEventOutput = {
-    val producer = KafkaProducer(
-      Conf(new StringSerializer, avroSerializer[ComposedSMS], bootstrapServers = kafkaBootstrapServers)
+  lazy val composedSMSEventProducer = {
+    Producer[ComposedSMSV2](
+      hosts = kafkaBootstrapServers,
+      topic = config.getString("kafka.topics.composed.sms.v2"),
+      serialiser = avroSerializer[ComposedSMSV2],
+      retryConfig = kafkaProducerRetryConfig
     )
-    val topic = config.getString("kafka.topics.composed.sms")
-    ComposerGraph.Output(topic, producer, kafkaProducerRetryConfig)
   }
 
-  lazy val failedEventOutput = {
-    val producer = KafkaProducer(
-      Conf(new StringSerializer, avroSerializer[Failed], bootstrapServers = kafkaBootstrapServers)
+  lazy val failedEventProducer = {
+    Producer[FailedV2](
+      hosts = kafkaBootstrapServers,
+      topic = config.getString("kafka.topics.failed.v2"),
+      serialiser = avroSerializer[FailedV2],
+      retryConfig = kafkaProducerRetryConfig
     )
-    val topic = config.getString("kafka.topics.failed")
-    ComposerGraph.Output(topic, producer, kafkaProducerRetryConfig)
   }
 
   val emailInterpreter = Interpreters.emailInterpreter(templateContext)
-  val emailGraph = ComposerGraph.build(orchestratedEmailInput, composedEmailEventOutput, failedEventOutput) {
-    (orchestratedEmail: OrchestratedEmailV2) =>
-      EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
-  }
+  val emailComposer = (orchestratedEmail: OrchestratedEmailV3) =>
+    EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
 
   val smsInterpreter = Interpreters.smsInterpreter(templateContext)
-  val smsGraph = ComposerGraph.build(orchestratedSMSInput, composedSMSEventOutput, failedEventOutput) {
-    (orchestratedSMS: OrchestratedSMS) =>
-      SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
+  val smsComposer = (orchestratedSMS: OrchestratedSMSV2) =>
+    SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
+
+  private def metadataToV2(metadata: Metadata): MetadataV2 = {
+    MetadataV2(
+      createdAt = OffsetDateTime.parse(metadata.createdAt).toInstant,
+      eventId = metadata.eventId,
+      traceToken = metadata.traceToken,
+      commManifest = metadata.commManifest,
+      deliverTo = Customer(metadata.customerId),
+      friendlyDescription = metadata.friendlyDescription,
+      source = metadata.source,
+      canary = metadata.canary,
+      sourceMetadata = metadata.sourceMetadata.map(metadataToV2),
+      triggerSource = metadata.triggerSource
+    )
+  }
+
+  val emailGraphLegacy =
+    ComposerGraphLegacy.build(orchestratedEmailLegacyInput, composedEmailEventProducer, failedEventProducer) {
+      (orchestratedEmail: OrchestratedEmailV2) =>
+        val orchestratedEmailV3 = OrchestratedEmailV3(
+          metadata = metadataToV2(orchestratedEmail.metadata),
+          internalMetadata = orchestratedEmail.internalMetadata,
+          recipientEmailAddress = orchestratedEmail.recipientEmailAddress,
+          customerProfile = Some(orchestratedEmail.customerProfile),
+          templateData = orchestratedEmail.templateData,
+          expireAt = orchestratedEmail.expireAt.map(OffsetDateTime.parse(_).toInstant)
+        )
+        emailComposer(orchestratedEmailV3)
+    }
+
+  val smsGraphLegacy =
+    ComposerGraphLegacy.build(orchestratedSMSLegacyInput, composedSMSEventProducer, failedEventProducer) {
+      (orchestratedSMS: OrchestratedSMS) =>
+        val orchestratedSMSV2 = OrchestratedSMSV2(
+          metadata = metadataToV2(orchestratedSMS.metadata),
+          internalMetadata = orchestratedSMS.internalMetadata,
+          recipientPhoneNumber = orchestratedSMS.recipientPhoneNumber,
+          customerProfile = Some(orchestratedSMS.customerProfile),
+          templateData = orchestratedSMS.templateData,
+          expireAt = orchestratedSMS.expireAt.map(OffsetDateTime.parse(_).toInstant)
+        )
+        smsComposer(orchestratedSMSV2)
+    }
+
+  val emailGraph = ComposerGraph.build(orchestratedEmailInput, composedEmailEventProducer, failedEventProducer) {
+    (orchestratedEmail: OrchestratedEmailV3) =>
+      emailComposer(orchestratedEmail)
+  }
+
+  val smsGraph = ComposerGraph.build(orchestratedSMSInput, composedSMSEventProducer, failedEventProducer) {
+    (orchestratedSMS: OrchestratedSMSV2) =>
+      smsComposer(orchestratedSMS)
   }
 
   val decider: Supervision.Decider = { e =>
@@ -124,6 +194,8 @@ object Main extends App {
   log.info("Creating graphs")
 
   Seq(
+    (emailGraphLegacy, "email-legacy"),
+    (smsGraphLegacy, "SMS-legacy"),
     (emailGraph, "email"),
     (smsGraph, "SMS")
   ) foreach {

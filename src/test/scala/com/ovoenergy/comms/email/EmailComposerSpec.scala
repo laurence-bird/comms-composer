@@ -1,10 +1,13 @@
 package com.ovoenergy.comms.email
 
+import java.time.Instant
 import java.util.UUID
 
 import cats.{Id, ~>}
 import com.ovoenergy.comms._
+import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.templates.model.{EmailSender, HandlebarsTemplate, RequiredTemplateData}
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 import org.scalatest.{FlatSpec, Matchers}
@@ -33,13 +36,13 @@ class EmailComposerSpec extends FlatSpec with Matchers {
     }
   }
 
-  val incomingEvent = OrchestratedEmailV2(
-    metadata = Metadata(
-      createdAt = "2016-01-01T12:34:56Z",
+  val incomingEvent = OrchestratedEmailV3(
+    metadata = MetadataV2(
+      createdAt = Instant.now,
       eventId = UUID.randomUUID().toString,
-      customerId = "123-chris",
       traceToken = "abc",
-      commManifest = CommManifest(CommType.Service, "test-template", "0.1"),
+      Customer("customerId"),
+      commManifest = CommManifest(model.Service, "test-template", "0.1"),
       friendlyDescription = "test message",
       source = "test",
       canary = true,
@@ -47,14 +50,14 @@ class EmailComposerSpec extends FlatSpec with Matchers {
       triggerSource = "Laurence"
     ),
     recipientEmailAddress = "chris@foo.com",
-    customerProfile = CustomerProfile("Joe", "Bloggs"),
+    customerProfile = Some(CustomerProfile("Joe", "Bloggs")),
     templateData = Map.empty,
     internalMetadata = InternalMetadata("HI"),
     expireAt = None
   )
 
   it should "compose an email" in {
-    val event: ComposedEmail = EmailComposer.program(incomingEvent).foldMap(testInterpreter)
+    val event: ComposedEmailV2 = EmailComposer.program(incomingEvent).foldMap(testInterpreter)
     event.sender should be("Ovo Energy <no-reply@ovoenergy.com>")
     event.recipient should be("chris@foo.com")
     event.subject should be("Hello Chris")

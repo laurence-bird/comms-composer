@@ -5,19 +5,20 @@ import java.time.Clock
 import cats.syntax.either._
 import cats.~>
 import com.ovoenergy.comms.email.{EmailComposerA, SenderLogic}
-import com.ovoenergy.comms.model.ErrorCode.{CompositionError, TemplateDownloadFailed}
+import com.ovoenergy.comms.model.{CompositionError, TemplateDownloadFailed}
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.email._
+import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.rendering.Rendering
 import com.ovoenergy.comms.repo.S3TemplateRepo
 import com.ovoenergy.comms.sms.SMSComposerA
 import com.ovoenergy.comms.templates.TemplatesContext
-import com.ovoenergy.comms.types.{HasInternalMetadata, HasMetadata}
 
 import scala.util.control.NonFatal
 
 object Interpreters extends Logging {
 
-  type FailedOr[A] = Either[Failed, A]
+  type FailedOr[A] = Either[FailedV2, A]
 
   def emailInterpreter(context: TemplatesContext): EmailComposerA ~> FailedOr =
     new (EmailComposerA ~> FailedOr) {
@@ -28,9 +29,9 @@ object Interpreters extends Logging {
               S3TemplateRepo
                 .getEmailTemplate(event.metadata.commManifest)
                 .run(context)
-                .leftMap(err => fail(err, event, TemplateDownloadFailed, "email"))
+                .leftMap(err => failEmail(err, event, TemplateDownloadFailed))
             } catch {
-              case NonFatal(e) => Left(failWithException(e, event, "email"))
+              case NonFatal(e) => Left(failEmailWithException(e, event))
             }
           case email.Render(event, template) =>
             try {
@@ -40,9 +41,9 @@ object Interpreters extends Logging {
                                                         event.templateData,
                                                         event.customerProfile,
                                                         event.recipientEmailAddress)
-                .leftMap(templateErrors => fail(templateErrors.reason, event, templateErrors.errorCode, "email"))
+                .leftMap(templateErrors => failEmail(templateErrors.reason, event, templateErrors.errorCode))
             } catch {
-              case NonFatal(e) => Left(failWithException(e, event, "email"))
+              case NonFatal(e) => Left(failEmailWithException(e, event))
             }
           case email.LookupSender(template, commType) =>
             Right(SenderLogic.chooseSender(template, commType))
@@ -59,9 +60,9 @@ object Interpreters extends Logging {
               S3TemplateRepo
                 .getSMSTemplate(event.metadata.commManifest)
                 .run(context)
-                .leftMap(err => fail(err, event, TemplateDownloadFailed, "SMS"))
+                .leftMap(err => failSMS(err, event, TemplateDownloadFailed))
             } catch {
-              case NonFatal(e) => Left(failWithException(e, event, "SMS"))
+              case NonFatal(e) => Left(failSMSWithException(e, event))
             }
           case sms.Render(event, template) =>
             try {
@@ -71,35 +72,40 @@ object Interpreters extends Logging {
                                                       event.templateData,
                                                       event.customerProfile,
                                                       event.recipientPhoneNumber)
-                .leftMap(templateErrors => fail(templateErrors.reason, event, templateErrors.errorCode, "SMS"))
+                .leftMap(templateErrors => failSMS(templateErrors.reason, event, templateErrors.errorCode))
             } catch {
-              case NonFatal(e) => Left(failWithException(e, event, "SMS"))
+              case NonFatal(e) => Left(failSMSWithException(e, event))
             }
         }
       }
     }
 
-  private def fail[A <: HasMetadata with HasInternalMetadata](reason: String,
-                                                              event: A,
-                                                              errorCode: ErrorCode,
-                                                              channel: String): Failed = {
-    warn(event)(s"Failed to compose $channel. Reason: $reason")
+  private def failEmail(reason: String, event: OrchestratedEmailV3, errorCode: ErrorCode): FailedV2 = {
+    warn(event)(s"Failed to compose email. Reason: $reason")
     buildFailedEvent(reason, event.metadata, event.internalMetadata, errorCode)
   }
 
-  private def failWithException[A <: HasMetadata with HasInternalMetadata](exception: Throwable,
-                                                                           event: A,
-                                                                           channel: String): Failed = {
-    warnE(event)(s"Failed to compose $channel because an unexpected exception occurred", exception)
+  private def failSMS(reason: String, event: OrchestratedSMSV2, errorCode: ErrorCode): FailedV2 = {
+    warn(event)(s"Failed to compose SMS. Reason: $reason")
+    buildFailedEvent(reason, event.metadata, event.internalMetadata, errorCode)
+  }
+
+  private def failEmailWithException(exception: Throwable, event: OrchestratedEmailV3): FailedV2 = {
+    warnT(event)(s"Failed to compose Email because an unexpected exception occurred", exception)
+    buildFailedEvent(s"Exception occurred ($exception)", event.metadata, event.internalMetadata, CompositionError)
+  }
+
+  private def failSMSWithException(exception: Throwable, event: OrchestratedSMSV2): FailedV2 = {
+    warnT(event)(s"Failed to compose SMS because an unexpected exception occurred", exception)
     buildFailedEvent(s"Exception occurred ($exception)", event.metadata, event.internalMetadata, CompositionError)
   }
 
   private def buildFailedEvent(reason: String,
-                               metadata: Metadata,
+                               metadata: MetadataV2,
                                internalMetadata: InternalMetadata,
-                               errorCode: ErrorCode): Failed =
-    Failed(
-      Metadata.fromSourceMetadata("comms-composer", metadata),
+                               errorCode: ErrorCode): FailedV2 =
+    FailedV2(
+      MetadataV2.fromSourceMetadata("comms-composer", metadata),
       internalMetadata,
       reason,
       errorCode

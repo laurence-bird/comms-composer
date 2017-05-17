@@ -3,6 +3,7 @@ package com.ovoenergy.comms.rendering
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
 import cats.Id
+import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model.{TemplateData, _}
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
@@ -20,54 +21,80 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
   val renderSMS = Rendering.renderSMS(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
-    val manifest = CommManifest(CommType.Service, "simple", "0.1")
+    val manifest = CommManifest(model.Service, "simple", "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("You paid £{{amount}}", requiredFields)
     )
 
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderSMS(manifest, template, data, profile, phoneNumber).right.value
+    val result = renderSMS(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("You paid £1.23")
   }
 
+  it should "render a simple template without a profile" in {
+    val manifest = CommManifest(model.Service, "simple", "0.1")
+    val template = SMSTemplate[Id](
+      textBody = HandlebarsTemplate("{{firstName}} you paid £{{amount}}", requiredFields)
+    )
+
+    val data = Map(
+      "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")),
+      "firstName" -> TemplateData(Coproduct[TemplateData.TD]("Barry"))
+    )
+
+    val result = renderSMS(manifest, template, data, None, phoneNumber).right.value
+    result.textBody should be("Barry you paid £1.23")
+  }
+
   it should "render a template that references fields in the customer profile" in {
-    val manifest = CommManifest(CommType.Service, "profile-fields", "0.1")
+    val manifest = CommManifest(model.Service, "profile-fields", "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("TEXT BODY {{profile.firstName}} {{amount}}", requiredFields)
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderSMS(manifest, template, data, profile, phoneNumber).right.value
+    val result = renderSMS(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY Joe 1.23")
   }
 
+  it should "fail to render a template that references fields in the customer profile without a profile being provided" in {
+    val manifest = CommManifest(model.Service, "profile-fields", "0.1")
+    val template = SMSTemplate[Id](
+      textBody = HandlebarsTemplate("TEXT BODY {{profile.firstName}} {{amount}}", requiredFields)
+    )
+    val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
+
+    val renderingErrors = renderSMS(manifest, template, data, None, phoneNumber).left.value
+    renderingErrors.reason should include("profile.firstName")
+  }
+
   it should "make the recipient phone number available to the SMS template as 'recipient.phoneNumber'" in {
-    val manifest = CommManifest(CommType.Service, "recipient-phone-number", "0.1")
+    val manifest = CommManifest(model.Service, "recipient-phone-number", "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("TEXT BODY {{recipient.phoneNumber}}", requiredFields)
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderSMS(manifest, template, data, profile, phoneNumber).right.value
+    val result = renderSMS(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY +447123123456")
   }
 
   it should "fail if the template references non-existent data" in {
-    val manifest = CommManifest(CommType.Service, "missing-data", "0.1")
+    val manifest = CommManifest(model.Service, "missing-data", "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("Hi {{profile.prefix}}. You bought a {{thing}}. The amount was £{{amount}}.",
                                     requiredFields)
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val renderingErrors = renderSMS(manifest, template, data, profile, phoneNumber).left.value
+    val renderingErrors = renderSMS(manifest, template, data, Some(profile), phoneNumber).left.value
     renderingErrors.reason should include("profile.prefix")
     renderingErrors.reason should include("thing")
   }
 
   it should "render a template that references fields in the system data" in {
-    val manifest = CommManifest(CommType.Service, "system-data-fields", "0.1")
+    val manifest = CommManifest(model.Service, "system-data-fields", "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("TEXT BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
                                     requiredFields)
@@ -75,8 +102,7 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
-    val result = Rendering.renderSMS(clock)(manifest, template, data, profile, phoneNumber).right.value
+    val result = Rendering.renderSMS(clock)(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY 31/12/2015 1.23")
   }
-
 }
