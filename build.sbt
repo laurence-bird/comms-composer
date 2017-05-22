@@ -32,6 +32,8 @@ libraryDependencies ++= Seq(
 
 enablePlugins(JavaServerAppPackaging, DockerPlugin)
 
+commsPackagingMaxMetaspaceSize := 128
+
 // Service tests
 enablePlugins(DockerComposePlugin)
 testTagsToExecute := "DockerComposeTag"
