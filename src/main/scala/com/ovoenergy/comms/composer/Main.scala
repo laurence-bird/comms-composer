@@ -2,8 +2,9 @@ package com.ovoenergy.comms.composer
 
 import java.util.concurrent.TimeUnit
 import java.time.{OffsetDateTime, Duration => JDuration}
+
 import akka.actor.ActorSystem
-import akka.kafka.ConsumerSettings
+import akka.kafka.{ConsumerSettings, ProducerSettings}
 import akka.stream.scaladsl.Sink
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import com.ovoenergy.comms.composer.aws.TemplateContextFactory
@@ -18,6 +19,9 @@ import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.slf4j.LoggerFactory
 import cats.instances.either._
+import com.ovoenergy.comms.akka.streams.Factory.{KafkaConfig, consumerSettings}
+import com.ovoenergy.kafka.serialization.avro.SchemaRegistryClientSettings
+import com.ovoenergy.comms.serialisation._
 // Implicits
 import com.ovoenergy.comms.serialisation.Codecs._
 import io.circe.generic.auto._
@@ -49,24 +53,54 @@ object Main extends App {
   implicit val scheduler = actorSystem.scheduler
 
   val kafkaBootstrapServers = config.getString("kafka.bootstrap.servers")
+  val aivenHosts = config.getString("kafka.aiven.hosts")
   val kafkaGroupId = config.getString("kafka.group.id")
 
-  val orchestratedEmailInput = {
+  private val schemaRegistryEndpoint = config.getString("kafka.aiven.schema_registry_url")
+  private val schemaRegistryUsername = config.getString("kafka.aiven.schema_registry_username")
+  private val schemaRegistryPassword = config.getString("kafka.aiven.schema_registry_password")
+  private val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email.v3")
+
+  log.info(s"""
+       |Using schema registry:
+       |endpoint: $schemaRegistryEndpoint
+       |username: $schemaRegistryUsername
+       |password: $schemaRegistryPassword
+       |
+       |
+       |
+     """.stripMargin)
+  val schemaRegistryClientSettings =
+    SchemaRegistryClientSettings(schemaRegistryEndpoint, schemaRegistryUsername, schemaRegistryPassword)
+
+  val aivenOrchestratedEmailInput = {
+    val kafkaConfig = KafkaConfig(kafkaGroupId, aivenHosts, orchestratedEmailTopic, None)
+    val settings = consumerSettings[OrchestratedEmailV3](schemaRegistryClientSettings, kafkaConfig)
+    ComposerGraph.Input(orchestratedEmailTopic, settings)
+  }
+  val legacyOrchestratedEmailInput = {
     val consumerSettings =
       ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedEmailV3])
         .withBootstrapServers(kafkaBootstrapServers)
         .withGroupId(kafkaGroupId)
-    val topic = config.getString("kafka.topics.orchestrated.email.v3")
-    ComposerGraph.Input(topic, consumerSettings)
+
+    ComposerGraph.Input(orchestratedEmailTopic, consumerSettings)
   }
 
-  val orchestratedSMSInput = {
+  val legacyOrchestratedSMSInput = {
     val consumerSettings =
       ConsumerSettings(actorSystem, new StringDeserializer, avroDeserializer[OrchestratedSMSV2])
         .withBootstrapServers(kafkaBootstrapServers)
         .withGroupId(kafkaGroupId)
     val topic = config.getString("kafka.topics.orchestrated.sms.v2")
     ComposerGraph.Input(topic, consumerSettings)
+  }
+
+  val aivenOrchestratedSMSInput = {
+    val topic = config.getString("kafka.topics.orchestrated.sms.v2")
+    val kafkaConfig = KafkaConfig(kafkaGroupId, aivenHosts, topic, None)
+    val settings = consumerSettings[OrchestratedSMSV2](schemaRegistryClientSettings, kafkaConfig)
+    ComposerGraph.Input(topic, settings)
   }
 
   val kafkaProducerRetryConfig = Retry.RetryConfig(
@@ -82,27 +116,29 @@ object Main extends App {
   // otherwise the tests randomly fail.
   lazy val composedEmailEventProducer = {
     Producer[ComposedEmailV2](
-      hosts = kafkaBootstrapServers,
+      hosts = aivenHosts,
       topic = config.getString("kafka.topics.composed.email.v2"),
-      serialiser = avroSerializer[ComposedEmailV2],
+      schemaRegistryClientSettings = schemaRegistryClientSettings,
       retryConfig = kafkaProducerRetryConfig
     )
   }
 
   lazy val composedSMSEventProducer = {
+    val composedSmsTopic = config.getString("kafka.topics.composed.sms.v2")
     Producer[ComposedSMSV2](
-      hosts = kafkaBootstrapServers,
-      topic = config.getString("kafka.topics.composed.sms.v2"),
-      serialiser = avroSerializer[ComposedSMSV2],
+      hosts = aivenHosts,
+      topic = composedSmsTopic,
+      schemaRegistryClientSettings = schemaRegistryClientSettings,
       retryConfig = kafkaProducerRetryConfig
     )
   }
 
   lazy val failedEventProducer = {
+    val failedTopic = config.getString("kafka.topics.failed.v2")
     Producer[FailedV2](
-      hosts = kafkaBootstrapServers,
-      topic = config.getString("kafka.topics.failed.v2"),
-      serialiser = avroSerializer[FailedV2],
+      hosts = aivenHosts,
+      topic = failedTopic,
+      schemaRegistryClientSettings = schemaRegistryClientSettings,
       retryConfig = kafkaProducerRetryConfig
     )
   }
@@ -130,12 +166,24 @@ object Main extends App {
     )
   }
 
-  val emailGraph = ComposerGraph.build(orchestratedEmailInput, composedEmailEventProducer, failedEventProducer) {
-    (orchestratedEmail: OrchestratedEmailV3) =>
-      emailComposer(orchestratedEmail)
+  val legacyEmailGraph =
+    ComposerGraph.build(legacyOrchestratedEmailInput, composedEmailEventProducer, failedEventProducer) {
+      (orchestratedEmail: OrchestratedEmailV3) =>
+        emailComposer(orchestratedEmail)
+    }
+
+  val aivenEmailGraph =
+    ComposerGraph.build(aivenOrchestratedEmailInput, composedEmailEventProducer, failedEventProducer) {
+      (orchestratedEmail: OrchestratedEmailV3) =>
+        emailComposer(orchestratedEmail)
+    }
+
+  val legacySmsGraph = ComposerGraph.build(legacyOrchestratedSMSInput, composedSMSEventProducer, failedEventProducer) {
+    (orchestratedSMS: OrchestratedSMSV2) =>
+      smsComposer(orchestratedSMS)
   }
 
-  val smsGraph = ComposerGraph.build(orchestratedSMSInput, composedSMSEventProducer, failedEventProducer) {
+  val aivenSmsGraph = ComposerGraph.build(aivenOrchestratedSMSInput, composedSMSEventProducer, failedEventProducer) {
     (orchestratedSMS: OrchestratedSMSV2) =>
       smsComposer(orchestratedSMS)
   }
@@ -148,8 +196,10 @@ object Main extends App {
   log.info("Creating graphs")
 
   Seq(
-    (emailGraph, "email"),
-    (smsGraph, "SMS")
+    (legacyEmailGraph, "Legacy email"),
+    (aivenEmailGraph, "Aiven email"),
+    (legacySmsGraph, "Legacy SMS"),
+    (aivenSmsGraph, "Aiven SMS")
   ) foreach {
     case (graph, description) =>
       val control = graph
@@ -164,4 +214,6 @@ object Main extends App {
         System.exit(1)
       }
   }
+
+  log.info("Composer now running")
 }
