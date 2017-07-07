@@ -1,5 +1,6 @@
 package com.ovoenergy.comms.composer
 
+import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 import java.time.{OffsetDateTime, Duration => JDuration}
 
@@ -19,6 +20,7 @@ import com.typesafe.config.ConfigFactory
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.slf4j.LoggerFactory
 import cats.instances.either._
+import com.ovoenergy.comms.akka.streams.Factory
 import com.ovoenergy.comms.akka.streams.Factory.{KafkaConfig, consumerSettings}
 import com.ovoenergy.kafka.serialization.avro.SchemaRegistryClientSettings
 import com.ovoenergy.comms.serialisation._
@@ -61,20 +63,26 @@ object Main extends App {
   private val schemaRegistryPassword = config.getString("kafka.aiven.schema_registry_password")
   private val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email.v3")
 
-  log.info(s"""
-       |Using schema registry:
-       |endpoint: $schemaRegistryEndpoint
-       |username: $schemaRegistryUsername
-       |password: $schemaRegistryPassword
-       |
-       |
-       |
-     """.stripMargin)
+  val kafkaSSLConfig = {
+    if (config.getBoolean("kafka.ssl.enabled")) {
+      Some(
+        Factory.SSLConfig(
+          keystoreLocation = Paths.get(config.getString("kafka.ssl.keystore.location")),
+          keystoreType = Factory.StoreType.PKCS12,
+          keystorePassword = config.getString("kafka.ssl.keystore.password"),
+          keyPassword = config.getString("kafka.ssl.key.password"),
+          truststoreLocation = Paths.get(config.getString("kafka.ssl.truststore.location")),
+          truststoreType = Factory.StoreType.JKS,
+          truststorePassword = config.getString("kafka.ssl.truststore.password")
+        ))
+    } else None
+  }
+
   val schemaRegistryClientSettings =
     SchemaRegistryClientSettings(schemaRegistryEndpoint, schemaRegistryUsername, schemaRegistryPassword)
 
   val aivenOrchestratedEmailInput = {
-    val kafkaConfig = KafkaConfig(kafkaGroupId, aivenHosts, orchestratedEmailTopic, None)
+    val kafkaConfig = KafkaConfig(kafkaGroupId, aivenHosts, orchestratedEmailTopic, kafkaSSLConfig)
     val settings = consumerSettings[OrchestratedEmailV3](schemaRegistryClientSettings, kafkaConfig)
     ComposerGraph.Input(orchestratedEmailTopic, settings)
   }
@@ -98,7 +106,7 @@ object Main extends App {
 
   val aivenOrchestratedSMSInput = {
     val topic = config.getString("kafka.topics.orchestrated.sms.v2")
-    val kafkaConfig = KafkaConfig(kafkaGroupId, aivenHosts, topic, None)
+    val kafkaConfig = KafkaConfig(kafkaGroupId, aivenHosts, topic, kafkaSSLConfig)
     val settings = consumerSettings[OrchestratedSMSV2](schemaRegistryClientSettings, kafkaConfig)
     ComposerGraph.Input(topic, settings)
   }
@@ -119,7 +127,8 @@ object Main extends App {
       hosts = aivenHosts,
       topic = config.getString("kafka.topics.composed.email.v2"),
       schemaRegistryClientSettings = schemaRegistryClientSettings,
-      retryConfig = kafkaProducerRetryConfig
+      retryConfig = kafkaProducerRetryConfig,
+      sslConfig = kafkaSSLConfig
     )
   }
 
@@ -129,7 +138,8 @@ object Main extends App {
       hosts = aivenHosts,
       topic = composedSmsTopic,
       schemaRegistryClientSettings = schemaRegistryClientSettings,
-      retryConfig = kafkaProducerRetryConfig
+      retryConfig = kafkaProducerRetryConfig,
+      sslConfig = kafkaSSLConfig
     )
   }
 
@@ -139,7 +149,8 @@ object Main extends App {
       hosts = aivenHosts,
       topic = failedTopic,
       schemaRegistryClientSettings = schemaRegistryClientSettings,
-      retryConfig = kafkaProducerRetryConfig
+      retryConfig = kafkaProducerRetryConfig,
+      sslConfig = kafkaSSLConfig
     )
   }
 

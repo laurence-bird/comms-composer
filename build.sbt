@@ -6,7 +6,7 @@ scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf
 
 // Make ScalaTest write test reports that CircleCI understands
 val testReportsDir = sys.env.getOrElse("CI_REPORTS", "target/reports")
-testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF", "-u", testReportsDir, "-l", "DockerComposeTag")
+testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF", "-u", testReportsDir)
 
 lazy val ServiceTest = config("servicetest") extend(Test)
 configs(ServiceTest)
