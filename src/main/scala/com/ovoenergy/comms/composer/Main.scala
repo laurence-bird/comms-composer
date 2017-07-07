@@ -58,9 +58,9 @@ object Main extends App {
   val aivenHosts = config.getString("kafka.aiven.hosts")
   val kafkaGroupId = config.getString("kafka.group.id")
 
-  private val schemaRegistryEndpoint = config.getString("kafka.aiven.schema_registry_url")
-  private val schemaRegistryUsername = config.getString("kafka.aiven.schema_registry_username")
-  private val schemaRegistryPassword = config.getString("kafka.aiven.schema_registry_password")
+  private val schemaRegistryEndpoint = config.getString("kafka.aiven.schema_registry.url")
+  private val schemaRegistryUsername = config.getString("kafka.aiven.schema_registry.username")
+  private val schemaRegistryPassword = config.getString("kafka.aiven.schema_registry.password")
   private val orchestratedEmailTopic = config.getString("kafka.topics.orchestrated.email.v3")
 
   val kafkaSSLConfig = {
@@ -119,10 +119,7 @@ object Main extends App {
     )
   )
 
-  // These outputs are only lazy for the sake of the service tests.
-  // We need to construct the producer after the topic has been created,
-  // otherwise the tests randomly fail.
-  lazy val composedEmailEventProducer = {
+  val composedEmailEventProducer = {
     Producer[ComposedEmailV2](
       hosts = aivenHosts,
       topic = config.getString("kafka.topics.composed.email.v2"),
@@ -132,7 +129,7 @@ object Main extends App {
     )
   }
 
-  lazy val composedSMSEventProducer = {
+  val composedSMSEventProducer = {
     val composedSmsTopic = config.getString("kafka.topics.composed.sms.v2")
     Producer[ComposedSMSV2](
       hosts = aivenHosts,
@@ -143,7 +140,7 @@ object Main extends App {
     )
   }
 
-  lazy val failedEventProducer = {
+  val failedEventProducer = {
     val failedTopic = config.getString("kafka.topics.failed.v2")
     Producer[FailedV2](
       hosts = aivenHosts,

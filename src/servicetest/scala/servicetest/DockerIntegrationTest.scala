@@ -27,7 +27,7 @@ import org.apache.commons.io.input.{Tailer, TailerListenerAdapter}
 import org.apache.kafka.common.protocol.Errors
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest._
-import servicetest.helpers.KafkaTesting
+import servicetest.helpers.LegacyKafkaTesting
 
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.concurrent.duration._
@@ -263,8 +263,8 @@ trait DockerIntegrationTest
       .withLinks(
         ContainerLink(legacyZookeeper, "legacyZookeeper"),
         ContainerLink(legacyKafka, "legacyKafka"),
-        ContainerLink(aivenZookeeper, "aivenZookeeper"),
         ContainerLink(aivenKafka, "aivenKafka"),
+        ContainerLink(aivenZookeeper, "aivenZookeeper"),
         ContainerLink(schemaRegistry, "schema-registry"),
         ContainerLink(fakes3ssl, "ovo-comms-templates.s3-eu-west-1.amazonaws.com")
       )

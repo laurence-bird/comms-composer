@@ -179,14 +179,12 @@ class AivenServiceTestIt
     val event: OrchestratedEmailV3 = orchestratedEmailEvent(commManifest, templateData)
     val future = orchestratedEmailProducer.send(new ProducerRecord(orchestratedEmailTopic, event))
     val result = Await.result(future, atMost = 5.seconds)
-    println(s"Sent Kafka message: Offset: ${result.offset()} , Topic ${result.topic()}")
   }
 
   private def sendOrchestratedSMSEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]): Unit = {
     val event = orchestratedSMSEvent(commManifest, templateData)
     val future = orchestratedSMSProducer.send(new ProducerRecord(orchestratedSMSTopic, event))
     val result = Await.result(future, atMost = 5.seconds)
-    println(s"Sent Kafka message: $result")
   }
 
   private def verifyComposedEmailEvent(): Unit = {

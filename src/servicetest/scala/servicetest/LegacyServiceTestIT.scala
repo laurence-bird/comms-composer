@@ -14,7 +14,7 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigRes
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.scalatest.{Failed => _, _}
-import servicetest.helpers.{AivenKafkaTesting, KafkaTesting}
+import servicetest.helpers.{AivenKafkaTesting, LegacyKafkaTesting}
 import shapeless.Coproduct
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -28,7 +28,7 @@ class LegacyServiceTestIT
     with OptionValues
     with BeforeAndAfterAll
     with DockerIntegrationTest
-    with KafkaTesting
+    with LegacyKafkaTesting
     with AivenKafkaTesting {
 
   behavior of "Composer service consuming from internal Kafka"
@@ -177,14 +177,12 @@ class LegacyServiceTestIT
     val event: OrchestratedEmailV3 = orchestratedEmailEvent(commManifest, templateData)
     val future = legacyOrchestratedEmailProducer.send(new ProducerRecord(orchestratedEmailTopic, event))
     val result = Await.result(future, atMost = 5.seconds)
-    println(s"Sent Kafka message: Offset: ${result.offset()} , Topic ${result.topic()}")
   }
 
   private def sendOrchestratedSMSEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]): Unit = {
     val event = orchestratedSMSEvent(commManifest, templateData)
     val future = legacyOrchestratedSMSProducer.send(new ProducerRecord(orchestratedSMSTopic, event))
-    val result = Await.result(future, atMost = 5.seconds)
-    println(s"Sent Kafka message: $result")
+    Await.result(future, atMost = 5.seconds)
   }
 
   private def verifyComposedEmailEvent(): Unit = {
