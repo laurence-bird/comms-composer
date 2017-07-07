@@ -12,14 +12,14 @@ import com.github.dockerjava.jaxrs.JerseyDockerCmdExecFactory
 import com.typesafe.config.Config
 import com.whisk.docker.impl.dockerjava.{Docker, DockerJavaExecutorFactory, DockerKitDockerJava}
 import com.whisk.docker.{
-  ContainerLink,
-  DockerCommandExecutor,
-  DockerContainer,
-  DockerContainerState,
-  DockerFactory,
-  DockerReadyChecker,
-  LogLineReceiver,
-  VolumeMapping
+ContainerLink,
+DockerCommandExecutor,
+DockerContainer,
+DockerContainerState,
+DockerFactory,
+DockerReadyChecker,
+LogLineReceiver,
+VolumeMapping
 }
 import kafka.admin.AdminUtils
 import kafka.utils.ZkUtils
@@ -48,9 +48,9 @@ case class LogOutputAndWaitForLineThatContains(str: String, containerName: Strin
       _ <- docker.withLogStreamLinesRequirement(id, withErr = true) { line =>
         val lineWithLineEnding = if (line.endsWith("\n")) line else line + "\n"
         Files.write(outputFile,
-                    lineWithLineEnding.getBytes(StandardCharsets.UTF_8),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND)
+          lineWithLineEnding.getBytes(StandardCharsets.UTF_8),
+          StandardOpenOption.CREATE,
+          StandardOpenOption.APPEND)
         val ready = line.contains(str)
         if (ready)
           println(s"Container [$containerName] is ready")
@@ -63,12 +63,13 @@ case class LogOutputAndWaitForLineThatContains(str: String, containerName: Strin
 }
 
 trait DockerIntegrationTest
-    extends DockerKitDockerJava
+  extends DockerKitDockerJava
     with KafkaTopics
     with ScalaFutures
     with TestSuite
     with BeforeAndAfterAll
-    with Eventually { self =>
+    with Eventually {
+  self =>
 
   implicit class RichDockerContainer(val dockerContainer: DockerContainer) {
 
@@ -88,9 +89,9 @@ trait DockerIntegrationTest
       val handleLine: String => Unit = (line: String) => {
         val lineWithLineEnding = if (line.endsWith("\n")) line else line + "\n"
         Files.write(outputFile,
-                    lineWithLineEnding.getBytes(StandardCharsets.UTF_8),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND)
+          lineWithLineEnding.getBytes(StandardCharsets.UTF_8),
+          StandardOpenOption.CREATE,
+          StandardOpenOption.APPEND)
       }
 
       val logLineReceiver = LogLineReceiver(withErr = true, f = handleLine)
@@ -135,7 +136,7 @@ trait DockerIntegrationTest
     new Docker(
       config = DefaultDockerClientConfig.createDefaultConfigBuilder().build(),
       factory = new JerseyDockerCmdExecFactory()
-      // increase connection pool size so we can tail the logs of all containers
+        // increase connection pool size so we can tail the logs of all containers
         .withMaxTotalConnections(100)
         .withMaxPerRouteConnections(20)
     )
@@ -150,7 +151,7 @@ trait DockerIntegrationTest
 
   val hostIpAddress = {
     import sys.process._
-     "./get_ip_address.sh".!!.trim
+    "./get_ip_address.sh".!!.trim
   }
 
   // TODO currently no way to set the memory limit on docker containers. Need to make a PR to add support to docker-it-scala. I've checked that the spotify client supports it.
@@ -242,6 +243,18 @@ trait DockerIntegrationTest
     .withLogWritingAndReadyChecker("Starting Proxy: 443", "fakes3ssl")
 
   lazy val composer = {
+    val envVars = List(
+      sys.env.get("AWS_ACCESS_KEY_ID").map(envVar => s"AWS_ACCESS_KEY_ID=$envVar"),
+      sys.env.get("AWS_ACCOUNT_ID").map(envVar => s"AWS_ACCOUNT_ID=$envVar"),
+      sys.env.get("AWS_SECRET_ACCESS_KEY").map(envVar => s"AWS_SECRET_ACCESS_KEY=$envVar"),
+      Some("ENV=LOCAL"),
+      Some("KAFKA_HOSTS_LEGACY=legacyKafka:29092"),
+      Some("KAFKA_HOSTS_AIVEN=aivenKafka:29093"),
+      Some("MAILGUN_API_KEY=my_super_secret_api_key"),
+      Some("DOCKER_COMPOSE=true"),
+      Some("SCHEMA_REGISTRY_URL=http://schema-registry:8081")
+    ).flatten
+
     val awsAccountId = sys.env.getOrElse(
       "AWS_ACCOUNT_ID",
       sys.error("Environment variable AWS_ACCOUNT_ID must be set in order to run the integration tests"))
@@ -255,14 +268,7 @@ trait DockerIntegrationTest
         ContainerLink(schemaRegistry, "schema-registry"),
         ContainerLink(fakes3ssl, "ovo-comms-templates.s3-eu-west-1.amazonaws.com")
       )
-      .withEnv(
-        "ENV=LOCAL",
-        "KAFKA_HOSTS_LEGACY=legacyKafka:29092",
-        "KAFKA_HOSTS_AIVEN=aivenKafka:29093",
-        "MAILGUN_API_KEY=my_super_secret_api_key",
-        "DOCKER_COMPOSE=true",
-        "SCHEMA_REGISTRY_URL=http://schema-registry:8081" //,
-      )
+      .withEnv(envVars: _*)
       .withVolumes(List(VolumeMapping(host = s"${sys.env("HOME")}/.aws", container = "/sbin/.aws"))) // share AWS creds so that credstash works
       .withLogWritingAndReadyChecker("Composer now running", "composer") // TODO check topics/consumers in the app and output a log when properly ready
   }
