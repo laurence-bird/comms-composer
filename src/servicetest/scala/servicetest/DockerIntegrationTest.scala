@@ -64,7 +64,6 @@ case class LogOutputAndWaitForLineThatContains(str: String, containerName: Strin
 
 trait DockerIntegrationTest
     extends DockerKitDockerJava
-    with KafkaTesting
     with KafkaTopics
     with ScalaFutures
     with TestSuite
