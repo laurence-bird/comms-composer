@@ -16,16 +16,10 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.scalatest.{Failed => _, _}
 import servicetest.helpers.AivenKafkaTesting
 import shapeless.Coproduct
-
-import scala.annotation.tailrec
-import scala.collection.JavaConverters._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-//Implicits
-import com.ovoenergy.comms.serialisation.Serialisation._
-
-class AivenServiceTestIt
+class AivenServiceTest
     extends FlatSpec
     with Matchers
     with OptionValues
@@ -46,11 +40,6 @@ class AivenServiceTestIt
     super.beforeAll()
     initialiseConsumers()
     uploadTemplateToS3()
-    Thread.sleep(30000L) // yeah this one will definitely fix everything
-  }
-
-  override def afterAll(): Unit = {
-    super.afterAll()
   }
 
   it should "compose an email" in {
@@ -185,6 +174,7 @@ class AivenServiceTestIt
     val event = orchestratedSMSEvent(commManifest, templateData)
     val future = orchestratedSMSProducer.send(new ProducerRecord(orchestratedSMSTopic, event))
     val result = Await.result(future, atMost = 5.seconds)
+    println(s"Sent Kafka message: $result")
   }
 
   private def verifyComposedEmailEvent(): Unit = {

@@ -3,73 +3,40 @@ package servicetest
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.time.LocalDateTime
-import java.util
 import java.util.concurrent.Executors
 
-import com.github.dockerjava.api.model.Image
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.jaxrs.JerseyDockerCmdExecFactory
-import com.typesafe.config.Config
 import com.whisk.docker.impl.dockerjava.{Docker, DockerJavaExecutorFactory, DockerKitDockerJava}
 import com.whisk.docker.{
-ContainerLink,
-DockerCommandExecutor,
-DockerContainer,
-DockerContainerState,
-DockerFactory,
-DockerReadyChecker,
-LogLineReceiver,
-VolumeMapping
+  ContainerLink,
+  DockerCommandExecutor,
+  DockerContainer,
+  DockerContainerState,
+  DockerFactory,
+  DockerReadyChecker,
+  LogLineReceiver,
+  VolumeMapping
 }
 import kafka.admin.AdminUtils
 import kafka.utils.ZkUtils
 import org.apache.commons.io.input.{Tailer, TailerListenerAdapter}
 import org.apache.kafka.common.protocol.Errors
-import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest._
-import servicetest.helpers.LegacyKafkaTesting
+import org.scalatest.concurrent.{Eventually, ScalaFutures}
 
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.concurrent.duration._
-import scala.util.Try
 import scala.collection.JavaConverters._
-
-case class LogOutputAndWaitForLineThatContains(str: String, containerName: String) extends DockerReadyChecker {
-
-  val outputDir = Paths.get("target", "integration-test-logs")
-  val outputFile = outputDir.resolve(s"$containerName-${LocalDateTime.now().toString}.log")
-
-  override def apply(container: DockerContainerState)(implicit docker: DockerCommandExecutor,
-                                                      ec: ExecutionContext): Future[Boolean] = {
-    println(s"Waiting for container [$containerName] to become ready. Logs are being streamed to $outputFile.")
-
-    for {
-      id <- container.id
-      _ <- docker.withLogStreamLinesRequirement(id, withErr = true) { line =>
-        val lineWithLineEnding = if (line.endsWith("\n")) line else line + "\n"
-        Files.write(outputFile,
-          lineWithLineEnding.getBytes(StandardCharsets.UTF_8),
-          StandardOpenOption.CREATE,
-          StandardOpenOption.APPEND)
-        val ready = line.contains(str)
-        if (ready)
-          println(s"Container [$containerName] is ready")
-        ready
-      }(docker, ec)
-    } yield {
-      true
-    }
-  }
-}
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.Try
 
 trait DockerIntegrationTest
-  extends DockerKitDockerJava
+    extends DockerKitDockerJava
     with KafkaTopics
     with ScalaFutures
     with TestSuite
     with BeforeAndAfterAll
-    with Eventually {
-  self =>
+    with Eventually { self =>
 
   implicit class RichDockerContainer(val dockerContainer: DockerContainer) {
 
@@ -89,9 +56,9 @@ trait DockerIntegrationTest
       val handleLine: String => Unit = (line: String) => {
         val lineWithLineEnding = if (line.endsWith("\n")) line else line + "\n"
         Files.write(outputFile,
-          lineWithLineEnding.getBytes(StandardCharsets.UTF_8),
-          StandardOpenOption.CREATE,
-          StandardOpenOption.APPEND)
+                    lineWithLineEnding.getBytes(StandardCharsets.UTF_8),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND)
       }
 
       val logLineReceiver = LogLineReceiver(withErr = true, f = handleLine)
@@ -136,7 +103,7 @@ trait DockerIntegrationTest
     new Docker(
       config = DefaultDockerClientConfig.createDefaultConfigBuilder().build(),
       factory = new JerseyDockerCmdExecFactory()
-        // increase connection pool size so we can tail the logs of all containers
+      // increase connection pool size so we can tail the logs of all containers
         .withMaxTotalConnections(100)
         .withMaxPerRouteConnections(20)
     )
@@ -231,7 +198,7 @@ trait DockerIntegrationTest
 
   lazy val fakes3 = DockerContainer("lphoward/fake-s3:latest", name = Some("fakes3"))
     .withPorts(4569 -> Some(4569))
-    .withReadyChecker(LogOutputAndWaitForLineThatContains("WEBrick::HTTPServer#start", "fakes3"))
+    .withLogWritingAndReadyChecker("WEBrick::HTTPServer#start", "fakes3")
 
   lazy val fakes3ssl = DockerContainer("cbachich/ssl-proxy:latest", name = Some("fakes3ssl"))
     .withPorts(443 -> Some(443))

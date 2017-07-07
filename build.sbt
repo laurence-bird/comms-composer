@@ -1,7 +1,7 @@
 name := "composer"
 organization := "com.ovoenergy"
 
-scalaVersion := "2.11.9"
+scalaVersion := "2.11.11"
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 // Make ScalaTest write test reports that CircleCI understands

@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 //Implicits
 import com.ovoenergy.comms.serialisation.Serialisation._
 
-class LegacyServiceTestIT
+class LegacyServiceTest
     extends FlatSpec
     with Matchers
     with OptionValues
@@ -44,7 +44,6 @@ class LegacyServiceTestIT
     super.beforeAll()
     initialiseConsumers()
     uploadTemplateToS3()
-    Thread.sleep(30000L) // yeah this one will definitely fix everything
   }
 
   override def afterAll(): Unit = {
