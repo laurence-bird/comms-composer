@@ -262,10 +262,7 @@ trait DockerIntegrationTest
 
     import scala.collection.JavaConverters._
     val logDir = Paths.get("target", "integration-test-logs")
-    if (Files.exists(logDir))
-      Files.list(logDir).iterator().asScala.foreach(Files.delete)
-    else
-      Files.createDirectories(logDir)
+    Files.createDirectories(logDir)
 
     println(
       "Starting a whole bunch of Docker containers. This could take a few minutes, but I promise it'll be worth the wait!")
