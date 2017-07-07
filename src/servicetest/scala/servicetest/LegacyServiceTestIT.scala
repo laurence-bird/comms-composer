@@ -16,16 +16,13 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.scalatest.{Failed => _, _}
 import servicetest.helpers.{AivenKafkaTesting, KafkaTesting}
 import shapeless.Coproduct
-
-import scala.annotation.tailrec
-import scala.collection.JavaConverters._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
 //Implicits
 import com.ovoenergy.comms.serialisation.Serialisation._
 
-class ServiceTestIT
+class LegacyServiceTestIT
     extends FlatSpec
     with Matchers
     with OptionValues
@@ -34,7 +31,7 @@ class ServiceTestIT
     with KafkaTesting
     with AivenKafkaTesting {
 
-  behavior of "composer service"
+  behavior of "Composer service consuming from internal Kafka"
 
   val config: Config =
     ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
