@@ -33,7 +33,7 @@ jobs:
        - run: sbt test
        - run: sbt servicetest:test
        - store_artifacts:
-           path: /home/circleci/composer/target/integration-test-logs
+           path: /home/circleci/comms-composer/target/integration-test-logs
        - deploy:
            name: Deploy if master branch
            command: |

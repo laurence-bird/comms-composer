@@ -150,8 +150,7 @@ trait DockerIntegrationTest
 
   val hostIpAddress = {
     import sys.process._
-    // "./get_ip_address.sh".!!.trim
-    "10.200.10.1" // TODO revert me
+     "./get_ip_address.sh".!!.trim
   }
 
   // TODO currently no way to set the memory limit on docker containers. Need to make a PR to add support to docker-it-scala. I've checked that the spotify client supports it.
