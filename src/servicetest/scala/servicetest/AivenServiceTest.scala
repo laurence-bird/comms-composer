@@ -42,6 +42,11 @@ class AivenServiceTest
     uploadTemplateToS3()
   }
 
+  override def afterAll() = {
+    closeAivenKafkaConnections()
+    super.afterAll()
+  }
+
   it should "compose an email" in {
     sendOrchestratedEmailEvent(CommManifest(
                                  model.Service,

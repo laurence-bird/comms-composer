@@ -47,7 +47,10 @@ class LegacyServiceTest
   }
 
   override def afterAll(): Unit = {
+    closeAivenKafkaConnections()
+    closeLegacyKafkaConnections()
     super.afterAll()
+
   }
 
   it should "compose an email" in {

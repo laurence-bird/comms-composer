@@ -70,6 +70,13 @@ trait AivenKafkaTesting extends KafkaTopics with Eventually {
     composedSMSConsumer.poll(250L)
   }
 
+  def closeAivenKafkaConnections() = {
+    composedEmailConsumer.close()
+    composedSMSConsumer.close()
+    orchestratedSMSProducer.close()
+    orchestratedEmailProducer.close()
+  }
+
   def sendEventAndTest[E](producer: KafkaProducer[String, E], topic: String, event: E)(f: => Unit): Unit = {
     sendEvent(producer, topic, event)
     eventually(PatienceConfiguration.Timeout(Span(15, Seconds))) {
