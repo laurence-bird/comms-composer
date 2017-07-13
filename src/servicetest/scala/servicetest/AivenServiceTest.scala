@@ -27,7 +27,7 @@ class AivenServiceTest
     with DockerIntegrationTest
     with AivenKafkaTesting {
 
-  behavior of "Composer service consuming from Aiven"
+  behavior of "Composer service"
 
   val config: Config =
     ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
@@ -43,7 +43,7 @@ class AivenServiceTest
   }
 
   override def afterAll() = {
-    closeAivenKafkaConnections()
+    closeKafkaConnections()
     super.afterAll()
   }
 

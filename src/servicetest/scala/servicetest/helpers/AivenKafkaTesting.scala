@@ -34,8 +34,8 @@ import com.ovoenergy.comms.serialisation.Serialisation._
 trait AivenKafkaTesting extends KafkaTopics with Eventually {
 
   val schemaRegistrySettings = SchemaRegistryClientSettings("http://localhost:8081", Authentication.None, 100, 1)
-  val aivenKafkaHosts = "localhost:29093"
-  val aivenZookeeperHosts = "localhost:32182"
+  val kafkaHosts = "localhost:29093"
+  val zookeeperHosts = "localhost:32182"
   val consumerGroup = Random.nextString(10)
 
   lazy val composedEmailConsumer = aivenConsumer[ComposedEmailV2](composedEmailTopic)
@@ -48,7 +48,7 @@ trait AivenKafkaTesting extends KafkaTopics with Eventually {
     val producer = KafkaProducer(
       KafkaProducerConf(new StringSerializer,
                         avroBinarySchemaIdSerializer[T](schemaRegistrySettings, isKey = false),
-                        aivenKafkaHosts)
+                        kafkaHosts)
     )
     producer
   }
@@ -57,7 +57,7 @@ trait AivenKafkaTesting extends KafkaTopics with Eventually {
     val consumer = KafkaConsumer(
       KafkaConsumerConf(new StringDeserializer,
                         avroBinarySchemaIdDeserializer[T](schemaRegistrySettings, isKey = false),
-                        aivenKafkaHosts,
+                        kafkaHosts,
                         consumerGroup)
     )
     consumer.assign(Seq(new TopicPartition(topic, 0)).asJava)
@@ -70,7 +70,7 @@ trait AivenKafkaTesting extends KafkaTopics with Eventually {
     composedSMSConsumer.poll(250L)
   }
 
-  def closeAivenKafkaConnections() = {
+  def closeKafkaConnections() = {
     composedEmailConsumer.close()
     composedSMSConsumer.close()
     orchestratedSMSProducer.close()
