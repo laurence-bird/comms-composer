@@ -32,8 +32,6 @@ class AivenServiceTest
   val config: Config =
     ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
 
-  val kafkaHosts = "localhost:29092"
-  val zkHosts = "localhost:32181"
   val s3Endpoint = "http://localhost:4569"
 
   override def beforeAll(): Unit = {
