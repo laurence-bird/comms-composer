@@ -4,7 +4,7 @@
 
 Composes a comms payload given information about what template to use and some customer-specific data to insert into that template.
 
-Only composes emails for now. At some point in the future it will support other channels, e.g. SMS, push.
+Currently composes email and SMS.  The intention is that as other flavours of comms are added (e.g. letters, push notifications), all the templating goes on here.
 
 ## Running it locally
 
