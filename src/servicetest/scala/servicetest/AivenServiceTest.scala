@@ -27,13 +27,11 @@ class AivenServiceTest
     with DockerIntegrationTest
     with AivenKafkaTesting {
 
-  behavior of "Composer service consuming from Aiven"
+  behavior of "Composer service"
 
   val config: Config =
     ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
 
-  val kafkaHosts = "localhost:29092"
-  val zkHosts = "localhost:32181"
   val s3Endpoint = "http://localhost:4569"
 
   override def beforeAll(): Unit = {
@@ -43,7 +41,7 @@ class AivenServiceTest
   }
 
   override def afterAll() = {
-    closeAivenKafkaConnections()
+    closeKafkaConnections()
     super.afterAll()
   }
 

@@ -15,9 +15,4 @@ trait KafkaTopics {
     failedTopic
   )
 
-  val legacyTopics = Seq(
-    orchestratedEmailTopic,
-    orchestratedSMSTopic
-  )
-
 }

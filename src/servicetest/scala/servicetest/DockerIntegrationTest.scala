@@ -123,36 +123,6 @@ trait DockerIntegrationTest
 
   // TODO currently no way to set the memory limit on docker containers. Need to make a PR to add support to docker-it-scala. I've checked that the spotify client supports it.
 
-  lazy val legacyZookeeper = DockerContainer("confluentinc/cp-zookeeper:3.1.1", name = Some("legacyZookeeper"))
-    .withPorts(32181 -> Some(32181))
-    .withEnv(
-      "ZOOKEEPER_CLIENT_PORT=32181",
-      "ZOOKEEPER_TICK_TIME=2000",
-      "KAFKA_HEAP_OPTS=-Xmx256M -Xms128M"
-    )
-    .withLogWritingAndReadyChecker("binding to port", "legacyZookeeper")
-
-  lazy val legacyKafka = {
-    // create each topic with 1 partition and replication factor 1
-    val createTopicsString = legacyTopics.map(t => s"$t:1:1").mkString(",")
-
-    val lastTopicName = legacyTopics.last
-
-    DockerContainer("wurstmeister/kafka:0.10.1.0", name = Some("legacyKafka"))
-      .withPorts(29092 -> Some(29092))
-      .withLinks(ContainerLink(legacyZookeeper, "legacyZookeeper"))
-      .withEnv(
-        "KAFKA_BROKER_ID=1",
-        "KAFKA_ZOOKEEPER_CONNECT=legacyZookeeper:32181",
-        "KAFKA_PORT=29092",
-        "KAFKA_ADVERTISED_PORT=29092",
-        s"KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://$hostIpAddress:29092",
-        "KAFKA_HEAP_OPTS=-Xmx256M -Xms128M",
-        s"KAFKA_CREATE_TOPICS=$createTopicsString"
-      )
-      .withLogWritingAndReadyChecker(s"""Created topic "$lastTopicName"""", "legacyKafka")
-  }
-
   lazy val aivenZookeeper = DockerContainer("confluentinc/cp-zookeeper:3.1.1", name = Some("aivenZookeeper"))
     .withPorts(32182 -> Some(32182))
     .withEnv(
@@ -228,8 +198,6 @@ trait DockerIntegrationTest
     DockerContainer(s"$awsAccountId.dkr.ecr.eu-west-1.amazonaws.com/composer:0.1-SNAPSHOT", name = Some("composer"))
       .withPorts(8080 -> Some(8080))
       .withLinks(
-        ContainerLink(legacyZookeeper, "legacyZookeeper"),
-        ContainerLink(legacyKafka, "legacyKafka"),
         ContainerLink(aivenKafka, "aivenKafka"),
         ContainerLink(aivenZookeeper, "aivenZookeeper"),
         ContainerLink(schemaRegistry, "schema-registry"),
@@ -241,9 +209,8 @@ trait DockerIntegrationTest
   }
 
   override def dockerContainers =
-    List(legacyZookeeper, legacyKafka, aivenZookeeper, aivenKafka, schemaRegistry, fakes3, fakes3ssl, composer)
+    List(aivenZookeeper, aivenKafka, schemaRegistry, fakes3, fakes3ssl, composer)
 
-  lazy val legacyZkUtils = ZkUtils("localhost:32181", 30000, 5000, isZkSecurityEnabled = false)
   lazy val aivenZkUtils = ZkUtils("localhost:32182", 30000, 5000, isZkSecurityEnabled = false)
 
   def checkKafkaTopic(topic: String, zkUtils: ZkUtils, description: String) = {
@@ -260,7 +227,6 @@ trait DockerIntegrationTest
   abstract override def beforeAll(): Unit = {
     super.beforeAll()
 
-    import scala.collection.JavaConverters._
     val logDir = Paths.get("target", "integration-test-logs")
     Files.createDirectories(logDir)
 
@@ -268,13 +234,11 @@ trait DockerIntegrationTest
       "Starting a whole bunch of Docker containers. This could take a few minutes, but I promise it'll be worth the wait!")
     startAllOrFail()
 
-    legacyTopics.foreach(t => checkKafkaTopic(t, legacyZkUtils, "legacy"))
     aivenTopics.foreach(t => checkKafkaTopic(t, aivenZkUtils, "Aiven"))
   }
 
   abstract override def afterAll(): Unit = {
     Try {
-      legacyZkUtils.close()
       aivenZkUtils.close()
     }
 
