@@ -41,7 +41,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.7",
   "io.logz.logback" % "logzio-logback-appender" % "1.0.11",
   "me.moocar" % "logback-gelf" % "0.2",
-  "com.ovoenergy" %% "comms-templates" % "0.6",
+  "com.ovoenergy" %% "comms-templates" % "0.8",
   "com.whisk"                  %% "docker-testkit-scalatest" % "0.9.3" % ServiceTest,
   "com.whisk"                  %% "docker-testkit-impl-docker-java" % "0.9.3" % ServiceTest,
   "org.scalatest" %% "scalatest" % "3.0.1" % Test,
