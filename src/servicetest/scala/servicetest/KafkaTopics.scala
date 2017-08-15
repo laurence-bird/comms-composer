@@ -10,6 +10,8 @@ trait KafkaTopics {
   val failedTopic = "comms.failed.v2"
 
   val aivenTopics = Seq(
+    orchestratedEmailTopic,
+    orchestratedSMSTopic,
     composedEmailTopic,
     composedSMSTopic,
     failedTopic

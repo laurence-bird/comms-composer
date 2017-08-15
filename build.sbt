@@ -23,14 +23,15 @@ resolvers := Resolver.withDefaultResolvers(
   )
 )
 
-val kafkaMessagesVersion = "1.25"
-val kafkaSerialisationVersion = "2.8"
+val kafkaMessagesVersion = "1.30"
+val kafkaSerialisationVersion = "2.18-SNAPSHOT"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream-kafka" % "0.16",
   "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion,
   "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaSerialisationVersion,
-  "com.ovoenergy" %% "comms-kafka-akka-helpers" % kafkaSerialisationVersion,
+  "com.ovoenergy" %% "comms-kafka-helpers"       % kafkaSerialisationVersion,
+
   "io.circe" %% "circe-generic" % "0.7.0",
   "com.github.jknack" % "handlebars" % "4.0.6",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57",
@@ -44,6 +45,7 @@ libraryDependencies ++= Seq(
   "com.ovoenergy" %% "comms-templates" % "0.8",
   "com.whisk"                  %% "docker-testkit-scalatest" % "0.9.3" % ServiceTest,
   "com.whisk"                  %% "docker-testkit-impl-docker-java" % "0.9.3" % ServiceTest,
+  "com.ovoenergy" %% "comms-kafka-test-helpers" % kafkaSerialisationVersion % ServiceTest,
   "org.scalatest" %% "scalatest" % "3.0.1" % Test,
   "org.apache.kafka" %% "kafka" % "0.10.2.1"  % Test exclude ("org.scalatest", "scalatest")
 )
