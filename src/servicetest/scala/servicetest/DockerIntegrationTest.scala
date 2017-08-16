@@ -185,9 +185,7 @@ trait DockerIntegrationTest
       sys.env.get("AWS_ACCOUNT_ID").map(envVar => s"AWS_ACCOUNT_ID=$envVar"),
       sys.env.get("AWS_SECRET_ACCESS_KEY").map(envVar => s"AWS_SECRET_ACCESS_KEY=$envVar"),
       Some("ENV=LOCAL"),
-      Some("KAFKA_HOSTS_LEGACY=legacyKafka:29092"),
       Some("KAFKA_HOSTS_AIVEN=aivenKafka:29093"),
-      Some("MAILGUN_API_KEY=my_super_secret_api_key"),
       Some("DOCKER_COMPOSE=true"),
       Some("SCHEMA_REGISTRY_URL=http://schema-registry:8081")
     ).flatten

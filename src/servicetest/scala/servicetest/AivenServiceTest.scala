@@ -17,10 +17,10 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.scalatest.{Failed => _, _}
 import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
 import shapeless.Coproduct
-
-import scala.concurrent.Await
 import scala.concurrent.duration._
-
+import com.ovoenergy.comms.model.email.OrchestratedEmailV3.schemaFor
+import com.ovoenergy.comms.serialisation.Codecs._
+import scala.language.reflectiveCalls
 class AivenServiceTest
     extends FlatSpec
     with Matchers
@@ -30,8 +30,7 @@ class AivenServiceTest
 
   behavior of "Composer service"
 
-  val config: Config =
-    ConfigFactory.load(ConfigParseOptions.defaults(), ConfigResolveOptions.defaults().setAllowUnresolved(true))
+  implicit val config: Config = ConfigFactory.load("servicetest.conf")
 
   val s3Endpoint = "http://localhost:4569"
 
@@ -151,7 +150,7 @@ class AivenServiceTest
     "SomeTriggerSource"
   )
 
-  val internalMetadata = InternalMetadata(UUID.randomUUID().toString)
+  val internalMetadata = InternalMetadata("yoooo")
   val recipientEmailAddress = "chris.birchall@ovoenergy.com"
   val recipientPhoneNumber = "+447123456789"
   val profile = CustomerProfile(

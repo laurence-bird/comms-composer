@@ -31,11 +31,9 @@ libraryDependencies ++= Seq(
   "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion,
   "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaSerialisationVersion,
   "com.ovoenergy" %% "comms-kafka-helpers"       % kafkaSerialisationVersion,
-
   "io.circe" %% "circe-generic" % "0.7.0",
   "com.github.jknack" % "handlebars" % "4.0.6",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57",
-  "net.cakesolutions" %% "scala-kafka-client" % "0.10.0.0" exclude("org.slf4j", "log4j-over-slf4j"),
   "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
   "org.typelevel" %% "cats-free" % "0.9.0",
   "com.chuusai" %% "shapeless" % "2.3.2",

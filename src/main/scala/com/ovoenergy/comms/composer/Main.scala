@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory
 import cats.instances.either._
 import com.ovoenergy.comms.helpers.Kafka
 // Implicits
+import scala.language.reflectiveCalls
 import com.ovoenergy.comms.serialisation.Codecs._
 import io.circe.generic.auto._
 import scala.concurrent.duration.FiniteDuration
@@ -52,21 +53,6 @@ object Main extends App {
   val smsInterpreter = Interpreters.smsInterpreter(templateContext)
   val smsComposer = (orchestratedSMS: OrchestratedSMSV2) =>
     SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
-
-  private def metadataToV2(metadata: Metadata): MetadataV2 = {
-    MetadataV2(
-      createdAt = OffsetDateTime.parse(metadata.createdAt).toInstant,
-      eventId = metadata.eventId,
-      traceToken = metadata.traceToken,
-      commManifest = metadata.commManifest,
-      deliverTo = Customer(metadata.customerId),
-      friendlyDescription = metadata.friendlyDescription,
-      source = metadata.source,
-      canary = metadata.canary,
-      sourceMetadata = metadata.sourceMetadata.map(metadataToV2),
-      triggerSource = metadata.triggerSource
-    )
-  }
 
   val emailGraph =
     ComposerGraph.build(Kafka.aiven.orchestratedEmail.v3, composedEmailEventProducer, failedEventProducer) {
