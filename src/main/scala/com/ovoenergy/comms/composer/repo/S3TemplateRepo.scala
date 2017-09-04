@@ -5,6 +5,7 @@ import cats.data.{ReaderT, ValidatedNel}
 import cats.data.Validated.{Invalid, Valid}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
+import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 import com.ovoenergy.comms.templates.{TemplatesContext, TemplatesRepo}
 
@@ -24,6 +25,14 @@ object S3TemplateRepo {
     wrangle(template, commManifest)
   }
 
+  def getPrintTemplate(commManifest: CommManifest) = ReaderT[ErrorOr, TemplatesContext, PrintTemplate[Id]] { context =>
+    val template = TemplatesRepo.getTemplate(context, commManifest).map(_.print)
+    wrangle(template, commManifest)
+  }
+
+  /*
+  Mapping the ValidatedNel to an Either[String, A]
+   */
   private def wrangle[A](validated: ValidatedNel[String, Option[A]], commManifest: CommManifest): ErrorOr[A] =
     validated match {
       case Invalid(errs) =>

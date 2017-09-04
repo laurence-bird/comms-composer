@@ -23,8 +23,8 @@ resolvers := Resolver.withDefaultResolvers(
   )
 )
 
-val kafkaMessagesVersion = "1.30"
-val kafkaSerialisationVersion = "2.19"
+val kafkaMessagesVersion = "1.31"
+val kafkaSerialisationVersion = "2.20"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream-kafka" % "0.16",
@@ -40,7 +40,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-classic" % "1.1.7",
   "io.logz.logback" % "logzio-logback-appender" % "1.0.11",
   "me.moocar" % "logback-gelf" % "0.2",
-  "com.ovoenergy" %% "comms-templates" % "0.8",
+  "com.ovoenergy" %% "comms-templates" % "0.9",
   "com.whisk"                  %% "docker-testkit-scalatest" % "0.9.3" % ServiceTest,
   "com.whisk"                  %% "docker-testkit-impl-docker-java" % "0.9.3" % ServiceTest,
   "com.ovoenergy" %% "comms-kafka-test-helpers" % kafkaSerialisationVersion % ServiceTest,
