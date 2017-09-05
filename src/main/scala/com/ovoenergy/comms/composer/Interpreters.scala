@@ -7,11 +7,12 @@ import com.ovoenergy.comms.composer.email.{EmailComposerA, SenderLogic}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email.OrchestratedEmailV3
 import com.ovoenergy.comms.model.sms.OrchestratedSMSV2
-import com.ovoenergy.comms.composer.rendering.Rendering
+import com.ovoenergy.comms.composer.rendering.{EmailRenderer, SMSRenderer}
 import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.composer.sms.SMSComposerA
 import com.ovoenergy.comms.templates.TemplatesContext
 import cats.syntax.either._
+
 import scala.util.control.NonFatal
 
 object Interpreters extends Logging {
@@ -33,7 +34,7 @@ object Interpreters extends Logging {
             }
           case email.Render(event, template) =>
             try {
-              Rendering
+              EmailRenderer
                 .renderEmail(Clock.systemDefaultZone())(event.metadata.commManifest,
                                                         template,
                                                         event.templateData,
@@ -64,7 +65,7 @@ object Interpreters extends Logging {
             }
           case sms.Render(event, template) =>
             try {
-              Rendering
+              SMSRenderer
                 .renderSMS(Clock.systemDefaultZone())(event.metadata.commManifest,
                                                       template,
                                                       event.templateData,

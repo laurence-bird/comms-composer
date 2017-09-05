@@ -6,7 +6,6 @@ import cats.Id
 import com.ovoenergy.comms.composer.email.RenderedEmail
 import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model.{TemplateData, _}
-import com.ovoenergy.comms.composer.rendering.Rendering.FailedToRender
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
 import org.scalatest._
@@ -34,7 +33,7 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     textBody = Some(HandlebarsTemplate("The amounts were", requiredFields))
   )
 
-  val renderEmail = Rendering.renderEmail(Clock.systemDefaultZone()) _
+  val renderEmail = EmailRenderer.renderEmail(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
     val manifest = CommManifest(model.Service, "simple", "0.1")
@@ -94,10 +93,14 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderEmail(manifest, template, data, Some(profile), emailAddress).right.value
-    result.subject should be("SUBJECT Joe 1.23")
-    result.htmlBody should be("HTML BODY Joe 1.23")
-    result.textBody should be(Some("TEXT BODY Joe 1.23"))
+    val resultEither: Either[FailedToRender, RenderedEmail] =
+      renderEmail(manifest, template, data, Some(profile), emailAddress)
+    resultEither shouldBe Right(
+      RenderedEmail(
+        "SUBJECT Joe 1.23",
+        "HTML BODY Joe 1.23",
+        Some("TEXT BODY Joe 1.23")
+      ))
   }
 
   it should "fail to render a template that references fields in the customer profile where no profile provided" in {
@@ -124,7 +127,7 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderEmail(manifest, template, data, Some(profile), emailAddress).right.value
+    val result: RenderedEmail = renderEmail(manifest, template, data, Some(profile), emailAddress).right.value
     result.htmlBody should be("HTML BODY joe.bloggs@ovoenergy.com")
   }
 
@@ -175,7 +178,7 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
-    val result = Rendering.renderEmail(clock)(manifest, template, data, Some(profile), emailAddress).right.value
+    val result = EmailRenderer.renderEmail(clock)(manifest, template, data, Some(profile), emailAddress).right.value
     result.subject should be("SUBJECT 31/12/2015 1.23")
     result.htmlBody should be("HTML BODY 31/12/2015 1.23")
     result.textBody should be(Some("TEXT BODY 31/12/2015 1.23"))

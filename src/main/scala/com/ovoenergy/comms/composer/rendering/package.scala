@@ -6,6 +6,8 @@ import com.ovoenergy.comms.model.ErrorCode
 
 package object rendering {
 
+  case class FailedToRender(reason: String, errorCode: ErrorCode)
+
   private[rendering] final case class Errors(missingKeys: Set[String],
                                              exceptions: Seq[Throwable],
                                              errorCode: ErrorCode) {
