@@ -10,7 +10,7 @@ import cats.{Apply, Id}
 import scala.collection.JavaConverters._
 import cats.implicits._
 
-object EmailRendering extends Rendering{
+object EmailRendering extends Rendering {
 
   def renderEmail(clock: Clock)(commManifest: CommManifest,
                                 template: EmailTemplate[Id],
@@ -21,15 +21,14 @@ object EmailRendering extends Rendering{
     val emailAddressMap: Map[String, AnyRef] = Map("recipient" -> Map("emailAddress" -> recipientEmailAddress).asJava)
 
     val customerProfileMap = customerProfile
-      .map{c =>
+      .map { c =>
         Map("profile" -> valueToMap(c).asJava)
       }
       .getOrElse(Map.empty[String, AnyRef])
 
-
     val context = buildHandlebarsContext(
       data,
-      combineJMaps(customerProfileMap.asJava, emailAddressMap.asJava),
+      customerProfileMap.asJava.combineWith(emailAddressMap.asJava),
       clock
     )
 

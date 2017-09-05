@@ -25,7 +25,7 @@ object SMSRendering extends Rendering {
 
     val context = buildHandlebarsContext(
       data,
-      combineJMaps(phoneNumberMap.asJava, customerProfileMap.asJava),
+      phoneNumberMap.asJava.combineWith(customerProfileMap.asJava),
       clock
     )
 

@@ -30,32 +30,29 @@ trait Rendering {
       case (key, templateData) => key -> extractValueFromTemplateData(templateData)
     }
 
-    val a = combineJMaps(dataAsStrings.asJava, customerData)
-    val b = systemVariables(clock)
-    println("System variables: " + b)
-    val result = combineJMaps(a, b)
-
-    println("Result: ****" + result)
-    result
+    dataAsStrings.asJava
+      .combineWith(customerData)
+      .combineWith(systemVariables(clock))
   }
 
-
-  def combineJMaps(jMap: JMap[String, AnyRef], jMap2: JMap[String, AnyRef]) = {
-    val result = new util.HashMap[String, AnyRef]()
-    result.putAll(jMap)
-    result.putAll(jMap2)
-    result
+  implicit class JMapExtensions(jMap1: JMap[String, AnyRef]) {
+    def combineWith(jMap2: JMap[String, AnyRef]) = {
+      val result = new util.HashMap[String, AnyRef]()
+      result.putAll(jMap1)
+      result.putAll(jMap2)
+      result
+    }
   }
 
   private def systemVariables(clock: Clock): JMap[String, AnyRef] = {
     val now = ZonedDateTime.now(clock)
-    val result: Map[String, AnyRef] = Map("system" ->
-      Map(
-        "year" -> now.getYear.toString,
-        "month" -> now.getMonth.getValue.toString,
-        "dayOfMonth" -> now.getDayOfMonth.toString
-      ).asJava
-    )
+    val result: Map[String, AnyRef] = Map(
+      "system" ->
+        Map(
+          "year" -> now.getYear.toString,
+          "month" -> now.getMonth.getValue.toString,
+          "dayOfMonth" -> now.getDayOfMonth.toString
+        ).asJava)
     result.asJava
   }
 
