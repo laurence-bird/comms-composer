@@ -10,7 +10,7 @@ import cats.{Apply, Id}
 import scala.collection.JavaConverters._
 import cats.implicits._
 
-object EmailRenderer extends Rendering{
+object EmailRendering extends Rendering{
 
   def renderEmail(clock: Clock)(commManifest: CommManifest,
                                 template: EmailTemplate[Id],

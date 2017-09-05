@@ -9,7 +9,7 @@ import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model.{CommManifest, CustomerProfile, TemplateData}
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 import scala.collection.JavaConverters._
-object SMSRenderer extends Rendering {
+object SMSRendering extends Rendering {
 
   def renderSMS(clock: Clock)(commManifest: CommManifest,
                               template: SMSTemplate[Id],

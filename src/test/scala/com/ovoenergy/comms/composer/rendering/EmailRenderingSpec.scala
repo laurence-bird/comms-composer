@@ -33,7 +33,7 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     textBody = Some(HandlebarsTemplate("The amounts were", requiredFields))
   )
 
-  val renderEmail = EmailRenderer.renderEmail(Clock.systemDefaultZone()) _
+  val renderEmail = EmailRendering.renderEmail(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
     val manifest = CommManifest(model.Service, "simple", "0.1")
@@ -178,7 +178,7 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
-    val result = EmailRenderer.renderEmail(clock)(manifest, template, data, Some(profile), emailAddress).right.value
+    val result = EmailRendering.renderEmail(clock)(manifest, template, data, Some(profile), emailAddress).right.value
     result.subject should be("SUBJECT 31/12/2015 1.23")
     result.htmlBody should be("HTML BODY 31/12/2015 1.23")
     result.textBody should be(Some("TEXT BODY 31/12/2015 1.23"))

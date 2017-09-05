@@ -7,7 +7,7 @@ import com.ovoenergy.comms.composer.email.{EmailComposerA, SenderLogic}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email.OrchestratedEmailV3
 import com.ovoenergy.comms.model.sms.OrchestratedSMSV2
-import com.ovoenergy.comms.composer.rendering.{EmailRenderer, SMSRenderer}
+import com.ovoenergy.comms.composer.rendering.{EmailRendering, SMSRendering}
 import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.composer.sms.SMSComposerA
 import com.ovoenergy.comms.templates.TemplatesContext
@@ -34,7 +34,7 @@ object Interpreters extends Logging {
             }
           case email.Render(event, template) =>
             try {
-              EmailRenderer
+              EmailRendering
                 .renderEmail(Clock.systemDefaultZone())(event.metadata.commManifest,
                                                         template,
                                                         event.templateData,
@@ -65,7 +65,7 @@ object Interpreters extends Logging {
             }
           case sms.Render(event, template) =>
             try {
-              SMSRenderer
+              SMSRendering
                 .renderSMS(Clock.systemDefaultZone())(event.metadata.commManifest,
                                                       template,
                                                       event.templateData,
