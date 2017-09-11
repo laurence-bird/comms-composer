@@ -1,16 +1,14 @@
 package com.ovoenergy.comms.composer.rendering
 
 import java.time.Clock
-import java.util
 
 import cats.implicits._
+import cats.kernel.Monoid
 import cats.{Apply, Id}
 import com.ovoenergy.comms.composer.print.RenderedPrintHtml
 import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model.{CommManifest, CustomerAddress, CustomerProfile, TemplateData}
 import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
-
-import scala.collection.JavaConverters._
 
 object PrintRendering extends Rendering {
 
@@ -20,15 +18,18 @@ object PrintRendering extends Rendering {
                                customerAddress: CustomerAddress,
                                customerProfile: Option[CustomerProfile]): Either[FailedToRender, RenderedPrintHtml] = {
 
-    val customerProfileMap: Map[String, AnyRef] = customerProfile
-      .map(profile => Map("profile" -> valueToMap(profile).asJava))
+    val customerProfileMap: Map[String, Map[String, String]] = customerProfile
+      .map(profile => Map("profile" -> valueToMap(profile)))
       .getOrElse(Map.empty)
 
-    val customerAddressMap: Map[String, AnyRef] = Map("address" -> valueToMap(customerAddress).asJava)
+    val customerAddressMap: Map[String, Map[String, String]] = Map("address" -> valueToMap(customerAddress))
+
+    val customerData: Map[String, Map[String, String]] =
+      Monoid.combine(customerProfileMap, customerAddressMap)
 
     val context = buildHandlebarsContext(
       data,
-      customerAddressMap.asJava.combineWith(customerProfileMap.asJava),
+      customerData,
       clock
     )
 

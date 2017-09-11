@@ -4,16 +4,20 @@ import java.time.{Clock, ZonedDateTime}
 import java.util
 import java.util.{Map => JMap}
 
+import cats.kernel.Monoid
 import com.ovoenergy.comms.model._
 import shapeless.{HList, Inl, Inr, LabelledGeneric}
 
 import scala.collection.JavaConverters._
 import shapeless.ops.hlist.ToTraversable
 
+import cats._
+import cats.implicits._
+
 trait Rendering {
 
   def buildHandlebarsContext(templateData: Map[String, TemplateData],
-                             customerData: JMap[String, AnyRef],
+                             customerData: Map[String, Map[String, String]],
                              clock: Clock): JMap[String, AnyRef] = {
 
     def extractValueFromTemplateData(templateData: TemplateData): AnyRef = {
@@ -30,30 +34,32 @@ trait Rendering {
       case (key, templateData) => key -> extractValueFromTemplateData(templateData)
     }
 
-    dataAsStrings.asJava
-      .combineWith(customerData)
-      .combineWith(systemVariables(clock))
+    dataAsStrings
+      .combineWith(customerData, systemVariables(clock))
   }
 
-  implicit class JMapExtensions(jMap1: JMap[String, AnyRef]) {
-    def combineWith(jMap2: JMap[String, AnyRef]) = {
+  implicit class JMapExtensions(map1: Map[String, AnyRef]) {
+    def combineWith(maps: Map[String, Map[String, String]]*): JMap[String, AnyRef] = {
       val result = new util.HashMap[String, AnyRef]()
-      result.putAll(jMap1)
-      result.putAll(jMap2)
+      result.putAll(map1.asJava)
+
+      maps.foreach { (map: Map[String, Map[String, String]]) =>
+        val jMap = map.mapValues(_.asJava)
+        result.putAll(jMap.asJava)
+      }
       result
     }
   }
 
-  private def systemVariables(clock: Clock): JMap[String, AnyRef] = {
+  private def systemVariables(clock: Clock): Map[String, Map[String, String]] = {
     val now = ZonedDateTime.now(clock)
-    val result: Map[String, AnyRef] = Map(
+    Map(
       "system" ->
         Map(
           "year" -> now.getYear.toString,
           "month" -> now.getMonth.getValue.toString,
           "dayOfMonth" -> now.getDayOfMonth.toString
-        ).asJava)
-    result.asJava
+        ))
   }
 
   /*

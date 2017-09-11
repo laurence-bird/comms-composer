@@ -4,11 +4,12 @@ import java.time.Clock
 
 import cats.Id
 import cats.implicits._
+import cats.kernel.Monoid
 import com.ovoenergy.comms.composer.sms.RenderedSMS
 import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model.{CommManifest, CustomerProfile, TemplateData}
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
-import scala.collection.JavaConverters._
+
 object SMSRendering extends Rendering {
 
   def renderSMS(clock: Clock)(commManifest: CommManifest,
@@ -17,15 +18,17 @@ object SMSRendering extends Rendering {
                               customerProfile: Option[CustomerProfile],
                               recipientPhoneNumber: String): Either[FailedToRender, RenderedSMS] = {
 
-    val customerProfileMap: Map[String, AnyRef] = customerProfile
-      .map(profile => Map("profile" -> valueToMap(profile).asJava))
+    val customerProfileMap = customerProfile
+      .map(profile => Map("profile" -> valueToMap(profile)))
       .getOrElse(Map.empty)
 
-    val phoneNumberMap: Map[String, AnyRef] = Map("recipient" -> Map("phoneNumber" -> recipientPhoneNumber).asJava)
+    val phoneNumberMap = Map("recipient" -> Map("phoneNumber" -> recipientPhoneNumber))
+
+    val customerData = Monoid.combine(customerProfileMap, phoneNumberMap)
 
     val context = buildHandlebarsContext(
       data,
-      phoneNumberMap.asJava.combineWith(customerProfileMap.asJava),
+      customerData,
       clock
     )
 

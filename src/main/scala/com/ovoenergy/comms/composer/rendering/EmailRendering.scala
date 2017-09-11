@@ -4,11 +4,12 @@ import java.time.Clock
 
 import com.ovoenergy.comms.composer.email.RenderedEmail
 import com.ovoenergy.comms.model
-import com.ovoenergy.comms.model.{CommManifest, CustomerAddress, CustomerProfile, TemplateData}
+import com.ovoenergy.comms.model.{CommManifest, CustomerProfile, TemplateData}
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 import cats.{Apply, Id}
-import scala.collection.JavaConverters._
+
 import cats.implicits._
+import cats.kernel.Monoid
 
 object EmailRendering extends Rendering {
 
@@ -18,17 +19,21 @@ object EmailRendering extends Rendering {
                                 customerProfile: Option[CustomerProfile],
                                 recipientEmailAddress: String): Either[FailedToRender, RenderedEmail] = {
 
-    val emailAddressMap: Map[String, AnyRef] = Map("recipient" -> Map("emailAddress" -> recipientEmailAddress).asJava)
+    val emailAddressMap: Map[String, Map[String, String]] = Map(
+      "recipient" -> Map("emailAddress" -> recipientEmailAddress))
 
-    val customerProfileMap = customerProfile
+    val customerProfileMap: Map[String, Map[String, String]] = customerProfile
       .map { c =>
-        Map("profile" -> valueToMap(c).asJava)
+        Map("profile" -> valueToMap(c))
       }
-      .getOrElse(Map.empty[String, AnyRef])
+      .getOrElse(Map.empty[String, Map[String, String]])
+
+    val customerData: Map[String, Map[String, String]] =
+      Monoid.combine(emailAddressMap, customerProfileMap)
 
     val context = buildHandlebarsContext(
       data,
-      customerProfileMap.asJava.combineWith(emailAddressMap.asJava),
+      customerData,
       clock
     )
 
