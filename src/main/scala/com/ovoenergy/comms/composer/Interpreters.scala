@@ -98,10 +98,10 @@ object Interpreters extends Logging {
             try {
               PrintRendering
                 .renderHtml(Clock.systemDefaultZone())(event.metadata.commManifest,
-                                                        template,
-                                                        event.templateData,
-                                                        event.address,
-                                                        event.customerProfile)
+                                                       template,
+                                                       event.templateData,
+                                                       event.address,
+                                                       event.customerProfile)
                 .leftMap(templateErrors => failPrint(templateErrors.reason, event, templateErrors.errorCode))
             } catch {
               case NonFatal(e) => Left(failPrintWithException(e, event))
@@ -110,7 +110,6 @@ object Interpreters extends Logging {
       }
     }
   }
-
 
   private def failEmail(reason: String, event: OrchestratedEmailV3, errorCode: ErrorCode): FailedV2 = {
     warn(event)(s"Failed to compose email. Reason: $reason")

@@ -50,34 +50,29 @@ object Main extends App {
 
   val composedEmailEventProducer = Kafka.aiven.composedEmail.v2.retryPublisher
   val composedSMSEventProducer = Kafka.aiven.composedSms.v2.retryPublisher
-  val composedPrintEventProducer = Kafka.aiven.composedPrint.v1.retryPublisher
+  val composedPrintEventProducer = null //Kafka.aiven.composedPrint.v1.retryPublisher
 
   val failedEventProducer = Kafka.aiven.failed.v2.retryPublisher
 
   val emailInterpreter: ~>[EmailComposerA, FailedOr] = Interpreters.emailInterpreter(templateContext)
-  val emailComposer = (orchestratedEmail: OrchestratedEmailV3) => EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
-  val emailGraph = ComposerGraph.build(
-    Kafka.aiven.orchestratedEmail.v3,
-    composedEmailEventProducer,
-    failedEventProducer)((orchestratedEmail: OrchestratedEmailV3) => emailComposer(orchestratedEmail))
-
+  val emailComposer = (orchestratedEmail: OrchestratedEmailV3) =>
+    EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
+  val emailGraph =
+    ComposerGraph.build(Kafka.aiven.orchestratedEmail.v3, composedEmailEventProducer, failedEventProducer)(
+      (orchestratedEmail: OrchestratedEmailV3) => emailComposer(orchestratedEmail))
 
   val smsInterpreter: ~>[SMSComposerA, FailedOr] = Interpreters.smsInterpreter(templateContext)
-  val smsComposer = (orchestratedSMS: OrchestratedSMSV2) => SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
-  val smsGraph = ComposerGraph.build(
-    Kafka.aiven.orchestratedSMS.v2,
-    composedSMSEventProducer,
-    failedEventProducer)((orchestratedSMS: OrchestratedSMSV2) => smsComposer(orchestratedSMS))
-
+  val smsComposer = (orchestratedSMS: OrchestratedSMSV2) =>
+    SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
+  val smsGraph = ComposerGraph.build(Kafka.aiven.orchestratedSMS.v2, composedSMSEventProducer, failedEventProducer)(
+    (orchestratedSMS: OrchestratedSMSV2) => smsComposer(orchestratedSMS))
 
   val printInterpreter: ~>[PrintComposerA, FailedOr] = Interpreters.printInterpreter(templateContext)
-  val printComposer = (orchestratedPrint: OrchestratedPrint) => PrintComposer.program(orchestratedPrint).foldMap(printInterpreter)
-  val printGraph = ComposerGraph.build(
-    Kafka.aiven.orchestratedPrint.v1,
-    composedPrintEventProducer,
-    failedEventProducer)((orchestratedPrint: OrchestratedPrint) => printComposer(orchestratedPrint))
-
-
+  val printComposer = (orchestratedPrint: OrchestratedPrint) =>
+    PrintComposer.program(orchestratedPrint).foldMap(printInterpreter)
+  val printGraph =
+    ComposerGraph.build(Kafka.aiven.orchestratedPrint.v1, composedPrintEventProducer, failedEventProducer)(
+      (orchestratedPrint: OrchestratedPrint) => printComposer(orchestratedPrint))
 
   val decider: Supervision.Decider = { e =>
     log.error("Stopping due to error", e)
