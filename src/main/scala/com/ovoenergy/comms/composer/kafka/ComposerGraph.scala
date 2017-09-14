@@ -4,16 +4,20 @@ import akka.Done
 import akka.actor.{ActorSystem, Scheduler}
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.scaladsl.Consumer.Control
-import akka.kafka.Subscriptions
+import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.Source
 import com.ovoenergy.comms.composer.Logging
+import com.ovoenergy.comms.composer.Main.log
 import com.ovoenergy.comms.model._
 import org.apache.kafka.clients.producer.RecordMetadata
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import com.ovoenergy.comms.helpers.Topic
+import com.ovoenergy.comms.serialisation.Retry
 import com.sksamuel.avro4s.{FromRecord, SchemaFor}
+
 import scala.reflect.ClassTag
 // Implicits
 import com.ovoenergy.comms.serialisation.Codecs._
@@ -52,8 +56,17 @@ object ComposerGraph extends Logging {
       Supervision.Stop
     }
 
+    val consumerSettings = topic.consumerSettings match {
+      case Left(l) => {
+        log.error(s"Failed to register consumer schema for ${topic.name}. Made ${l.attemptsMade} attempts",
+                  l.finalException)
+        sys.exit(1)
+      }
+      case Right(r) => r
+    }
+
     Consumer
-      .committableSource(topic.consumerSettings, Subscriptions.topics(topic.name))
+      .committableSource(consumerSettings, Subscriptions.topics(topic.name))
       .withAttributes(ActorAttributes.supervisionStrategy(decider))
       .mapAsync(1) { msg =>
         val future: Future[_] = msg.record.value match {

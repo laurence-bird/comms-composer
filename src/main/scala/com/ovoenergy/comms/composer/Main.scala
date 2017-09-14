@@ -10,9 +10,9 @@ import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import com.ovoenergy.comms.composer.aws.TemplateContextFactory
 import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA}
 import com.ovoenergy.comms.composer.kafka.ComposerGraph
-import com.ovoenergy.comms.model.email.OrchestratedEmailV3
+import com.ovoenergy.comms.model.email.{ComposedEmailV2, OrchestratedEmailV3}
 import com.ovoenergy.comms.model.sms.{ComposedSMSV2, OrchestratedSMSV2}
-import com.ovoenergy.comms.model.{Customer, Metadata, MetadataV2}
+import com.ovoenergy.comms.model.{Customer, FailedV2, Metadata, MetadataV2}
 import com.ovoenergy.comms.composer.sms.{SMSComposer, SMSComposerA}
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
@@ -22,6 +22,10 @@ import com.ovoenergy.comms.composer.Interpreters.FailedOr
 import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA}
 import com.ovoenergy.comms.helpers.Kafka
 import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
+import com.ovoenergy.comms.serialisation.Retry
+import org.apache.kafka.clients.producer.RecordMetadata
+
+import scala.concurrent.Future
 // Implicits
 import scala.language.reflectiveCalls
 import com.ovoenergy.comms.serialisation.Codecs._
@@ -48,11 +52,22 @@ object Main extends App {
   implicit val executionContext = actorSystem.dispatcher
   implicit val scheduler = actorSystem.scheduler
 
-  val composedEmailEventProducer = Kafka.aiven.composedEmail.v2.retryPublisher
-  val composedSMSEventProducer = Kafka.aiven.composedSms.v2.retryPublisher
-  val composedPrintEventProducer = null //Kafka.aiven.composedPrint.v1.retryPublisher
+  def exitOnFailure[T](either: Either[Retry.Failed, T], errorMessage: String): T = either match {
+    case Left(l) => {
+      log.error(s"Failed to register $errorMessage schema. Made ${l.attemptsMade} attempts", l.finalException)
+      sys.exit(1)
+    }
+    case Right(r) => r
+  }
 
-  val failedEventProducer = Kafka.aiven.failed.v2.retryPublisher
+  val composedEmailEventProducer =
+    exitOnFailure(Kafka.aiven.composedEmail.v2.retryPublisher, "composed email")
+  val composedSMSEventProducer =
+    exitOnFailure(Kafka.aiven.composedSms.v2.retryPublisher, "composed sms")
+  val composedPrintEventProducer =
+    exitOnFailure(Kafka.aiven.composedPrint.v1.retryPublisher, "composed print")
+
+  val failedEventProducer = exitOnFailure(Kafka.aiven.failed.v2.retryPublisher, "failed")
 
   val emailInterpreter: ~>[EmailComposerA, FailedOr] = Interpreters.emailInterpreter(templateContext)
   val emailComposer = (orchestratedEmail: OrchestratedEmailV3) =>

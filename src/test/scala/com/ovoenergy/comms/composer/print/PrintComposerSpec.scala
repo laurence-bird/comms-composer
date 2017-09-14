@@ -35,8 +35,7 @@ class PrintComposerSpec extends FlatSpec with Matchers {
     }
   }
 
-
-  val incomingEvent = OrchestratedPrint (
+  val incomingEvent = OrchestratedPrint(
     metadata = MetadataV2(
       createdAt = Instant.now,
       eventId = UUID.randomUUID().toString,
@@ -58,6 +57,6 @@ class PrintComposerSpec extends FlatSpec with Matchers {
 
   it should "compose an email" in {
     val event: ComposedPrint = PrintComposer.program(incomingEvent).foldMap(testInterpreter)
-    event.pdfIdentifier should be ("<h2>Thanks for your payment of £1.23</h2>")
+    event.pdfIdentifier should be("<h2>Thanks for your payment of £1.23</h2>")
   }
 }
