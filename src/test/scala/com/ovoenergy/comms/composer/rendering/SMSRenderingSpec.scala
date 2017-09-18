@@ -18,7 +18,7 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
   val phoneNumber = "+447123123456"
   val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
-  val renderSMS = Rendering.renderSMS(Clock.systemDefaultZone()) _
+  val renderSMS = SMSRendering.renderSMS(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
     val manifest = CommManifest(model.Service, "simple", "0.1")
@@ -102,7 +102,7 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
-    val result = Rendering.renderSMS(clock)(manifest, template, data, Some(profile), phoneNumber).right.value
+    val result = SMSRendering.renderSMS(clock)(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY 31/12/2015 1.23")
   }
 }
