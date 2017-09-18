@@ -99,7 +99,6 @@ object Main extends App {
   Seq(
     (emailGraph, "Email Composition"),
     (smsGraph, "SMS Composition"),
-    (printGraph, "Print Composition")
   ) foreach {
     case (graph, description) =>
       val control = graph
