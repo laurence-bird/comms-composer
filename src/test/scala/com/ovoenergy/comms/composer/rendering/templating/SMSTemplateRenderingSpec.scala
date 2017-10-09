@@ -1,4 +1,4 @@
-package com.ovoenergy.comms.composer.rendering
+package com.ovoenergy.comms.composer.rendering.templating
 
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
@@ -10,7 +10,7 @@ import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplate
 import org.scalatest._
 import shapeless.Coproduct
 
-class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
+class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   behavior of "rendering an SMS"
 
@@ -18,7 +18,7 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
   val phoneNumber = "+447123123456"
   val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
-  val renderSMS = SMSRendering.renderSMS(Clock.systemDefaultZone()) _
+  val renderSMS = SMSTemplateRendering.renderSMS(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
     val manifest = CommManifest(model.Service, "simple", "0.1")
@@ -102,7 +102,8 @@ class SMSRenderingSpec extends FlatSpec with Matchers with EitherValues {
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
-    val result = SMSRendering.renderSMS(clock)(manifest, template, data, Some(profile), phoneNumber).right.value
+    val result =
+      SMSTemplateRendering.renderSMS(clock)(manifest, template, data, Some(profile), phoneNumber).right.value
     result.textBody should be("TEXT BODY 31/12/2015 1.23")
   }
 }

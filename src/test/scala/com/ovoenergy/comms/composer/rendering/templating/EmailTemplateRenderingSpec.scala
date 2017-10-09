@@ -1,9 +1,10 @@
-package com.ovoenergy.comms.composer.rendering
+package com.ovoenergy.comms.composer.rendering.templating
 
 import java.time.{Clock, OffsetDateTime, ZoneId}
 
 import cats.Id
 import com.ovoenergy.comms.composer.email.RenderedEmail
+import com.ovoenergy.comms.composer.rendering.FailedToRender
 import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model.{TemplateData, _}
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
@@ -11,7 +12,7 @@ import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplate
 import org.scalatest._
 import shapeless.Coproduct
 
-class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
+class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues {
 
   behavior of "rendering an email"
 
@@ -33,7 +34,7 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     textBody = Some(HandlebarsTemplate("The amounts were", requiredFields))
   )
 
-  val renderEmail = EmailRendering.renderEmail(Clock.systemDefaultZone()) _
+  val renderEmail = EmailTemplateRendering.renderEmail(Clock.systemDefaultZone()) _
 
   it should "render a simple template" in {
     val manifest = CommManifest(model.Service, "simple", "0.1")
@@ -178,7 +179,8 @@ class EmailRenderingSpec extends FlatSpec with Matchers with EitherValues {
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
-    val result = EmailRendering.renderEmail(clock)(manifest, template, data, Some(profile), emailAddress).right.value
+    val result =
+      EmailTemplateRendering.renderEmail(clock)(manifest, template, data, Some(profile), emailAddress).right.value
     result.subject should be("SUBJECT 31/12/2015 1.23")
     result.htmlBody should be("HTML BODY 31/12/2015 1.23")
     result.textBody should be(Some("TEXT BODY 31/12/2015 1.23"))

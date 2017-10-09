@@ -5,7 +5,7 @@ Description: ECS task role and other resources for the comms composer service
 Parameters:
   Environment:
     Type: String
-    AllowedValues: [ UAT, PRD ]
+    AllowedValues: [ uat, prd ]
 
 Resources:
 
@@ -34,6 +34,16 @@ Resources:
               Resource:
                 - 'arn:aws:s3:::ovo-comms-templates'
                 - 'arn:aws:s3:::ovo-comms-templates/*'
+        -
+          PolicyName: write-pdf-bucket
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 's3:Put*'
+              Resource:
+                - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs'
+                - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs/*'
         -
           PolicyName: read-credstash
           PolicyDocument:

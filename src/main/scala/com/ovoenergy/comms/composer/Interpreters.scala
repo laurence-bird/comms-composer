@@ -1,150 +1,15 @@
 package com.ovoenergy.comms.composer
 
-import java.time.Clock
-
-import cats.~>
-import com.ovoenergy.comms.composer.email.{EmailComposerA, SenderLogic}
-import com.ovoenergy.comms.composer.print.PrintComposerA
 import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.model.email.OrchestratedEmailV3
-import com.ovoenergy.comms.model.sms.OrchestratedSMSV2
-import com.ovoenergy.comms.composer.rendering.{EmailRendering, PrintRendering, SMSRendering}
-import com.ovoenergy.comms.composer.repo.S3TemplateRepo
-import com.ovoenergy.comms.composer.sms.SMSComposerA
-import com.ovoenergy.comms.templates.TemplatesContext
-import cats.syntax.either._
-import com.ovoenergy.comms.model.print.OrchestratedPrint
-
-import scala.util.control.NonFatal
 
 object Interpreters extends Logging {
 
   type FailedOr[A] = Either[FailedV2, A]
 
-  def emailInterpreter(context: TemplatesContext): EmailComposerA ~> FailedOr =
-    new (EmailComposerA ~> FailedOr) {
-      override def apply[A](op: EmailComposerA[A]): FailedOr[A] = {
-        op match {
-          case email.RetrieveTemplate(event) =>
-            try {
-              S3TemplateRepo
-                .getEmailTemplate(event.metadata.commManifest)
-                .run(context)
-                .leftMap(err => failEmail(err, event, TemplateDownloadFailed))
-            } catch {
-              case NonFatal(e) => Left(failEmailWithException(e, event))
-            }
-          case email.Render(event, template) =>
-            try {
-              EmailRendering
-                .renderEmail(Clock.systemDefaultZone())(event.metadata.commManifest,
-                                                        template,
-                                                        event.templateData,
-                                                        event.customerProfile,
-                                                        event.recipientEmailAddress)
-                .leftMap(templateErrors => failEmail(templateErrors.reason, event, templateErrors.errorCode))
-            } catch {
-              case NonFatal(e) => Left(failEmailWithException(e, event))
-            }
-          case email.LookupSender(template, commType) =>
-            Right(SenderLogic.chooseSender(template, commType))
-        }
-      }
-    }
-
-  def smsInterpreter(context: TemplatesContext): SMSComposerA ~> FailedOr =
-    new (SMSComposerA ~> FailedOr) {
-      override def apply[A](op: SMSComposerA[A]): FailedOr[A] = {
-        op match {
-          case sms.RetrieveTemplate(event) =>
-            try {
-              S3TemplateRepo
-                .getSMSTemplate(event.metadata.commManifest)
-                .run(context)
-                .leftMap(err => failSMS(err, event, TemplateDownloadFailed))
-            } catch {
-              case NonFatal(e) => Left(failSMSWithException(e, event))
-            }
-          case sms.Render(event, template) =>
-            try {
-              SMSRendering
-                .renderSMS(Clock.systemDefaultZone())(event.metadata.commManifest,
-                                                      template,
-                                                      event.templateData,
-                                                      event.customerProfile,
-                                                      event.recipientPhoneNumber)
-                .leftMap(templateErrors => failSMS(templateErrors.reason, event, templateErrors.errorCode))
-            } catch {
-              case NonFatal(e) => Left(failSMSWithException(e, event))
-            }
-        }
-      }
-    }
-
-  def printInterpreter(context: TemplatesContext): PrintComposerA ~> FailedOr = {
-    new (PrintComposerA ~> FailedOr) {
-      override def apply[A](op: PrintComposerA[A]): FailedOr[A] = {
-        op match {
-          case print.RetrieveTemplate(event) =>
-            try {
-              S3TemplateRepo
-                .getPrintTemplate(event.metadata.commManifest)
-                .run(context)
-                .leftMap(err => failPrint(err, event, TemplateDownloadFailed))
-            } catch {
-              case NonFatal(e) => Left(failPrintWithException(e, event))
-            }
-          case print.Render(event, template) =>
-            try {
-              PrintRendering
-                .renderHtml(Clock.systemDefaultZone())(event.metadata.commManifest,
-                                                       template,
-                                                       event.templateData,
-                                                       event.address,
-                                                       event.customerProfile)
-                .leftMap(templateErrors => failPrint(templateErrors.reason, event, templateErrors.errorCode))
-            } catch {
-              case NonFatal(e) => Left(failPrintWithException(e, event))
-            }
-        }
-      }
-    }
-  }
-
-  private def failEmail(reason: String, event: OrchestratedEmailV3, errorCode: ErrorCode): FailedV2 = {
-    warn(event)(s"Failed to compose email. Reason: $reason")
-    buildFailedEvent(reason, event.metadata, event.internalMetadata, errorCode)
-  }
-
-  private def failSMS(reason: String, event: OrchestratedSMSV2, errorCode: ErrorCode): FailedV2 = {
-    warn(event)(s"Failed to compose SMS. Reason: $reason")
-    buildFailedEvent(reason, event.metadata, event.internalMetadata, errorCode)
-  }
-
-  private def failPrint(reason: String, event: OrchestratedPrint, errorCode: ErrorCode): FailedV2 = {
-    warn(event)(s"Failed to compose print. Reason: $reason")
-    buildFailedEvent(reason, event.metadata, event.internalMetadata, errorCode)
-  }
-
-  private def failEmailWithException(exception: Throwable, event: OrchestratedEmailV3): FailedV2 = {
-    warnT(event)(s"Failed to compose Email because an unexpected exception occurred", exception)
-    buildFailedEvent(s"Exception occurred ($exception)", event.metadata, event.internalMetadata, CompositionError)
-  }
-
-  private def failSMSWithException(exception: Throwable, event: OrchestratedSMSV2): FailedV2 = {
-    warnT(event)(s"Failed to compose SMS because an unexpected exception occurred", exception)
-    buildFailedEvent(s"Exception occurred ($exception)", event.metadata, event.internalMetadata, CompositionError)
-  }
-
-  private def failPrintWithException(exception: Throwable, event: OrchestratedPrint): FailedV2 = {
-    warnT(event)(s"Failed to compose print because an unexpected exception occurred", exception)
-    buildFailedEvent(s"Exception occurred ($exception)", event.metadata, event.internalMetadata, CompositionError)
-  }
-
-  private def buildFailedEvent(reason: String,
-                               metadata: MetadataV2,
-                               internalMetadata: InternalMetadata,
-                               errorCode: ErrorCode): FailedV2 =
+  def buildFailedEvent(reason: String,
+                       metadata: MetadataV2,
+                       internalMetadata: InternalMetadata,
+                       errorCode: ErrorCode): FailedV2 =
     FailedV2(
       MetadataV2.fromSourceMetadata("comms-composer", metadata),
       internalMetadata,

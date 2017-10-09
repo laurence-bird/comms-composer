@@ -132,6 +132,10 @@ trait DockerIntegrationTest
     )
     .withLogWritingAndReadyChecker("binding to port", "aivenZookeeper")
 
+  lazy val mockServers = DockerContainer("jamesdbloom/mockserver", name = Some("mockservers"))
+    .withPorts(1080 -> Some(1080))
+    .withLogWritingAndReadyChecker("MockServer proxy started", "mockservers")
+
   lazy val aivenKafka = {
     // create each topic with 1 partition and replication factor 1
     val createTopicsString = aivenTopics.map(t => s"$t:1:1").mkString(",")
@@ -187,7 +191,8 @@ trait DockerIntegrationTest
       Some("ENV=LOCAL"),
       Some("KAFKA_HOSTS_AIVEN=aivenKafka:29093"),
       Some("DOCKER_COMPOSE=true"),
-      Some("SCHEMA_REGISTRY_URL=http://schema-registry:8081")
+      Some("SCHEMA_REGISTRY_URL=http://schema-registry:8081"),
+      Some("DOCRAPTOR_URL=http://docraptor:1080")
     ).flatten
 
     val awsAccountId = sys.env.getOrElse(
@@ -199,7 +204,9 @@ trait DockerIntegrationTest
         ContainerLink(aivenKafka, "aivenKafka"),
         ContainerLink(aivenZookeeper, "aivenZookeeper"),
         ContainerLink(schemaRegistry, "schema-registry"),
-        ContainerLink(fakes3ssl, "ovo-comms-templates.s3-eu-west-1.amazonaws.com")
+        ContainerLink(mockServers, "docraptor"),
+        ContainerLink(fakes3ssl, "ovo-comms-templates.s3-eu-west-1.amazonaws.com"),
+        ContainerLink(fakes3ssl, "dev-ovo-comms-pdfs.s3-eu-west-1.amazonaws.com")
       )
       .withEnv(envVars: _*)
       .withVolumes(List(VolumeMapping(host = s"${sys.env("HOME")}/.aws", container = "/sbin/.aws"))) // share AWS creds so that credstash works
@@ -207,7 +214,7 @@ trait DockerIntegrationTest
   }
 
   override def dockerContainers =
-    List(aivenZookeeper, aivenKafka, schemaRegistry, fakes3, fakes3ssl, composer)
+    List(aivenZookeeper, aivenKafka, schemaRegistry, fakes3, fakes3ssl, composer, mockServers)
 
   lazy val aivenZkUtils = ZkUtils("localhost:32182", 30000, 5000, isZkSecurityEnabled = false)
 

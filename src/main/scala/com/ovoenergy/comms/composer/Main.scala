@@ -7,25 +7,30 @@ import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
-import com.ovoenergy.comms.composer.aws.TemplateContextFactory
-import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA}
+import com.ovoenergy.comms.composer.aws.{AwsClientProvider, TemplateContextFactory}
+import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA, EmailInterpreter}
 import com.ovoenergy.comms.composer.kafka.ComposerGraph
 import com.ovoenergy.comms.model.email.{ComposedEmailV2, OrchestratedEmailV3}
 import com.ovoenergy.comms.model.sms.{ComposedSMSV2, OrchestratedSMSV2}
 import com.ovoenergy.comms.model.{Customer, FailedV2, Metadata, MetadataV2}
-import com.ovoenergy.comms.composer.sms.{SMSComposer, SMSComposerA}
+import com.ovoenergy.comms.composer.sms.{SMSComposer, SMSComposerA, SMSInterpreter}
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 import cats.instances.either._
 import cats.~>
+import com.amazonaws.regions.Regions
 import com.ovoenergy.comms.composer.Interpreters.FailedOr
-import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA}
+import com.ovoenergy.comms.composer.http.HttpClient
+import com.ovoenergy.comms.composer.http.Retry.RetryConfig
+import com.ovoenergy.comms.composer.print.PrintInterpreter.PrintContext
+import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA, PrintInterpreter}
+import com.ovoenergy.comms.composer.rendering.pdf.DocRaptorConfig
+import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
 import com.ovoenergy.comms.helpers.Kafka
 import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
 import com.ovoenergy.comms.serialisation.Retry
-import org.apache.kafka.clients.producer.RecordMetadata
 
-import scala.concurrent.Future
+import scala.concurrent.duration._
 // Implicits
 import scala.language.reflectiveCalls
 import com.ovoenergy.comms.serialisation.Codecs._
@@ -45,7 +50,25 @@ object Main extends App {
 
   implicit val config = ConfigFactory.load()
 
-  val templateContext = TemplateContextFactory(runningInDockerCompose, config.getString("aws.region"))
+  val region = config.getString("aws.region")
+  val bucketName = config.getString("aws.s3.print-pdf.bucket-name")
+  val s3Client = AwsClientProvider.genClients(runningInDockerCompose, Regions.fromName(region))
+
+  val s3Config = S3Config(s3Client, bucketName)
+  val templateContext = TemplateContextFactory(runningInDockerCompose, region)
+
+  val retryConfig = RetryConfig(5, Retry.Backoff.constantDelay(1.second))
+  val docRaptorApiKey = config.getString("doc-raptor.apiKey")
+  val docRaptorUrl = config.getString("doc-raptor.url")
+  val test = config.getBoolean("doc-raptor.test")
+
+  val printContext = PrintContext(
+    docRaptorConfig = DocRaptorConfig(docRaptorApiKey, docRaptorUrl, test, retryConfig),
+    s3Config = s3Config,
+    retryConfig = retryConfig,
+    templateContext = templateContext,
+    httpClient = HttpClient.apply
+  )
 
   implicit val actorSystem = ActorSystem("kafka")
   implicit val materializer = ActorMaterializer()
@@ -69,20 +92,20 @@ object Main extends App {
 
   val failedEventProducer = exitOnFailure(Kafka.aiven.failed.v2.retryPublisher, "failed")
 
-  val emailInterpreter: ~>[EmailComposerA, FailedOr] = Interpreters.emailInterpreter(templateContext)
+  val emailInterpreter: ~>[EmailComposerA, FailedOr] = EmailInterpreter(templateContext)
   val emailComposer = (orchestratedEmail: OrchestratedEmailV3) =>
     EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
   val emailGraph =
     ComposerGraph.build(Kafka.aiven.orchestratedEmail.v3, composedEmailEventProducer, failedEventProducer)(
       (orchestratedEmail: OrchestratedEmailV3) => emailComposer(orchestratedEmail))
 
-  val smsInterpreter: ~>[SMSComposerA, FailedOr] = Interpreters.smsInterpreter(templateContext)
+  val smsInterpreter: ~>[SMSComposerA, FailedOr] = SMSInterpreter(templateContext)
   val smsComposer = (orchestratedSMS: OrchestratedSMSV2) =>
     SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
   val smsGraph = ComposerGraph.build(Kafka.aiven.orchestratedSMS.v2, composedSMSEventProducer, failedEventProducer)(
     (orchestratedSMS: OrchestratedSMSV2) => smsComposer(orchestratedSMS))
 
-  val printInterpreter: ~>[PrintComposerA, FailedOr] = Interpreters.printInterpreter(templateContext)
+  val printInterpreter: ~>[PrintComposerA, FailedOr] = PrintInterpreter(printContext)
   val printComposer = (orchestratedPrint: OrchestratedPrint) =>
     PrintComposer.program(orchestratedPrint).foldMap(printInterpreter)
   val printGraph =
@@ -98,6 +121,7 @@ object Main extends App {
 
   Seq(
     (emailGraph, "Email Composition"),
+    (printGraph, "Print Composition"),
     (smsGraph, "SMS Composition")
   ) foreach {
     case (graph, description) =>

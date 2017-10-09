@@ -1,7 +1,7 @@
 name := "composer"
 organization := "com.ovoenergy"
 
-scalaVersion := "2.11.11"
+scalaVersion := "2.12.3"
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 // Make ScalaTest write test reports that CircleCI understands
@@ -23,29 +23,35 @@ resolvers := Resolver.withDefaultResolvers(
   )
 )
 
-val kafkaMessagesVersion = "1.31"
-val kafkaSerialisationVersion = "3.0"
+val kafkaMessagesVersion = "1.33"
+val kafkaSerialisationVersion = "3.1"
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-stream-kafka" % "0.16",
+  "com.typesafe.akka" %% "akka-stream-kafka" % "0.17",
   "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion,
   "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaSerialisationVersion,
   "com.ovoenergy" %% "comms-kafka-helpers"       % kafkaSerialisationVersion,
   "io.circe" %% "circe-generic" % "0.7.0",
   "com.github.jknack" % "handlebars" % "4.0.6",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
+  "com.typesafe.akka" %% "akka-slf4j" % "2.4.18",
   "org.typelevel" %% "cats-free" % "0.9.0",
   "com.chuusai" %% "shapeless" % "2.3.2",
+  "com.squareup.okhttp3" % "okhttp" % "3.4.2",
+  "com.fortysevendeg" %% "scalacheck-toolbox-datetime" % "0.2.1" % Test,
   "ch.qos.logback" % "logback-classic" % "1.1.7",
   "io.logz.logback" % "logzio-logback-appender" % "1.0.11",
   "me.moocar" % "logback-gelf" % "0.2",
-  "com.ovoenergy" %% "comms-templates" % "0.9",
+  "com.ovoenergy" %% "comms-templates" % "0.11",
+  "com.github.alexarchambault"  %% "scalacheck-shapeless_1.13" % "1.1.4" % Test exclude("org.slf4j", "log4j-over-slf4j"),
+  "org.scalacheck" %% "scalacheck" % "1.13.4" % Test,
   "com.whisk"                  %% "docker-testkit-scalatest" % "0.9.3" % ServiceTest,
   "com.whisk"                  %% "docker-testkit-impl-docker-java" % "0.9.3" % ServiceTest,
   "com.ovoenergy" %% "comms-kafka-test-helpers" % kafkaSerialisationVersion % ServiceTest,
   "org.scalatest" %% "scalatest" % "3.0.1" % Test,
-  "org.apache.kafka" %% "kafka" % "0.10.2.1"  % Test exclude ("org.scalatest", "scalatest")
+  "org.apache.kafka" %% "kafka" % "0.10.2.1"  % Test exclude ("org.scalatest", "scalatest"),
+  "org.mock-server"            % "mockserver-client-java"     % "3.11" % Test
+
 )
 
 enablePlugins(JavaServerAppPackaging, DockerPlugin)

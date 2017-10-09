@@ -1,11 +1,12 @@
-package com.ovoenergy.comms.composer.rendering
+package com.ovoenergy.comms.composer.rendering.templating
 
-import com.github.jknack.handlebars.helper.DefaultHelperRegistry
-import com.github.jknack.handlebars.io.StringTemplateSource
-import com.github.jknack.handlebars.{Handlebars, Helper, Options}
 import java.util.{Map => JMap}
 
 import cats.data.Validated.{Invalid, Valid}
+import com.github.jknack.handlebars.helper.DefaultHelperRegistry
+import com.github.jknack.handlebars.io.StringTemplateSource
+import com.github.jknack.handlebars.{Handlebars, Helper, Options}
+import com.ovoenergy.comms.composer.rendering.{Errors, ErrorsOr}
 import com.ovoenergy.comms.model.{InvalidTemplate, MissingTemplateData}
 import com.ovoenergy.comms.templates.model.HandlebarsTemplate
 

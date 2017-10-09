@@ -1,3 +1,5 @@
 package com.ovoenergy.comms.composer.print
 
-case class RenderedPrintHtml(htmlFooter: Option[String], htmlBody: String, htmlHeader: Option[String])
+case class RenderedPrintHtml(htmlBody: String)
+
+case class RenderedPrintPdf(pdfBody: Array[Byte])

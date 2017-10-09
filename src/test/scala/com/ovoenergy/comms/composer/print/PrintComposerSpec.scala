@@ -20,18 +20,16 @@ class PrintComposerSpec extends FlatSpec with Matchers {
     override def apply[A](op: PrintComposerA[A]) = op match {
       case RetrieveTemplate(_) =>
         PrintTemplate[Id](
-          header = None,
-          footer = None,
           body = HandlebarsTemplate("<h2>Thanks for your payment of £{{amount}}</h2>", requiredFields)
         )
 
-      case Render(_, template) =>
+      case RenderPrintHtml(_, template) =>
         RenderedPrintHtml(
-          htmlHeader = None,
-          htmlFooter = None,
           htmlBody = template.body.rawExpandedContent.replaceAllLiterally("{{amount}}", "1.23")
         )
 
+      case RenderPrintPdf(incomingEvent, r) => RenderedPrintPdf("Hello".getBytes())
+      case PersistRenderedPdf(incomingEvent, r) => "PdfIdentifier"
     }
   }
 
@@ -57,6 +55,7 @@ class PrintComposerSpec extends FlatSpec with Matchers {
 
   it should "compose an email" in {
     val event: ComposedPrint = PrintComposer.program(incomingEvent).foldMap(testInterpreter)
-    event.pdfIdentifier should be("<h2>Thanks for your payment of £1.23</h2>")
+    event.pdfIdentifier should be("PdfIdentifier")
+    event.internalMetadata should be(incomingEvent.internalMetadata)
   }
 }

@@ -1,18 +1,14 @@
-package com.ovoenergy.comms.composer.rendering
+package com.ovoenergy.comms.composer.rendering.templating
 
 import java.time.{Clock, ZonedDateTime}
 import java.util
 import java.util.{Map => JMap}
 
-import cats.kernel.Monoid
 import com.ovoenergy.comms.model._
+import shapeless.ops.hlist.ToTraversable
 import shapeless.{HList, Inl, Inr, LabelledGeneric}
 
 import scala.collection.JavaConverters._
-import shapeless.ops.hlist.ToTraversable
-
-import cats._
-import cats.implicits._
 
 trait Rendering {
 
@@ -38,7 +34,7 @@ trait Rendering {
       .combineWith(customerData, systemVariables(clock))
   }
 
-  implicit class JMapExtensions(map1: Map[String, AnyRef]) {
+  implicit class JMapBuilders(map1: Map[String, AnyRef]) {
     def combineWith(maps: Map[String, Map[String, String]]*): JMap[String, AnyRef] = {
       val result = new util.HashMap[String, AnyRef]()
       result.putAll(map1.asJava)

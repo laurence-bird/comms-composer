@@ -8,5 +8,11 @@ sealed trait PrintComposerA[T]
 
 case class RetrieveTemplate(incomingEvent: OrchestratedPrint) extends PrintComposerA[PrintTemplate[Id]]
 
-case class Render(incomingEvent: OrchestratedPrint, template: PrintTemplate[Id])
+case class RenderPrintHtml(incomingEvent: OrchestratedPrint, template: PrintTemplate[Id])
     extends PrintComposerA[RenderedPrintHtml]
+
+case class RenderPrintPdf(incomingEvent: OrchestratedPrint, renderedPrintHtml: RenderedPrintHtml)
+    extends PrintComposerA[RenderedPrintPdf]
+
+case class PersistRenderedPdf(incomingEvent: OrchestratedPrint, renderedPrintPdf: RenderedPrintPdf)
+    extends PrintComposerA[String]

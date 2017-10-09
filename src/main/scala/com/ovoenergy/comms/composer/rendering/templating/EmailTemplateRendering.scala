@@ -1,17 +1,17 @@
-package com.ovoenergy.comms.composer.rendering
+package com.ovoenergy.comms.composer.rendering.templating
 
 import java.time.Clock
 
+import cats.implicits._
+import cats.kernel.Monoid
+import cats.{Apply, Id}
 import com.ovoenergy.comms.composer.email.RenderedEmail
+import com.ovoenergy.comms.composer.rendering.{ErrorsOr, FailedToRender}
 import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model.{CommManifest, CustomerProfile, TemplateData}
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
-import cats.{Apply, Id}
 
-import cats.implicits._
-import cats.kernel.Monoid
-
-object EmailRendering extends Rendering {
+object EmailTemplateRendering extends Rendering {
 
   def renderEmail(clock: Clock)(commManifest: CommManifest,
                                 template: EmailTemplate[Id],
