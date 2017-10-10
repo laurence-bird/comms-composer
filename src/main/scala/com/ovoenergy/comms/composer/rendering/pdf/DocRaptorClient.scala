@@ -15,7 +15,9 @@ import okhttp3._
 
 import scala.util.Try
 
-case class DocRaptorRequest(document_content: String, test: Boolean, `type`: String)
+case class DocRaptorRequest(document_content: String, test: Boolean, `type`: String, prince_options: PrinceOptions)
+
+case class PrinceOptions(profile: String)
 
 case class DocRaptorConfig(apiKey: String, url: String, isTest: Boolean, retryConfig: RetryConfig)
 
@@ -57,7 +59,12 @@ object DocRaptorClient extends Logging {
     val retryConfig: Retry.RetryConfig = printContext.retryConfig
     val httpClient: Request => Try[Response] = printContext.httpClient
 
-    val req: DocRaptorRequest = DocRaptorRequest(renderedPrintHtml.htmlBody, docRaptorConfig.isTest, "pdf")
+    val req: DocRaptorRequest = DocRaptorRequest(
+      renderedPrintHtml.htmlBody,
+      docRaptorConfig.isTest,
+      "pdf",
+      PrinceOptions("PDF/X-1a:2003")
+    )
 
     // Docraptor requires API key to be set as the username for basic Auth
     val credentials = Credentials.basic(docRaptorConfig.apiKey, "")
