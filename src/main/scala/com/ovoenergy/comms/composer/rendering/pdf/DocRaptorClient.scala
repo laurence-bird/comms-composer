@@ -17,7 +17,7 @@ import scala.util.Try
 
 case class DocRaptorRequest(document_content: String, test: Boolean, `type`: String, prince_options: PrinceOptions)
 
-case class PrinceOptions(profile: String)
+case class PrinceOptions(profile: String, javascript: Boolean = true) // We want to run JS assets prior to PDF rendering
 
 case class DocRaptorConfig(apiKey: String, url: String, isTest: Boolean, retryConfig: RetryConfig)
 

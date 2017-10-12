@@ -46,7 +46,7 @@ object Main extends App {
     System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
   }
 
-  val log = LoggerFactory.getLogger(getClass) 
+  val log = LoggerFactory.getLogger(getClass)
 
   implicit val config = ConfigFactory.load()
 
