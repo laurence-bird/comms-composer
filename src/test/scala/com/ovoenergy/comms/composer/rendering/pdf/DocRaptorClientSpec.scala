@@ -89,7 +89,7 @@ class DocRaptorClientSpec extends FlatSpec with Matchers with EitherValues with 
 
   it should "Generate the expected JSON to send to docRaptor" in {
     val expectedJson =
-      """{"document_content":"<html><h>Here is a template</h><body>Laurence says Hi</body></html>","test":true,"type":"pdf","prince_options":{"profile":"PDF/X-1a:2003","javascript":true}}"""
+      """{"document_content":"<html><h>Here is a template</h><body>Laurence says Hi</body></html>","test":true,"type":"pdf","prince_options":{"profile":"PDF/X-1a:2003"},"javascript":true}"""
 
     val httpClientWithJsonAssertion = (req: Request) => {
       val out = new ByteArrayOutputStream
