@@ -49,7 +49,7 @@ class SMSComposerSpec extends FlatSpec with Matchers {
   )
 
   it should "compose an SMS" in {
-    val event: ComposedSMSV2 = SMSComposer.program(incomingEvent).foldMap(testInterpreter)
+    val event: ComposedSMSV3 = SMSComposer.program(incomingEvent).foldMap(testInterpreter)
     event.recipient should be("+447123123456")
     event.textBody should be("Thanks for your payment of £1.23")
   }

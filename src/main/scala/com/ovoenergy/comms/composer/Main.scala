@@ -46,7 +46,7 @@ object Main extends App {
     System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
   }
 
-  val log = LoggerFactory.getLogger(getClass) 
+  val log = LoggerFactory.getLogger(getClass)
 
   implicit val config = ConfigFactory.load()
 
@@ -84,9 +84,9 @@ object Main extends App {
   }
 
   val composedEmailEventProducer =
-    exitOnFailure(Kafka.aiven.composedEmail.v2.retryPublisher, "composed email")
+    exitOnFailure(Kafka.aiven.composedEmail.v3.retryPublisher, "composed email")
   val composedSMSEventProducer =
-    exitOnFailure(Kafka.aiven.composedSms.v2.retryPublisher, "composed sms")
+    exitOnFailure(Kafka.aiven.composedSms.v3.retryPublisher, "composed sms")
   val composedPrintEventProducer =
     exitOnFailure(Kafka.aiven.composedPrint.v1.retryPublisher, "composed print")
 
