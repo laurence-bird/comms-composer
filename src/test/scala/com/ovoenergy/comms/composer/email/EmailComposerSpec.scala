@@ -57,7 +57,7 @@ class EmailComposerSpec extends FlatSpec with Matchers {
   )
 
   it should "compose an email" in {
-    val event: ComposedEmailV2 = EmailComposer.program(incomingEvent).foldMap(testInterpreter)
+    val event: ComposedEmailV3 = EmailComposer.program(incomingEvent).foldMap(testInterpreter)
     event.sender should be("Ovo Energy <no-reply@ovoenergy.com>")
     event.recipient should be("chris@foo.com")
     event.subject should be("Hello Chris")

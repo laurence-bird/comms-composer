@@ -3,12 +3,16 @@ package com.ovoenergy.comms.composer.email
 import cats.Id
 import cats.free.Free
 import cats.free.Free.liftF
+import com.ovoenergy.comms.composer.rendering.{EmailHashData, HashFactory}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.templates.model.EmailSender
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 
 object EmailComposer {
+
+  implicit def emailHashData(email: OrchestratedEmailV3) =
+    new EmailHashData(email.metadata.deliverTo, email.templateData, email.metadata.commManifest)
 
   type EmailComposer[A] = Free[EmailComposerA, A]
 
@@ -23,8 +27,8 @@ object EmailComposer {
 
   def buildEvent(incomingEvent: OrchestratedEmailV3,
                  renderedEmail: RenderedEmail,
-                 sender: EmailSender): ComposedEmailV2 =
-    ComposedEmailV2(
+                 sender: EmailSender): ComposedEmailV3 =
+    ComposedEmailV3(
       metadata = MetadataV2.fromSourceMetadata("comms-composer", incomingEvent.metadata),
       internalMetadata = incomingEvent.internalMetadata,
       sender = sender.toString,
@@ -32,7 +36,8 @@ object EmailComposer {
       subject = renderedEmail.subject,
       htmlBody = renderedEmail.htmlBody,
       textBody = renderedEmail.textBody,
-      expireAt = incomingEvent.expireAt
+      expireAt = incomingEvent.expireAt,
+      hashedComm = HashFactory.getHashedComm(incomingEvent)
     )
 
   def program(event: OrchestratedEmailV3) = {
