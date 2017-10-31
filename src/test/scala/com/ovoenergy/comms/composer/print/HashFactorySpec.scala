@@ -35,20 +35,16 @@ class HashFactorySpec extends FlatSpec with Matchers {
     expireAt = None
   )
 
-
-  val hashData = PrintHashData(
-    incomingEvent.customerProfile,
-    incomingEvent.address,
-    incomingEvent.templateData,
-    incomingEvent.metadata.commManifest)
-
+  val hashData = PrintHashData(incomingEvent.customerProfile,
+                               incomingEvent.address,
+                               incomingEvent.templateData,
+                               incomingEvent.metadata.commManifest)
 
   it should "create the correct hashedComm" in {
 
     val expected = MessageDigest
       .getInstance("MD5")
       .digest(hashData.toString.getBytes)
-
 
     HashFactory.getHashedComm(hashData) should be(new String(expected))
   }
@@ -59,12 +55,12 @@ class HashFactorySpec extends FlatSpec with Matchers {
       incomingEvent.customerProfile,
       CustomerAddress("line1", "line2", "London", "Middlesex", "HA98PH", "UK"),
       incomingEvent.templateData,
-      incomingEvent.metadata.commManifest)
+      incomingEvent.metadata.commManifest
+    )
 
     val expected = MessageDigest
       .getInstance("MD5")
       .digest(hashData.toString.getBytes)
-
 
     HashFactory.getHashedComm(badHashData) shouldNot be(new String(expected))
   }
