@@ -25,10 +25,10 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
   val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
   val printTemplate = PrintTemplate[Id](HandlebarsTemplate("You paid", requiredFields))
   val customerAddress = CustomerAddress(line1 = "10 Oxford Street",
-                                        line2 = "",
+                                        line2 = None,
                                         town = "London",
-                                        country = "UK",
-                                        county = "London",
+                                        country = Some("UK"),
+                                        county = Some("London"),
                                         postcode = "W1 1AB")
 
   def metadataWithCommManifest(commManifest: CommManifest) = generate[MetadataV2].copy(commManifest = commManifest)

@@ -78,6 +78,7 @@ trait Rendering {
       implicit gen: LabelledGeneric.Aux[E, L],
       fields: Fields.Aux[L, F],
       toTraversableAux: ToTraversable.Aux[F, List, (Symbol, String)]): Map[String, String] = {
+
     val fieldsHlist = fields.apply(gen.to(instanceToConvert))
     val fieldsList = toTraversableAux(fieldsHlist)
 
@@ -85,4 +86,5 @@ trait Rendering {
       case (sym, value) => (sym.name, value)
     }.toMap
   }
+
 }

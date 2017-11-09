@@ -117,11 +117,11 @@ class PrintServiceTest
     ),
     CustomerAddress(
       "12 Heaven Street",
-      "",
+      None,
       "Kingstown",
-      "",
+      None,
       "12345",
-      "Jamaica"
+      Some("Jamaica")
     ),
     Map("accountNumber" -> accountNumber, "myOvoId" -> ovoId),
     Some(now.plusSeconds(100))

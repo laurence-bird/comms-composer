@@ -23,8 +23,8 @@ resolvers := Resolver.withDefaultResolvers(
   )
 )
 
-val kafkaMessagesVersion = "1.34"
-val kafkaSerialisationVersion = "3.3"
+val kafkaMessagesVersion = "1.38"
+val kafkaSerialisationVersion = "3.4"
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-stream-kafka" % "0.17",
