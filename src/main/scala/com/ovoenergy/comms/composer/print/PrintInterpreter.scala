@@ -51,7 +51,7 @@ object PrintInterpreter {
             DocRaptorClient
               .renderPdf(printContext, renderedPrintHtml)
               .leftMap((error: DocRaptorError) => {
-                log.warn(s"Call to docraptor failed with error message: \n ${error.errorDetails}")
+                warn(event)(s"Call to docraptor failed with error message: \n ${error.errorDetails}")
                 failPrint(s"Failed to render pdf: ${error.httpError}", event, CompositionError)
               })
           case PersistRenderedPdf(event, renderedPrintPdf) =>
