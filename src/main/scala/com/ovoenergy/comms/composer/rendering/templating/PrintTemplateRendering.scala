@@ -28,13 +28,13 @@ object PrintTemplateRendering extends Rendering {
     val address = orchestratedPrint.address
 
     val addressMap = Map(
-      "line1" -> Some(address.line1),
-      "town" -> Some(address.town),
-      "postcode" -> Some(address.postcode),
-      "line2" -> address.line2,
-      "county" -> address.county,
-      "country" -> address.country
-    ) collect { case (k, Some(v)) => (k, v) }
+        "line1" -> Some(address.line1),
+        "town" -> Some(address.town),
+        "postcode" -> Some(address.postcode),
+        "line2" -> address.line2,
+        "county" -> address.county,
+        "country" -> address.country
+      ) collect { case (k, Some(v)) => (k, v) }
 
     val customerAddressMap: Map[String, Map[String, String]] = Map("address" -> addressMap)
 

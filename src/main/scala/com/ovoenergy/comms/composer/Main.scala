@@ -2,10 +2,11 @@ package com.ovoenergy.comms.composer
 
 import java.time.OffsetDateTime
 
-import akka.Done
+import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
-import akka.stream.scaladsl.{Sink, Source}
+import akka.kafka.scaladsl.Consumer.Control
+import akka.stream.scaladsl.{RunnableGraph, Sink, Source}
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import com.ovoenergy.comms.composer.aws.{AwsClientProvider, TemplateContextFactory}
 import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA, EmailInterpreter}
@@ -20,7 +21,7 @@ import cats.instances.either._
 import cats.~>
 import com.amazonaws.regions.Regions
 import com.ovoenergy.comms.composer.Interpreters.FailedOr
-import com.ovoenergy.comms.composer.http.HttpClient
+import com.ovoenergy.comms.composer.http.{AdminRestApi, HttpClient, HttpServerConfig}
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
 import com.ovoenergy.comms.composer.print.PrintInterpreter.PrintContext
 import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA, PrintInterpreter}
@@ -29,7 +30,10 @@ import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
 import com.ovoenergy.comms.helpers.Kafka
 import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
 import com.ovoenergy.comms.serialisation.Retry
+import org.http4s.server.Server
+import org.http4s.server.blaze.BlazeBuilder
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 // Implicits
 import scala.language.reflectiveCalls
@@ -37,7 +41,7 @@ import com.ovoenergy.comms.serialisation.Codecs._
 import io.circe.generic.auto._
 import scala.concurrent.duration.FiniteDuration
 
-object Main extends App {
+object Main extends App with AdminRestApi {
 
   val runningInDockerCompose = sys.env.get("DOCKER_COMPOSE").contains("true")
 
@@ -117,12 +121,22 @@ object Main extends App {
     Supervision.Stop
   }
 
+  val httpServerConfig = HttpServerConfig.unsafeFromConfig(config.getConfig("http-server"))
+
+  log.info(s"Starting HTTP server on host=${httpServerConfig.host} port=${httpServerConfig.port}")
+
+  val httpServer = BlazeBuilder
+    .bindHttp(httpServerConfig.port, httpServerConfig.host)
+    .mountService(adminService, "/")
+    .start
+    .unsafeRun()
+
   log.info("Creating graphs")
 
   Seq(
     (emailGraph, "Email Composition"),
     (printGraph, "Print Composition"),
-    (smsGraph, "SMS Composition")
+    (smsGraph, "SMS Composition"),
   ) foreach {
     case (graph, description) =>
       val control = graph

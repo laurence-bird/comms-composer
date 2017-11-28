@@ -27,7 +27,7 @@ import org.scalatest.concurrent.{Eventually, ScalaFutures}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.Try
 
 trait DockerIntegrationTest
@@ -38,7 +38,21 @@ trait DockerIntegrationTest
     with BeforeAndAfterAll
     with Eventually { self =>
 
+  lazy val ComposerHttpPort: Int = 8080
+
+  def composerHttpEndpoint: String = s"http://localhost:${composer.unsafePort(ComposerHttpPort)}"
+
   implicit class RichDockerContainer(val dockerContainer: DockerContainer) {
+
+    def port(internalPort: Int): Option[Int] =
+      Await.result(dockerContainer
+                     .getPorts()
+                     .map(ports => ports.get(internalPort)),
+                   30.seconds)
+
+    def unsafePort(internalPort: Int): Int =
+      port(internalPort)
+        .getOrElse(throw new RuntimeException(s"The port $internalPort is not exposed"))
 
     /**
       * Adds a log line receiver that writes the container output to a file
@@ -199,7 +213,7 @@ trait DockerIntegrationTest
       "AWS_ACCOUNT_ID",
       sys.error("Environment variable AWS_ACCOUNT_ID must be set in order to run the integration tests"))
     DockerContainer(s"$awsAccountId.dkr.ecr.eu-west-1.amazonaws.com/composer:0.1-SNAPSHOT", name = Some("composer"))
-      .withPorts(8080 -> Some(8080))
+      .withPorts(ComposerHttpPort -> None)
       .withLinks(
         ContainerLink(aivenKafka, "aivenKafka"),
         ContainerLink(aivenZookeeper, "aivenZookeeper"),
