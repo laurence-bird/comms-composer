@@ -9,7 +9,7 @@ import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
 import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
 
 object PrintComposer {
-
+  import scala.language.implicitConversions
   implicit def printHashData(print: OrchestratedPrint) =
     new PrintHashData(print.customerProfile, print.address, print.templateData, print.metadata.commManifest)
 

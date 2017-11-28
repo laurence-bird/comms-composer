@@ -4,7 +4,7 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
-import com.ovoenergy.comms.composer.rendering.templating.SMSTemplateRendering
+import com.ovoenergy.comms.composer.rendering.templating.{SMSTemplateData, SMSTemplateRendering}
 import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.sms.OrchestratedSMSV2
@@ -14,6 +14,8 @@ import com.ovoenergy.comms.composer.Interpreters._
 import scala.util.control.NonFatal
 
 object SMSInterpreter {
+
+  val smsTd: SMSTemplateData = ???
 
   def apply(context: TemplatesContext): SMSComposerA ~> FailedOr =
     new (SMSComposerA ~> FailedOr) {
@@ -31,11 +33,10 @@ object SMSInterpreter {
           case Render(event, template) =>
             try {
               SMSTemplateRendering
-                .renderSMS(Clock.systemDefaultZone())(event.metadata.commManifest,
-                                                      template,
-                                                      event.templateData,
-                                                      event.customerProfile,
-                                                      event.recipientPhoneNumber)
+                .renderSMS(Clock.systemDefaultZone(), event.metadata.commManifest, template, smsTd)
+//                                                      event.templateData,
+//                                                      event.customerProfile,
+//                                                      event.recipientPhoneNumber)
                 .leftMap(templateErrors => failSMS(templateErrors.reason, event, templateErrors.errorCode))
             } catch {
               case NonFatal(e) => Left(failSMSWithException(e, event))

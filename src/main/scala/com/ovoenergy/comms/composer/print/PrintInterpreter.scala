@@ -4,7 +4,7 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
-import com.ovoenergy.comms.composer.rendering.templating.PrintTemplateRendering
+import com.ovoenergy.comms.composer.rendering.templating.{PrintTemplateData, PrintTemplateRendering}
 import com.ovoenergy.comms.composer.repo.{S3PdfRepo, S3TemplateRepo}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.print.OrchestratedPrint
@@ -19,6 +19,7 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 object PrintInterpreter {
+  val printTd: PrintTemplateData = ???
 
   case class PrintContext(docRaptorConfig: DocRaptorConfig,
                           s3Config: S3Config,
@@ -42,7 +43,7 @@ object PrintInterpreter {
           case RenderPrintHtml(event, template) =>
             try {
               PrintTemplateRendering
-                .renderHtml(event, template, Clock.systemDefaultZone())
+                .renderHtml(printTd, ???, template, Clock.systemDefaultZone()) // TODO: Sort out
                 .leftMap(templateErrors => failPrint(templateErrors.reason, event, templateErrors.errorCode))
             } catch {
               case NonFatal(e) => Left(failPrintWithException(e, event))

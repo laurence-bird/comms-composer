@@ -12,9 +12,8 @@ import scala.collection.JavaConverters._
 
 trait Rendering {
 
-  def buildHandlebarsContext(templateData: Map[String, TemplateData],
-                             customerData: Map[String, Map[String, String]],
-                             clock: Clock): JMap[String, AnyRef] = {
+  def buildHandlebarsContext[A](data: A, clock: Clock)(
+      implicit canBuildTemplateData: CanBuildTemplateData[A]): JMap[String, AnyRef] = {
 
     def extractValueFromTemplateData(templateData: TemplateData): AnyRef = {
       templateData.value match {
@@ -26,12 +25,14 @@ trait Rendering {
       }
     }
 
+    val templateData = canBuildTemplateData.buildTemplateData(data)
+
     val dataAsStrings: Map[String, AnyRef] = templateData map {
       case (key, templateData) => key -> extractValueFromTemplateData(templateData)
     }
 
     dataAsStrings
-      .combineWith(customerData, systemVariables(clock))
+      .combineWith(systemVariables(clock))
   }
 
   implicit class JMapBuilders(map1: Map[String, AnyRef]) {

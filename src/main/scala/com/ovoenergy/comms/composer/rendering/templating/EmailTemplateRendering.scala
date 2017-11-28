@@ -13,27 +13,13 @@ import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplat
 
 object EmailTemplateRendering extends Rendering {
 
-  def renderEmail(clock: Clock)(commManifest: CommManifest,
-                                template: EmailTemplate[Id],
-                                data: Map[String, TemplateData],
-                                customerProfile: Option[CustomerProfile],
-                                recipientEmailAddress: String): Either[FailedToRender, RenderedEmail] = {
-
-    val emailAddressMap: Map[String, Map[String, String]] = Map(
-      "recipient" -> Map("emailAddress" -> recipientEmailAddress))
-
-    val customerProfileMap: Map[String, Map[String, String]] = customerProfile
-      .map { c =>
-        Map("profile" -> valueToMap(c))
-      }
-      .getOrElse(Map.empty[String, Map[String, String]])
-
-    val customerData: Map[String, Map[String, String]] =
-      Monoid.combine(emailAddressMap, customerProfileMap)
+  def renderEmail[EmailTD: CanBuildTemplateData](clock: Clock,
+                                                 commManifest: CommManifest,
+                                                 template: EmailTemplate[Id],
+                                                 emailTemplateData: EmailTD): Either[FailedToRender, RenderedEmail] = {
 
     val context = buildHandlebarsContext(
-      data,
-      customerData,
+      emailTemplateData,
       clock
     )
 
@@ -60,5 +46,4 @@ object EmailTemplateRendering extends Rendering {
       .leftMap(errors => FailedToRender(errors.toErrorMessage, errors.errorCode))
       .toEither
   }
-
 }

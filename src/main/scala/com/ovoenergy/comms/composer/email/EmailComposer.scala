@@ -11,7 +11,8 @@ import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplat
 
 object EmailComposer {
 
-  implicit def emailHashData(email: OrchestratedEmailV3) =
+  import scala.language.implicitConversions
+  implicit def emailHashData(email: OrchestratedEmailV3): EmailHashData =
     new EmailHashData(email.metadata.deliverTo, email.templateData, email.metadata.commManifest)
 
   type EmailComposer[A] = Free[EmailComposerA, A]

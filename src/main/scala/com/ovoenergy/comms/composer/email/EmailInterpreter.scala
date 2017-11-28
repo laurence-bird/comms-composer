@@ -4,7 +4,7 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
-import com.ovoenergy.comms.composer.rendering.templating.EmailTemplateRendering
+import com.ovoenergy.comms.composer.rendering.templating.{EmailTemplateData, EmailTemplateRendering}
 import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email.OrchestratedEmailV3
@@ -14,6 +14,7 @@ import com.ovoenergy.comms.templates.TemplatesContext
 import scala.util.control.NonFatal
 
 object EmailInterpreter {
+  val emailTD: EmailTemplateData = ???
 
   def apply(context: TemplatesContext): EmailComposerA ~> FailedOr =
     new (EmailComposerA ~> FailedOr) {
@@ -31,11 +32,15 @@ object EmailInterpreter {
           case Render(event, template) =>
             try {
               EmailTemplateRendering
-                .renderEmail(Clock.systemDefaultZone())(event.metadata.commManifest,
-                                                        template,
-                                                        event.templateData,
-                                                        event.customerProfile,
-                                                        event.recipientEmailAddress)
+                .renderEmail(
+                  Clock.systemDefaultZone(),
+                  event.metadata.commManifest,
+                  template,
+//                                                        event.templateData,
+//                                                        event.customerProfile,
+//                                                        event.recipientEmailAddress)
+                  emailTD
+                )
                 .leftMap(templateErrors => failEmail(templateErrors.reason, event, templateErrors.errorCode))
             } catch {
               case NonFatal(e) => Left(failEmailWithException(e, event))

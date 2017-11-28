@@ -9,7 +9,7 @@ import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 
 object SMSComposer {
-
+  import scala.language.implicitConversions
   implicit def smsHashData(sms: OrchestratedSMSV2) =
     new SmsHashData(sms.metadata.deliverTo, sms.templateData, sms.metadata.commManifest)
 
