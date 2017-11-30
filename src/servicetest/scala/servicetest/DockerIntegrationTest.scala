@@ -146,7 +146,7 @@ trait DockerIntegrationTest
     )
     .withLogWritingAndReadyChecker("binding to port", "aivenZookeeper")
 
-  lazy val mockServers = DockerContainer("jamesdbloom/mockserver", name = Some("mockservers"))
+  lazy val mockServers = DockerContainer("jamesdbloom/mockserver:mockserver-3.12", name = Some("mockservers"))
     .withPorts(1080 -> Some(1080))
     .withLogWritingAndReadyChecker("MockServer proxy started", "mockservers")
 
@@ -184,6 +184,7 @@ trait DockerIntegrationTest
     )
     .withLogWritingAndReadyChecker("Server started, listening for requests", "schema-registry")
 
+  // TODO The fake s3 does not have a specific tag, so we have to go with latest
   lazy val fakes3 = DockerContainer("lphoward/fake-s3:latest", name = Some("fakes3"))
     .withPorts(4569 -> Some(4569))
     .withLogWritingAndReadyChecker("WEBrick::HTTPServer#start", "fakes3")
