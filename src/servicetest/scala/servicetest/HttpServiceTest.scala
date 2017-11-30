@@ -40,7 +40,10 @@ class HttpServiceTest
   behavior of "Composer HTTP service"
 
   it should "respond OK to /admin/health" in newHttpClient { client =>
-    whenReady(client.status(Request(GET, Uri.unsafeFromString(s"$composerHttpEndpoint/admin/health"))).unsafeRunAsyncFuture()) { status =>
+    whenReady(
+      client
+        .status(Request(GET, Uri.unsafeFromString(s"$composerHttpEndpoint/admin/health")))
+        .unsafeRunAsyncFuture()) { status =>
       status shouldBe Ok
     }
   }

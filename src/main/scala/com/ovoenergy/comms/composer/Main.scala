@@ -65,6 +65,7 @@ object Main extends App with AdminRestApi {
   val docRaptorApiKey = config.getString("doc-raptor.apiKey")
   val docRaptorUrl = config.getString("doc-raptor.url")
   val test = config.getBoolean("doc-raptor.test")
+  val httpServerConfig = HttpServerConfig.unsafeFromConfig(config.getConfig("http-server"))
 
   val printContext = PrintContext(
     docRaptorConfig = DocRaptorConfig(docRaptorApiKey, docRaptorUrl, test, retryConfig),
@@ -121,8 +122,6 @@ object Main extends App with AdminRestApi {
     Supervision.Stop
   }
 
-  val httpServerConfig = HttpServerConfig.unsafeFromConfig(config.getConfig("http-server"))
-
   log.info(s"Starting HTTP server on host=${httpServerConfig.host} port=${httpServerConfig.port}")
 
   val httpServer = BlazeBuilder
@@ -136,7 +135,7 @@ object Main extends App with AdminRestApi {
   Seq(
     (emailGraph, "Email Composition"),
     (printGraph, "Print Composition"),
-    (smsGraph, "SMS Composition"),
+    (smsGraph, "SMS Composition")
   ) foreach {
     case (graph, description) =>
       val control = graph

@@ -48,7 +48,7 @@ jobs:
                comms-ci-scripts/notify_shipit.sh
              fi
        - deploy:
-           name: Deploy to UAT only if deploy-to-uat branch
+           name: Deploy to UAT only if git deploy-to-uat branch
            command: |
              if [ "${CIRCLE_BRANCH}" == "deploy-to-uat" -a "${CIRCLE_PROJECT_USERNAME}" == "ovotech" ]; then
                git clone git@github.com:ovotech/comms-ci-scripts

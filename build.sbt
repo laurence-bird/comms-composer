@@ -62,6 +62,7 @@ libraryDependencies ++= Seq(
 
 enablePlugins(JavaServerAppPackaging, DockerPlugin)
 commsPackagingMaxMetaspaceSize := 128
+dockerExposedPorts += 8080
 
 val scalafmtAll = taskKey[Unit]("Run scalafmt in non-interactive mode with no arguments")
 scalafmtAll := {
@@ -71,3 +72,4 @@ scalafmtAll := {
   streams.value.log.info("Done")
 }
 (compile in Compile) := (compile in Compile).dependsOn(scalafmtAll).value
+
