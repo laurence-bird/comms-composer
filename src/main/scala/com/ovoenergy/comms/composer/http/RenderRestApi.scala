@@ -4,8 +4,8 @@ import java.time.LocalDate
 import java.util.Base64
 
 import com.ovoenergy.comms.composer.http.RenderRestApi._
-import com.ovoenergy.comms.composer.print.RenderedPrintPdf
-import com.ovoenergy.comms.model.TemplateData
+import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA, RenderedPrintPdf}
+import com.ovoenergy.comms.model.{CommManifest, CommType, TemplateData}
 import fs2.Task
 import org.http4s.HttpService
 import org.http4s.dsl._
@@ -16,6 +16,8 @@ import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import cats.implicits._
+import cats.~>
+import com.ovoenergy.comms.composer.Interpreters.FailedOr
 
 case class CommName(value: String) extends AnyVal
 case class CommVersion(value: String) extends AnyVal
@@ -34,6 +36,12 @@ object RenderRestApi {
   object CommVersionPath {
     def unapply(str: String): Option[CommVersion] = {
       Some(CommVersion(str))
+    }
+  }
+
+  object CommTypePath {
+    def unapply(str: String): Option[CommType] = {
+      CommType.fromString(str)
     }
   }
 
@@ -72,16 +80,18 @@ object RenderRestApi {
 
 trait RenderRestApi {
 
+  def printInterpreter: ~>[PrintComposerA, FailedOr]
+
   def renderService: HttpService = HttpService {
-    case req @ POST -> Root / "render" / CommNamePath(commName) / CommVersionPath(commVersion) / "print" =>
+    case req @ POST -> Root / "render" / CommNamePath(commName) / CommVersionPath(commVersion) / CommTypePath(commType) / "print" =>
       for {
         renderRequest <- req.as(jsonOf[RenderRequest])
-        renderedPrint <- renderPrint(commName, commVersion, renderRequest.data)
+        renderedPrint <- renderPrint(CommManifest(commType, commName.value, commVersion.value), renderRequest.data)
         response <- Ok(RenderResponse(renderedPrint).asJson)
       } yield response
   }
 
-  def renderPrint(commName: CommName, commVersion: CommVersion, data: TemplateData): Task[RenderedPrintPdf] = {
-    ???
+  def renderPrint(commManifest: CommManifest, data: TemplateData)= {
+    PrintComposer.httpProgram(commManifest, ???).foldMap(printInterpreter)
   }
 }

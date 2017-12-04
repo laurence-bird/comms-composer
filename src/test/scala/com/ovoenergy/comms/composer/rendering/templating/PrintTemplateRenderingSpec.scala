@@ -41,7 +41,10 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     val printTemplateData =
       PrintTemplateData(customerAddress = address, customerProfile = Some(profile), templateData = data)
     val resultEither =
-      PrintTemplateRendering.renderHtml(printTemplateData, manifest, template, Clock.systemDefaultZone())
+      PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
+                                        manifest,
+                                        template,
+                                        Clock.systemDefaultZone())
     resultEither.right.value.htmlBody should be("You paid £1.23")
   }
 
@@ -57,7 +60,10 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     val printTemplateData = PrintTemplateData(data, None, address)
 
     val resultEither =
-      PrintTemplateRendering.renderHtml(printTemplateData, manifest, template, Clock.systemDefaultZone())
+      PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
+                                        manifest,
+                                        template,
+                                        Clock.systemDefaultZone())
     resultEither.right.value.htmlBody should be("You paid £1.23")
   }
 
@@ -68,7 +74,10 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
 
     val printTemplateData = PrintTemplateData(data, Some(profile), address)
 
-    val result = PrintTemplateRendering.renderHtml(printTemplateData, manifest, template, Clock.systemDefaultZone())
+    val result = PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
+                                                   manifest,
+                                                   template,
+                                                   Clock.systemDefaultZone())
     result shouldBe 'left
   }
 
@@ -80,7 +89,10 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     val printTemplateData = PrintTemplateData(data, Some(profile), address)
 
     val resultEither =
-      PrintTemplateRendering.renderHtml(printTemplateData, manifest, template, Clock.systemDefaultZone())
+      PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
+                                        manifest,
+                                        template,
+                                        Clock.systemDefaultZone())
 
     resultEither shouldBe Right(
       RenderedPrintHtml(
@@ -98,7 +110,10 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
       PrintTemplateData(templateData = data, customerProfile = Some(profile), customerAddress = address)
 
     val resultEither =
-      PrintTemplateRendering.renderHtml(printTemplateData, manifest, template, Clock.systemDefaultZone())
+      PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
+                                        manifest,
+                                        template,
+                                        Clock.systemDefaultZone())
     resultEither.right.value.htmlBody should be("HTML BODY 10 Oxford Street")
   }
 
@@ -114,7 +129,10 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
       PrintTemplateData(customerAddress = address, customerProfile = Some(profile), templateData = data)
 
     val renderingErrors =
-      PrintTemplateRendering.renderHtml(printTemplateData, manifest, template, Clock.systemDefaultZone()).left.value
+      PrintTemplateRendering
+        .renderHtml(printTemplateData.buildHandlebarsData, manifest, template, Clock.systemDefaultZone())
+        .left
+        .value
 
     renderingErrors.reason should include("profile.prefix")
     renderingErrors.reason should include("thing")
@@ -133,7 +151,7 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
       PrintTemplateData(customerAddress = address, customerProfile = Some(profile), templateData = data)
 
     val renderingEither =
-      PrintTemplateRendering.renderHtml(printTemplateData, manifest, template, clock)
+      PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData, manifest, template, clock)
 
     renderingEither.right.value.htmlBody should be("HTML BODY 31/12/2015 1.23")
   }
@@ -175,7 +193,10 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     val printTemplateData =
       PrintTemplateData(customerAddress = address, customerProfile = Some(profile), templateData = templateData)
 
-    val result = PrintTemplateRendering.renderHtml(printTemplateData, manifest, template, Clock.systemDefaultZone())
+    val result = PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
+                                                   manifest,
+                                                   template,
+                                                   Clock.systemDefaultZone())
 
     result.right.value.htmlBody should be(
       "Thanks for your payments of £1.23 (transactionId: 5453ffsdfsdf) £100.23  You paid")

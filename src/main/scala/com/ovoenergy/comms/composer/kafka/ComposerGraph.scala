@@ -7,8 +7,9 @@ import akka.kafka.scaladsl.Consumer.Control
 import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.Source
-import com.ovoenergy.comms.composer.Logging
+import com.ovoenergy.comms.composer.{Interpreters, Logging}
 import com.ovoenergy.comms.composer.Main.log
+import com.ovoenergy.comms.composer.sms.BuildFailedEventFrom
 import com.ovoenergy.comms.model._
 import org.apache.kafka.clients.producer.RecordMetadata
 
@@ -28,9 +29,11 @@ object ComposerGraph extends Logging {
   def build[InEvent <: LoggableEvent: SchemaFor: FromRecord: ClassTag, OutEvent <: LoggableEvent](
       topic: Topic[InEvent],
       outputProducer: => OutEvent => Future[RecordMetadata],
-      failedProducer: FailedV2 => Future[RecordMetadata])(processEvent: InEvent => Either[FailedV2, OutEvent])(
+      failedProducer: FailedV2 => Future[RecordMetadata])(
+      processEvent: InEvent => Either[Interpreters.Error, OutEvent])(
       implicit scheduler: Scheduler,
       actorSystem: ActorSystem,
+      buildFailedEventFrom: BuildFailedEventFrom[InEvent],
       ec: ExecutionContext): Source[Done, Control] = {
 
     def sendOutput(event: OutEvent): Future[_] = {
@@ -42,7 +45,8 @@ object ComposerGraph extends Logging {
       }
     }
 
-    def sendFailed(failed: FailedV2): Future[_] = {
+    def sendFailed(failedToComposeError: Interpreters.Error, inEvent: InEvent): Future[_] = {
+      val failed = buildFailedEventFrom(inEvent, failedToComposeError)
       failedProducer(failed).recover {
         case NonFatal(e) =>
           warnT(failed)(
@@ -74,8 +78,8 @@ object ComposerGraph extends Logging {
             info(inputEvent)(s"Processing event: $inputEvent")
             processEvent(inputEvent) match {
               case Left(failed) =>
-                info(inputEvent)(s"Processing failed, sending failed event")
-                sendFailed(failed)
+                info(inputEvent)(s"Processing failed, sending failed event") // TODO:
+                sendFailed(failed, inputEvent)
               case Right(result) =>
                 sendOutput(result)
             }

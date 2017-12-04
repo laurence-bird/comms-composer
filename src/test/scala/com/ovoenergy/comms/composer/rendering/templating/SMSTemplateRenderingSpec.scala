@@ -18,10 +18,10 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   val phoneNumber = "+447123123456"
   val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
-  def renderSMS[SMSTemplateData: BuildHandlebarsData](commManifest: CommManifest,
-                                                      template: SMSTemplate[Id],
-                                                      smsTd: SMSTemplateData,
-                                                      clock: Clock = Clock.systemDefaultZone()) = {
+  def renderSMS(commManifest: CommManifest,
+                template: SMSTemplate[Id],
+                smsTd: CommTemplateData,
+                clock: Clock = Clock.systemDefaultZone()) = {
     SMSTemplateRendering.renderSMS(clock, commManifest, template, smsTd)
   }
 

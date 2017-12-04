@@ -3,8 +3,14 @@ package com.ovoenergy.comms.composer.print
 import cats.Id
 import cats.free.Free
 import cats.free.Free.liftF
+import com.ovoenergy.comms.composer.rendering.templating.{
+  BuildHandlebarsData,
+  CommTemplateData,
+  PrintTemplateData,
+  TemplateDataWrapper
+}
 import com.ovoenergy.comms.composer.rendering.{HashFactory, PrintHashData}
-import com.ovoenergy.comms.model.MetadataV2
+import com.ovoenergy.comms.model.{CommManifest, MetadataV2, TemplateData}
 import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
 import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
 
@@ -16,17 +22,18 @@ object PrintComposer {
   type PrintComposer[A] = Free[PrintComposerA, A]
   type PdfReference = String
 
-  def retrieveTemplate(incomingEvent: OrchestratedPrint): PrintComposer[PrintTemplate[Id]] = {
-    liftF(RetrieveTemplate(incomingEvent))
+  def retrieveTemplate(commManifest: CommManifest): PrintComposer[PrintTemplate[Id]] = {
+    liftF(RetrieveTemplate(commManifest))
   }
 
-  def renderPrintHtml(incomingEvent: OrchestratedPrint,
-                      template: PrintTemplate[Id]): PrintComposer[RenderedPrintHtml] = {
-    liftF(RenderPrintHtml(incomingEvent, template))
+  def renderPrintHtml(commTemplateData: CommTemplateData,
+                      template: PrintTemplate[Id],
+                      commManifest: CommManifest): PrintComposer[RenderedPrintHtml] = {
+    liftF(RenderPrintHtml(commTemplateData, template, commManifest))
   }
 
-  def renderPrintPdf(event: OrchestratedPrint, renderedPrintHtml: RenderedPrintHtml): PrintComposer[RenderedPrintPdf] = {
-    liftF(RenderPrintPdf(event, renderedPrintHtml))
+  def renderPrintPdf(renderedPrintHtml: RenderedPrintHtml): PrintComposer[RenderedPrintPdf] = {
+    liftF(RenderPrintPdf(renderedPrintHtml))
   }
 
   def persistRenderedPdf(event: OrchestratedPrint, renderedPrintPdf: RenderedPrintPdf): PrintComposer[PdfReference] = {
@@ -43,13 +50,24 @@ object PrintComposer {
     )
   }
 
+  private def buildPrintTemplateData(event: OrchestratedPrint): PrintTemplateData =
+    PrintTemplateData(event.templateData, event.customerProfile, event.address)
+
   def program(event: OrchestratedPrint): Free[PrintComposerA, ComposedPrint] = {
     for {
-      template <- retrieveTemplate(event)
-      renderedPrintHtml <- renderPrintHtml(event, template)
-      renderedPrintPdf <- renderPrintPdf(event, renderedPrintHtml)
+      template <- retrieveTemplate(event.metadata.commManifest)
+      renderedPrintHtml <- renderPrintHtml(buildPrintTemplateData(event), template, event.metadata.commManifest)
+      renderedPrintPdf <- renderPrintPdf(renderedPrintHtml)
       pdfIdentifier <- persistRenderedPdf(event, renderedPrintPdf)
     } yield buildEvent(event, pdfIdentifier)
   }
 
+  def httpProgram(commManifest: CommManifest,
+                  data: Map[String, TemplateData]): Free[PrintComposerA, RenderedPrintPdf] = {
+    for {
+      template <- retrieveTemplate(commManifest)
+      renderedPrintHtml <- renderPrintHtml(TemplateDataWrapper(data), template, commManifest)
+      renderedPrintPdf <- renderPrintPdf(renderedPrintHtml)
+    } yield renderedPrintPdf
+  }
 }

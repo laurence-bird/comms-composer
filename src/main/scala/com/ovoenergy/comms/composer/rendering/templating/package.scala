@@ -10,41 +10,18 @@ import shapeless.{HList, LabelledGeneric}
 
 package object templating extends Rendering {
 
+  sealed trait CommTemplateData {
+    def buildHandlebarsData: HandlebarsData
+  }
   case class EmailTemplateData(templateData: Map[String, TemplateData],
                                customerProfile: Option[CustomerProfile],
                                recipientEmailAddress: String)
-
-  case class SMSTemplateData(templateData: Map[String, TemplateData],
-                             customerProfile: Option[CustomerProfile],
-                             recipientPhoneNumber: String)
-
-  case class PrintTemplateData(templateData: Map[String, TemplateData],
-                               customerProfile: Option[CustomerProfile],
-                               customerAddress: CustomerAddress)
-
-  implicit val canBuildSMSTemplateData = new BuildHandlebarsData[SMSTemplateData] {
-
-    override def apply(a: SMSTemplateData): HandlebarsData = {
-
-      val customerProfileMap = a.customerProfile
-        .map(profile => Map("profile" -> valueToMap(profile)))
-        .getOrElse(Map.empty)
-
-      val phoneNumberMap = Map("recipient" -> Map("phoneNumber" -> a.recipientPhoneNumber))
-
-      val customerData = Monoid.combine(customerProfileMap, phoneNumberMap)
-
-      HandlebarsData(a.templateData, customerData)
-    }
-  }
-
-  implicit val canBuildEmailTemplateData = new BuildHandlebarsData[EmailTemplateData] {
-    override def apply(a: EmailTemplateData): HandlebarsData = {
-
+      extends CommTemplateData {
+    override def buildHandlebarsData: HandlebarsData = {
       val emailAddressMap: Map[String, Map[String, String]] = Map(
-        "recipient" -> Map("emailAddress" -> a.recipientEmailAddress))
+        "recipient" -> Map("emailAddress" -> recipientEmailAddress))
 
-      val customerProfileMap: Map[String, Map[String, String]] = a.customerProfile
+      val customerProfileMap: Map[String, Map[String, String]] = customerProfile
         .map { c =>
           Map("profile" -> valueToMap(c))
         }
@@ -52,25 +29,45 @@ package object templating extends Rendering {
 
       val customerData: Map[String, Map[String, String]] = Monoid.combine(emailAddressMap, customerProfileMap)
 
-      HandlebarsData(a.templateData, customerData)
+      HandlebarsData(templateData, customerData)
     }
   }
 
-  implicit val canBuildPrintTemplateData = new BuildHandlebarsData[PrintTemplateData] {
-    override def apply(a: PrintTemplateData): HandlebarsData = {
+  case class SMSTemplateData(templateData: Map[String, TemplateData],
+                             customerProfile: Option[CustomerProfile],
+                             recipientPhoneNumber: String)
+      extends CommTemplateData {
+    override def buildHandlebarsData: HandlebarsData = {
+      val customerProfileMap = customerProfile
+        .map(profile => Map("profile" -> valueToMap(profile)))
+        .getOrElse(Map.empty)
+
+      val phoneNumberMap = Map("recipient" -> Map("phoneNumber" -> recipientPhoneNumber))
+
+      val customerData = Monoid.combine(customerProfileMap, phoneNumberMap)
+
+      HandlebarsData(templateData, customerData)
+    }
+  }
+
+  case class PrintTemplateData(templateData: Map[String, TemplateData],
+                               customerProfile: Option[CustomerProfile],
+                               customerAddress: CustomerAddress)
+      extends CommTemplateData {
+    override def buildHandlebarsData: HandlebarsData = {
 
       val addressMap = Map(
-          "line1" -> Some(a.customerAddress.line1),
-          "town" -> Some(a.customerAddress.town),
-          "postcode" -> Some(a.customerAddress.postcode),
-          "line2" -> a.customerAddress.line2,
-          "county" -> a.customerAddress.county,
-          "country" -> a.customerAddress.country
+          "line1" -> Some(customerAddress.line1),
+          "town" -> Some(customerAddress.town),
+          "postcode" -> Some(customerAddress.postcode),
+          "line2" -> customerAddress.line2,
+          "county" -> customerAddress.county,
+          "country" -> customerAddress.country
         ) collect { case (k, Some(v)) => (k, v) }
 
       val customerAddressMap: Map[String, Map[String, String]] = Map("address" -> addressMap)
 
-      val customerProfileMap: Map[String, Map[String, String]] = a.customerProfile
+      val customerProfileMap: Map[String, Map[String, String]] = customerProfile
         .map { c =>
           Map("profile" -> valueToMap(c))
         }
@@ -78,28 +75,12 @@ package object templating extends Rendering {
 
       val customerData: Map[String, Map[String, String]] = Monoid.combine(customerAddressMap, customerProfileMap)
 
-      HandlebarsData(a.templateData, customerData)
+      HandlebarsData(templateData, customerData)
     }
   }
 
-  implicit val canBuildTemplateData = new BuildHandlebarsData[Map[String, TemplateData]] {
-    override def apply(a: Map[String, TemplateData]) =
-      HandlebarsData(a, Map.empty[String, Map[String, String]])
+  case class TemplateDataWrapper(templateData: Map[String, TemplateData]) extends CommTemplateData {
+    override def buildHandlebarsData: HandlebarsData =
+      HandlebarsData(templateData, Map.empty[String, Map[String, String]])
   }
-
-  def valueToTemplateData[E, L <: HList, F <: HList](instanceToConvert: E)(
-      implicit gen: LabelledGeneric.Aux[E, L],
-      fields: Fields.Aux[L, F],
-      toTraversableAux: ToTraversable.Aux[F, List, (Symbol, String)]): TemplateData = {
-
-    val fieldsHlist = fields.apply(gen.to(instanceToConvert))
-    val fieldsList = toTraversableAux(fieldsHlist)
-
-    val r = fieldsList.map {
-      case (sym, value) => (sym.name, TemplateData.fromString(value))
-    }.toMap
-
-    TemplateData.fromMap(r)
-  }
-
 }

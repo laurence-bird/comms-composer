@@ -17,13 +17,13 @@ import scala.collection.mutable
 
 object PrintTemplateRendering extends Rendering {
 
-  def renderHtml[PrintTD: BuildHandlebarsData](printTD: PrintTD,
-                                               commManifest: CommManifest,
-                                               template: PrintTemplate[Id],
-                                               clock: Clock): Either[FailedToRender, RenderedPrintHtml] = {
+  def renderHtml(handlebarsData: HandlebarsData,
+                 commManifest: CommManifest,
+                 template: PrintTemplate[Id],
+                 clock: Clock): Either[FailedToRender, RenderedPrintHtml] = {
 
     val context = buildHandlebarsContext(
-      printTD,
+      handlebarsData,
       clock
     )
 

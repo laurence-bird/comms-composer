@@ -4,6 +4,7 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
+import com.ovoenergy.comms.composer.Interpreters
 import com.ovoenergy.comms.composer.rendering.templating.{EmailTemplateData, EmailTemplateRendering}
 import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.model._
@@ -23,9 +24,9 @@ object EmailInterpreter {
               S3TemplateRepo
                 .getEmailTemplate(event.metadata.commManifest)
                 .run(context)
-                .leftMap(err => failEmail(err, event, TemplateDownloadFailed))
+                .leftMap(err => failEmail(err, TemplateDownloadFailed))
             } catch {
-              case NonFatal(e) => Left(failEmailWithException(e, event))
+              case NonFatal(e) => Left(failEmailWithException(e))
             }
           case Render(event, template) =>
             try {
@@ -36,9 +37,9 @@ object EmailInterpreter {
                   template,
                   EmailTemplateData(event.templateData, event.customerProfile, event.recipientEmailAddress)
                 )
-                .leftMap(templateErrors => failEmail(templateErrors.reason, event, templateErrors.errorCode))
+                .leftMap(templateErrors => failEmail(templateErrors.reason, templateErrors.errorCode))
             } catch {
-              case NonFatal(e) => Left(failEmailWithException(e, event))
+              case NonFatal(e) => Left(failEmailWithException(e))
             }
           case LookupSender(template, commType) =>
             Right(SenderLogic.chooseSender(template, commType))
@@ -46,14 +47,12 @@ object EmailInterpreter {
       }
     }
 
-  private def failEmail(reason: String, event: OrchestratedEmailV3, errorCode: ErrorCode): FailedV2 = {
-    warn(event)(s"Failed to compose email. Reason: $reason")
-    buildFailedEvent(reason, event.metadata, event.internalMetadata, errorCode)
+  private def failEmail(reason: String, errorCode: ErrorCode): Interpreters.Error = {
+    Interpreters.Error(reason, errorCode)
   }
 
-  private def failEmailWithException(exception: Throwable, event: OrchestratedEmailV3): FailedV2 = {
-    warnT(event)(s"Failed to compose Email because an unexpected exception occurred", exception)
-    buildFailedEvent(s"Exception occurred ($exception)", event.metadata, event.internalMetadata, CompositionError)
+  private def failEmailWithException(exception: Throwable): Interpreters.Error = {
+    Interpreters.Error(s"Exception occurred ($exception)", CompositionError)
   }
 
 }
