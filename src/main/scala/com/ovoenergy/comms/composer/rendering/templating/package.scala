@@ -30,7 +30,6 @@ package object templating {
         .getOrElse(Map.empty)
 
         // TODO writea valueToTemplateData
-
       ???
     }
   }
