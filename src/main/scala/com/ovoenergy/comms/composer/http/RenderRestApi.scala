@@ -37,10 +37,9 @@ object RenderRestApi {
     }
   }
 
-
-
   implicit def renderResponseCirceEncoder: Encoder[RenderResponse] = deriveEncoder[RenderResponse]
-  implicit def renderedPrintPdfCirceEncoder: Encoder[RenderedPrintPdf] = Encoder.encodeString.contramap[RenderedPrintPdf](x => Base64.getEncoder.encodeToString(x.pdfBody))
+  implicit def renderedPrintPdfCirceEncoder: Encoder[RenderedPrintPdf] =
+    Encoder.encodeString.contramap[RenderedPrintPdf](x => Base64.getEncoder.encodeToString(x.pdfBody))
 
   implicit def templateDataCirceDecoder: Decoder[TemplateData] = Decoder.instance { hc =>
     hc.value
@@ -71,17 +70,14 @@ object RenderRestApi {
   implicit def renderRequest: Decoder[RenderRequest] = deriveDecoder[RenderRequest]
 }
 
-
 trait RenderRestApi {
-
-
 
   def renderService: HttpService = HttpService {
     case req @ POST -> Root / "render" / CommNamePath(commName) / CommVersionPath(commVersion) / "print" =>
       for {
         renderRequest <- req.as(jsonOf[RenderRequest])
         renderedPrint <- renderPrint(commName, commVersion, renderRequest.data)
-        response      <- Ok(RenderResponse(renderedPrint).asJson)
+        response <- Ok(RenderResponse(renderedPrint).asJson)
       } yield response
   }
 
@@ -89,4 +85,3 @@ trait RenderRestApi {
     ???
   }
 }
-

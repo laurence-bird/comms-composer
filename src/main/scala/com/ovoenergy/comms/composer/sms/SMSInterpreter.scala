@@ -15,8 +15,6 @@ import scala.util.control.NonFatal
 
 object SMSInterpreter {
 
-  val smsTd: SMSTemplateData = ???
-
   def apply(context: TemplatesContext): SMSComposerA ~> FailedOr =
     new (SMSComposerA ~> FailedOr) {
       override def apply[A](op: SMSComposerA[A]): FailedOr[A] = {
@@ -33,10 +31,10 @@ object SMSInterpreter {
           case Render(event, template) =>
             try {
               SMSTemplateRendering
-                .renderSMS(Clock.systemDefaultZone(), event.metadata.commManifest, template, smsTd)
-//                                                      event.templateData,
-//                                                      event.customerProfile,
-//                                                      event.recipientPhoneNumber)
+                .renderSMS(Clock.systemDefaultZone(),
+                           event.metadata.commManifest,
+                           template,
+                           SMSTemplateData(event.templateData, event.customerProfile, event.recipientPhoneNumber))
                 .leftMap(templateErrors => failSMS(templateErrors.reason, event, templateErrors.errorCode))
             } catch {
               case NonFatal(e) => Left(failSMSWithException(e, event))

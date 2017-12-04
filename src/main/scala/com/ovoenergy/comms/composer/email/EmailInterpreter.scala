@@ -14,8 +14,6 @@ import com.ovoenergy.comms.templates.TemplatesContext
 import scala.util.control.NonFatal
 
 object EmailInterpreter {
-  val emailTD: EmailTemplateData = ???
-
   def apply(context: TemplatesContext): EmailComposerA ~> FailedOr =
     new (EmailComposerA ~> FailedOr) {
       override def apply[A](op: EmailComposerA[A]): FailedOr[A] = {
@@ -36,10 +34,7 @@ object EmailInterpreter {
                   Clock.systemDefaultZone(),
                   event.metadata.commManifest,
                   template,
-//                                                        event.templateData,
-//                                                        event.customerProfile,
-//                                                        event.recipientEmailAddress)
-                  emailTD
+                  EmailTemplateData(event.templateData, event.customerProfile, event.recipientEmailAddress)
                 )
                 .leftMap(templateErrors => failEmail(templateErrors.reason, event, templateErrors.errorCode))
             } catch {

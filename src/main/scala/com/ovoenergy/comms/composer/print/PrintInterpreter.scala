@@ -13,14 +13,13 @@ import com.ovoenergy.comms.composer.Interpreters._
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
 import com.ovoenergy.comms.composer.rendering.pdf.{DocRaptorClient, DocRaptorConfig, DocRaptorError}
 import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
+import com.ovoenergy.comms.model
 import okhttp3.{Request, Response}
 
 import scala.util.Try
 import scala.util.control.NonFatal
 
 object PrintInterpreter {
-  val printTd: PrintTemplateData = ???
-
   case class PrintContext(docRaptorConfig: DocRaptorConfig,
                           s3Config: S3Config,
                           retryConfig: RetryConfig,
@@ -43,7 +42,10 @@ object PrintInterpreter {
           case RenderPrintHtml(event, template) =>
             try {
               PrintTemplateRendering
-                .renderHtml(printTd, ???, template, Clock.systemDefaultZone()) // TODO: Sort out
+                .renderHtml(PrintTemplateData(event.templateData, event.customerProfile, event.address),
+                            event.metadata.commManifest,
+                            template,
+                            Clock.systemDefaultZone())
                 .leftMap(templateErrors => failPrint(templateErrors.reason, event, templateErrors.errorCode))
             } catch {
               case NonFatal(e) => Left(failPrintWithException(e, event))
