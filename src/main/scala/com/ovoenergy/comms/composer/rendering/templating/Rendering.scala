@@ -25,7 +25,7 @@ trait Rendering {
       }
     }
 
-    val templateData = canBuildTemplateData.buildTemplateData(data)
+    val templateData: Map[String, TemplateData] = canBuildTemplateData.buildTemplateData(data)
 
     val dataAsStrings: Map[String, AnyRef] = templateData map {
       case (key, templateData) => key -> extractValueFromTemplateData(templateData)
