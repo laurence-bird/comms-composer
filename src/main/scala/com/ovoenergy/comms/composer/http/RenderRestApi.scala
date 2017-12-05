@@ -1,5 +1,7 @@
 package com.ovoenergy.comms.composer.http
 
+import java.util.Base64
+
 import com.ovoenergy.comms.composer.http.RenderRestApi._
 import com.ovoenergy.comms.composer.print.RenderedPrintPdf
 import com.ovoenergy.comms.model._
@@ -11,7 +13,7 @@ import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import cats.implicits._
-import com.ovoenergy.comms.composer.Interpreters
+import com.ovoenergy.comms.composer.{Interpreters, Logging}
 import com.ovoenergy.comms.composer.Interpreters.FailedOr
 import fs2.util.Attempt
 import shapeless.{Inl, Inr}
@@ -23,48 +25,52 @@ case class CommVersion(value: String) extends AnyVal
 object RenderRestApi {
 
   case class RenderRequest(data: Map[String, TemplateData])
-  object RenderRequest {
-    implicit def templateDataCirceDecoder: Decoder[TemplateData] = Decoder.instance { hc =>
-      hc.value
-        .fold(
-          Right(TemplateData.fromString("")),
-          b => Right(TemplateData.fromString(b.toString)),
-          n => Right(TemplateData.fromString(n.toString)),
-          s => Right(TemplateData.fromString(s)),
-          xs => {
-            xs.map(_.as[TemplateData])
-              .sequenceU
-              .map(TemplateData.fromSeq)
-          },
-          obj => {
-            obj.toMap
-              .map {
-                case (key, value) =>
-                  value.as[TemplateData].map(key -> _)
-              }
-              .toVector
-              .sequenceU
-              .map(x => TemplateData.fromMap(x.toMap))
-          }
-        )
-    }
 
-    implicit def templateDataCirceEncoder: Encoder[TemplateData] = Encoder.instance {
-      case TemplateData(Inl(value)) => Json.fromString(value)
-      case TemplateData(Inr(Inl(value))) => Json.fromValues(value.map(x => Json.fromString(x.value.toString)))
-      case TemplateData(Inr(Inr(Inl(value: Map[String, TemplateData])))) => {
-        Json.obj(value.mapValues(_.asJson).toSeq: _*)
-      }
-    }
-
-    implicit val renderRequestEncoder: Encoder[RenderRequest] = deriveEncoder[RenderRequest]
-    implicit def renderRequest: Decoder[RenderRequest] = deriveDecoder[RenderRequest]
+  implicit def templateDataCirceDecoder: Decoder[TemplateData] = Decoder.instance { hc =>
+    hc.value
+      .fold(
+        Right(TemplateData.fromString("")),
+        b => Right(TemplateData.fromString(b.toString)),
+        n => Right(TemplateData.fromString(n.toString)),
+        s => Right(TemplateData.fromString(s)),
+        xs => {
+          xs.map(_.as[TemplateData])
+            .sequenceU
+            .map(TemplateData.fromSeq)
+        },
+        obj => {
+          obj.toMap
+            .map {
+              case (key, value) =>
+                value.as[TemplateData].map(key -> _)
+            }
+            .toVector
+            .sequenceU
+            .map(x => TemplateData.fromMap(x.toMap))
+        }
+      )
   }
+
+  implicit def templateDataCirceEncoder: Encoder[TemplateData] = Encoder.instance {
+    case TemplateData(Inl(value)) => Json.fromString(value)
+    case TemplateData(Inr(Inl(value))) => Json.fromValues(value.map(x => Json.fromString(x.value.toString)))
+    case TemplateData(Inr(Inr(Inl(value: Map[String, TemplateData])))) => {
+      Json.obj(value.mapValues(_.asJson).toSeq: _*)
+    }
+  }
+
+  implicit val renderRequestEncoder: Encoder[RenderRequest] = deriveEncoder[RenderRequest]
+
+  implicit def renderRequest: Decoder[RenderRequest] = deriveDecoder[RenderRequest]
 
   case class RenderResponse(renderedPrint: RenderedPrintPdf)
-  object RenderResponse {
-    implicit def renderResponseCirceEncoder: Encoder[RenderResponse] = deriveEncoder[RenderResponse]
-  }
+
+  implicit def renderResponseCirceEncoder: Encoder[RenderResponse] = deriveEncoder[RenderResponse]
+
+  implicit def renderResponseCirceDecoder: Decoder[RenderResponse] = deriveDecoder[RenderResponse]
+
+  implicit def renderedPrintPdfCirceEncoder: Encoder[RenderedPrintPdf] =
+    Encoder.encodeString.contramap[RenderedPrintPdf](x => Base64.getEncoder.encodeToString(x.pdfBody))
 
   object CommNamePath {
     def unapply(str: String): Option[CommName] = {
@@ -84,9 +90,14 @@ object RenderRestApi {
       CommType.fromString(str)
     }
   }
+
+  case class ErrorResponse(message: String)
+  implicit def errorResponseEncoder: Encoder[ErrorResponse] = deriveEncoder[ErrorResponse]
+  implicit def errorResponseDecoder: Decoder[ErrorResponse] = deriveDecoder[ErrorResponse]
+
 }
 
-trait RenderRestApi {
+trait RenderRestApi { logger: Logging =>
 
   def renderService(
       renderPrint: (CommManifest, Map[String, TemplateData]) => Task[FailedOr[RenderedPrintPdf]]): HttpService = {
@@ -110,12 +121,14 @@ trait RenderRestApi {
   }
 
   private def deserialiseRequest(req: Request): Task[Either[String, RenderRequest]] = {
+    log.info(s"Trying to deserialise request: ${req.pathInfo}")
     req
       .as(jsonOf[RenderRequest])
       .attempt
       .map { (requestAttempt: Attempt[RenderRequest]) =>
         requestAttempt.left.map { a =>
-          s"Failed to deserialise resonse body: ${a.getMessage}"
+          log.warn(s"Failed to deserialise request: ${a.getMessage}")
+          s"Failed to deserialise request body: ${a.getMessage}"
         }
       }
   }
@@ -123,9 +136,9 @@ trait RenderRestApi {
   private def buildApiResponse(renderResult: FailedOr[RenderedPrintPdf]): Task[Response] = {
     def handleError(error: Interpreters.Error): Task[Response] = {
       error.errorCode match {
-        case TemplateDownloadFailed => NotFound(error.reason)
-        case MissingTemplateData => UnprocessableEntity(error.reason)
-        case _ => InternalServerError(error.reason)
+        case TemplateDownloadFailed => NotFound(ErrorResponse(error.reason).asJson)
+        case MissingTemplateData => UnprocessableEntity(ErrorResponse(error.reason).asJson)
+        case _ => InternalServerError(ErrorResponse(error.reason).asJson)
 
       }
     }

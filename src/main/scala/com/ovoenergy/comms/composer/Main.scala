@@ -42,7 +42,7 @@ import com.ovoenergy.comms.serialisation.Codecs._
 import io.circe.generic.auto._
 import scala.concurrent.duration.FiniteDuration
 
-object Main extends App with AdminRestApi with RenderRestApi {
+object Main extends App with AdminRestApi with Logging with RenderRestApi {
 
   val runningInDockerCompose = sys.env.get("DOCKER_COMPOSE").contains("true")
 
@@ -50,8 +50,6 @@ object Main extends App with AdminRestApi with RenderRestApi {
     // accept the self-signed certs from the SSL proxy sitting in front of the fake S3 container
     System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
   }
-
-  val log = LoggerFactory.getLogger(getClass)
 
   implicit val config = ConfigFactory.load()
 

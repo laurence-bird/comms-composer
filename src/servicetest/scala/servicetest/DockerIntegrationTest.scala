@@ -22,6 +22,7 @@ import kafka.admin.AdminUtils
 import kafka.utils.ZkUtils
 import org.apache.commons.io.input.{Tailer, TailerListenerAdapter}
 import org.apache.kafka.common.protocol.Errors
+import org.mockserver.client.server.MockServerClient
 import org.scalatest._
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 
@@ -39,7 +40,7 @@ trait DockerIntegrationTest
     with Eventually { self =>
 
   lazy val ComposerHttpPort: Int = 8080
-
+  lazy val mockServerClient = new MockServerClient("localhost", 1080)
   def composerHttpEndpoint: String = s"http://localhost:${composer.unsafePort(ComposerHttpPort)}"
 
   implicit class RichDockerContainer(val dockerContainer: DockerContainer) {

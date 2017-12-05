@@ -38,7 +38,7 @@ class PrintServiceTest
 
   implicit val config = ConfigFactory.load("servicetest.conf")
   lazy val topics = Kafka.aiven
-  val mockServerClient = new MockServerClient("localhost", 1080)
+
   val s3Endpoint = "http://localhost:4569"
   val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
   val now = Instant.now()

@@ -1,6 +1,6 @@
 package com.ovoenergy.comms.composer.http
 
-import com.ovoenergy.comms.composer.Interpreters
+import com.ovoenergy.comms.composer.{Interpreters, Logging}
 import com.ovoenergy.comms.composer.Interpreters.FailedOr
 import com.ovoenergy.comms.composer.http.RenderRestApi.RenderRequest
 import com.ovoenergy.comms.composer.print.RenderedPrintPdf
@@ -18,7 +18,7 @@ import shapeless.{Inl, Inr}
 
 class RenderRestApiSpec extends FlatSpec with Matchers {
 
-  object TestHttpServce extends RenderRestApi
+  object TestHttpServce extends RenderRestApi with Logging
 
   def buildRenderPrint(response: FailedOr[RenderedPrintPdf]) = {
     (manifest: CommManifest, template: Map[String, TemplateData]) =>
