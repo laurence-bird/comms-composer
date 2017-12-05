@@ -20,17 +20,9 @@ class RenderRestApiSpec extends FlatSpec with Matchers {
 
   object TestHttpServce extends RenderRestApi
 
-  implicit val renderRequestEncoder: Encoder[RenderRequest] = deriveEncoder[RenderRequest]
-  implicit def templateDataCirceEncoder: Encoder[TemplateData] = Encoder.instance {
-    case TemplateData(Inl(value))      => Json.fromString(value)
-    case TemplateData(Inr(Inl(value))) => Json.fromValues(value.map(x => Json.fromString(x.value.toString)))
-    case TemplateData(Inr(Inr(Inl(value: Map[String, TemplateData])))) => {
-      Json.obj(value.mapValues(_.asJson).toSeq: _*)
-    }
-  }
-
-  def buildRenderPrint(response: FailedOr[RenderedPrintPdf])= { (manifest: CommManifest, template: Map[String, TemplateData]) =>
-    Task.now(response)
+  def buildRenderPrint(response: FailedOr[RenderedPrintPdf]) = {
+    (manifest: CommManifest, template: Map[String, TemplateData]) =>
+      Task.now(response)
   }
   val successfulRender = buildRenderPrint(Right(RenderedPrintPdf("Hi".getBytes)))
 
@@ -41,7 +33,7 @@ class RenderRestApiSpec extends FlatSpec with Matchers {
     )
 
     val req: Task[Request] = POST(uri("/render/yolo/1.0/Service/print"), renderRequest.asJson)
-    val service: HttpService = TestHttpServce.render(successfulRender)
+    val service: HttpService = TestHttpServce.renderService(successfulRender)
 
     val response: Response = req.flatMap(service.run).unsafeRun().orNotFound
     response.status shouldBe Ok
@@ -54,12 +46,11 @@ class RenderRestApiSpec extends FlatSpec with Matchers {
     )
 
     val req: Task[Request] = POST(uri("/render/yolo/1.0/invalid/print"), renderRequest.asJson)
-    val service: HttpService = TestHttpServce.render(successfulRender)
+    val service: HttpService = TestHttpServce.renderService(successfulRender)
 
     val response: Response = req.flatMap(service.run).unsafeRun().orNotFound
     response.status shouldBe NotFound
   }
-
 
   it should "return an appropriate error if JSON deserialisation fails" in {
     import io.circe.parser._
@@ -69,9 +60,8 @@ class RenderRestApiSpec extends FlatSpec with Matchers {
       |}
     """.stripMargin).right.get
 
-
-    val req     = POST(uri("/render/yolo/1.0/Service/print"), invalidJson)
-    val service = TestHttpServce.render(successfulRender)
+    val req = POST(uri("/render/yolo/1.0/Service/print"), invalidJson)
+    val service = TestHttpServce.renderService(successfulRender)
 
     val response = req.flatMap(service.run).unsafeRun().orNotFound
     response.status shouldBe BadRequest
@@ -81,22 +71,23 @@ class RenderRestApiSpec extends FlatSpec with Matchers {
 
     val errorsAndExpectedResponses = List(
       (Interpreters.Error("Template download failed", TemplateDownloadFailed), Status.NotFound),
-      (Interpreters.Error("Missing fields from template data: yo, lo", MissingTemplateData), Status.UnprocessableEntity),
+      (Interpreters.Error("Missing fields from template data: yo, lo", MissingTemplateData),
+       Status.UnprocessableEntity),
       (Interpreters.Error("Missing fields from template data: yo, lo", CompositionError), Status.InternalServerError)
     )
 
-    val renderRequest     = RenderRequest(
+    val renderRequest = RenderRequest(
       Map("Foo" -> TemplateData.fromString("bar"))
     )
     val req: Task[Request] = POST(uri("/render/yolo/1.0/Service/print"), renderRequest.asJson)
 
-    errorsAndExpectedResponses.foreach{ errs =>
-      val error             = errs._1
-      val expectedResponse  = errs._2
-      val renderPrint       = buildRenderPrint(Left(error))
+    errorsAndExpectedResponses.foreach { errs =>
+      val error = errs._1
+      val expectedResponse = errs._2
+      val renderPrint = buildRenderPrint(Left(error))
 
-      val service   = TestHttpServce.render(renderPrint)
-      val response  = req.flatMap(service.run).unsafeRun().orNotFound
+      val service = TestHttpServce.renderService(renderPrint)
+      val response = req.flatMap(service.run).unsafeRun().orNotFound
       response.status shouldBe expectedResponse
     }
   }

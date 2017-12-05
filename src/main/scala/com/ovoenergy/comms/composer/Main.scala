@@ -13,7 +13,7 @@ import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA, EmailI
 import com.ovoenergy.comms.composer.kafka.ComposerGraph
 import com.ovoenergy.comms.model.email.{ComposedEmailV2, OrchestratedEmailV3}
 import com.ovoenergy.comms.model.sms.{ComposedSMSV2, OrchestratedSMSV2}
-import com.ovoenergy.comms.model.{Customer, FailedV2, Metadata, MetadataV2}
+import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.composer.sms.{SMSComposer, SMSComposerA, SMSInterpreter}
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
@@ -21,16 +21,16 @@ import cats.instances.either._
 import cats.~>
 import com.amazonaws.regions.Regions
 import com.ovoenergy.comms.composer.Interpreters.FailedOr
-import com.ovoenergy.comms.composer.http.{AdminRestApi, HttpClient, HttpServerConfig}
+import com.ovoenergy.comms.composer.http.{AdminRestApi, HttpClient, HttpServerConfig, RenderRestApi}
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
 import com.ovoenergy.comms.composer.print.PrintInterpreter.PrintContext
-import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA, PrintInterpreter}
+import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA, PrintInterpreter, RenderedPrintPdf}
 import com.ovoenergy.comms.composer.rendering.pdf.DocRaptorConfig
 import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
 import com.ovoenergy.comms.helpers.Kafka
 import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
 import com.ovoenergy.comms.serialisation.Retry
-import fs2.Strategy
+import fs2.{Strategy, Task}
 import org.http4s.server.Server
 import org.http4s.server.blaze.BlazeBuilder
 
@@ -42,7 +42,7 @@ import com.ovoenergy.comms.serialisation.Codecs._
 import io.circe.generic.auto._
 import scala.concurrent.duration.FiniteDuration
 
-object Main extends App with AdminRestApi {
+object Main extends App with AdminRestApi with RenderRestApi {
 
   val runningInDockerCompose = sys.env.get("DOCKER_COMPOSE").contains("true")
 
@@ -124,11 +124,17 @@ object Main extends App with AdminRestApi {
     Supervision.Stop
   }
 
+  def renderPrint(commManifest: CommManifest, data: Map[String, TemplateData]): Task[FailedOr[RenderedPrintPdf]] = {
+    Task
+      .apply(PrintComposer.httpProgram(commManifest, data).foldMap(printInterpreter))
+  }
+
   log.info(s"Starting HTTP server on host=${httpServerConfig.host} port=${httpServerConfig.port}")
 
   val httpServer = BlazeBuilder
     .bindHttp(httpServerConfig.port, httpServerConfig.host)
     .mountService(adminService, "/")
+    .mountService(renderService(renderPrint), "/")
     .start
     .unsafeRun()
 
