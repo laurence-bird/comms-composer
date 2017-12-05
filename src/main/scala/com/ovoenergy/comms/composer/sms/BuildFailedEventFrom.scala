@@ -10,7 +10,7 @@ sealed trait BuildFailedEventFrom[InEvent] {
   def apply(inEvent: InEvent, error: Interpreters.Error): FailedV2
 }
 
-object BuildFailedEventFrom{
+object BuildFailedEventFrom {
 
   implicit val failedFromOrchestratedEmail = new BuildFailedEventFrom[OrchestratedEmailV3] {
     override def apply(inEvent: OrchestratedEmailV3, error: Interpreters.Error) = {

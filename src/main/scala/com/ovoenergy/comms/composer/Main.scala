@@ -30,6 +30,7 @@ import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
 import com.ovoenergy.comms.helpers.Kafka
 import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
 import com.ovoenergy.comms.serialisation.Retry
+import fs2.Strategy
 import org.http4s.server.Server
 import org.http4s.server.blaze.BlazeBuilder
 
@@ -79,6 +80,7 @@ object Main extends App with AdminRestApi {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = actorSystem.dispatcher
   implicit val scheduler = actorSystem.scheduler
+  implicit val strate9gy = Strategy.fromExecutor(executionContext)
 
   def exitOnFailure[T](either: Either[Retry.Failed, T], errorMessage: String): T = either match {
     case Left(l) => {

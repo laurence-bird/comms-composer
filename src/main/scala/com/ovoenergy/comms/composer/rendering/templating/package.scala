@@ -13,6 +13,7 @@ package object templating extends Rendering {
   sealed trait CommTemplateData {
     def buildHandlebarsData: HandlebarsData
   }
+
   case class EmailTemplateData(templateData: Map[String, TemplateData],
                                customerProfile: Option[CustomerProfile],
                                recipientEmailAddress: String)
