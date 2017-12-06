@@ -20,7 +20,6 @@ import org.slf4j.LoggerFactory
 import cats.instances.either._
 import cats.~>
 import com.amazonaws.regions.Regions
-import com.ovoenergy.comms.composer.Interpreters.FailedOr
 import com.ovoenergy.comms.composer.http.{AdminRestApi, HttpClient, HttpServerConfig, RenderRestApi}
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
 import com.ovoenergy.comms.composer.print.PrintInterpreter.PrintContext

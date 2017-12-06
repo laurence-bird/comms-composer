@@ -4,13 +4,12 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
-import com.ovoenergy.comms.composer.Interpreters
+import com.ovoenergy.comms.composer.{ComposerError, FailedOr}
 import com.ovoenergy.comms.composer.rendering.templating.{PrintTemplateData, PrintTemplateRendering}
 import com.ovoenergy.comms.composer.repo.{S3PdfRepo, S3TemplateRepo}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.print.OrchestratedPrint
 import com.ovoenergy.comms.templates.TemplatesContext
-import com.ovoenergy.comms.composer.Interpreters._
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
 import com.ovoenergy.comms.composer.rendering.pdf.{DocRaptorClient, DocRaptorConfig, DocRaptorError}
 import com.ovoenergy.comms.composer.rendering.templating
@@ -64,12 +63,12 @@ object PrintInterpreter {
     }
   }
 
-  private def failPrint(reason: String, errorCode: ErrorCode): Interpreters.Error = {
-    Interpreters.Error(reason, errorCode)
+  private def failPrint(reason: String, errorCode: ErrorCode): ComposerError = {
+    ComposerError(reason, errorCode)
   }
 
-  private def failPrintWithException(exception: Throwable): Interpreters.Error = {
-    Interpreters.Error(s"Exception occurred ($exception)", CompositionError)
+  private def failPrintWithException(exception: Throwable): ComposerError = {
+    ComposerError(s"Exception occurred ($exception)", CompositionError)
   }
 
 }

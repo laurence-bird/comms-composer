@@ -4,12 +4,12 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
-import com.ovoenergy.comms.composer.Interpreters
+import com.ovoenergy.comms.composer.{ComposerError, FailedOr}
 import com.ovoenergy.comms.composer.rendering.templating.{EmailTemplateData, EmailTemplateRendering}
 import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email.OrchestratedEmailV3
-import com.ovoenergy.comms.composer.Interpreters._
+
 import com.ovoenergy.comms.templates.TemplatesContext
 
 import scala.util.control.NonFatal
@@ -47,12 +47,12 @@ object EmailInterpreter {
       }
     }
 
-  private def failEmail(reason: String, errorCode: ErrorCode): Interpreters.Error = {
-    Interpreters.Error(reason, errorCode)
+  private def failEmail(reason: String, errorCode: ErrorCode): ComposerError = {
+    ComposerError(reason, errorCode)
   }
 
-  private def failEmailWithException(exception: Throwable): Interpreters.Error = {
-    Interpreters.Error(s"Exception occurred ($exception)", CompositionError)
+  private def failEmailWithException(exception: Throwable): ComposerError = {
+    ComposerError(s"Exception occurred ($exception)", CompositionError)
   }
 
 }

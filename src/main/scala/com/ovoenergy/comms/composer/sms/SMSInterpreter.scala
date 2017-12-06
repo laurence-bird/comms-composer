@@ -4,13 +4,12 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
-import com.ovoenergy.comms.composer.Interpreters
+import com.ovoenergy.comms.composer.{ComposerError, FailedOr}
 import com.ovoenergy.comms.composer.rendering.templating.{SMSTemplateData, SMSTemplateRendering}
 import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.sms.OrchestratedSMSV2
 import com.ovoenergy.comms.templates.TemplatesContext
-import com.ovoenergy.comms.composer.Interpreters._
 
 import scala.util.control.NonFatal
 
@@ -44,11 +43,11 @@ object SMSInterpreter {
       }
     }
 
-  private def failSMS(reason: String, errorCode: ErrorCode): Interpreters.Error = {
-    Interpreters.Error(reason, errorCode)
+  private def failSMS(reason: String, errorCode: ErrorCode): ComposerError = {
+    ComposerError(reason, errorCode)
   }
 
-  private def failSMSWithException(exception: Throwable): Interpreters.Error = {
-    Interpreters.Error(s"Exception occurred ($exception)", CompositionError)
+  private def failSMSWithException(exception: Throwable): ComposerError = {
+    ComposerError(s"Exception occurred ($exception)", CompositionError)
   }
 }

@@ -1,7 +1,6 @@
 package com.ovoenergy.comms.composer.http
 
-import com.ovoenergy.comms.composer.{Interpreters, Logging}
-import com.ovoenergy.comms.composer.Interpreters.FailedOr
+import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
 import com.ovoenergy.comms.composer.http.RenderRestApi.RenderRequest
 import com.ovoenergy.comms.composer.print.RenderedPrintPdf
 import com.ovoenergy.comms.model._
@@ -70,10 +69,9 @@ class RenderRestApiSpec extends FlatSpec with Matchers {
   it should "return an appropriate error if print rendering fails" in {
 
     val errorsAndExpectedResponses = List(
-      (Interpreters.Error("Template download failed", TemplateDownloadFailed), Status.NotFound),
-      (Interpreters.Error("Missing fields from template data: yo, lo", MissingTemplateData),
-       Status.UnprocessableEntity),
-      (Interpreters.Error("Missing fields from template data: yo, lo", CompositionError), Status.InternalServerError)
+      (ComposerError("Template download failed", TemplateDownloadFailed), Status.NotFound),
+      (ComposerError("Missing fields from template data: yo, lo", MissingTemplateData), Status.UnprocessableEntity),
+      (ComposerError("Missing fields from template data: yo, lo", CompositionError), Status.InternalServerError)
     )
 
     val renderRequest = RenderRequest(

@@ -13,8 +13,7 @@ import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import cats.implicits._
-import com.ovoenergy.comms.composer.{Interpreters, Logging}
-import com.ovoenergy.comms.composer.Interpreters.FailedOr
+import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
 import fs2.util.Attempt
 import shapeless.{Inl, Inr}
 
@@ -121,7 +120,6 @@ trait RenderRestApi { logger: Logging =>
   }
 
   private def deserialiseRequest(req: Request): Task[Either[String, RenderRequest]] = {
-    log.info(s"Trying to deserialise request: ${req.pathInfo}")
     req
       .as(jsonOf[RenderRequest])
       .attempt
@@ -134,7 +132,7 @@ trait RenderRestApi { logger: Logging =>
   }
 
   private def buildApiResponse(renderResult: FailedOr[RenderedPrintPdf]): Task[Response] = {
-    def handleError(error: Interpreters.Error): Task[Response] = {
+    def handleError(error: ComposerError): Task[Response] = {
       error.errorCode match {
         case TemplateDownloadFailed => NotFound(ErrorResponse(error.reason).asJson)
         case MissingTemplateData => UnprocessableEntity(ErrorResponse(error.reason).asJson)
@@ -144,7 +142,7 @@ trait RenderRestApi { logger: Logging =>
     }
 
     renderResult match {
-      case Left(l: Interpreters.Error) => handleError(l)
+      case Left(err) => handleError(err)
       case Right(r) => Ok(RenderResponse(r).asJson)
     }
   }
