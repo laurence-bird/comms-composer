@@ -4,18 +4,17 @@ import akka.Done
 import akka.actor.{ActorSystem, Scheduler}
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.scaladsl.Consumer.Control
-import akka.kafka.{ConsumerSettings, Subscriptions}
+import akka.kafka.Subscriptions
 import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.Source
-import com.ovoenergy.comms.composer.Logging
-import com.ovoenergy.comms.composer.Main.log
+import com.ovoenergy.comms.composer.{ComposerError, Logging}
+import com.ovoenergy.comms.composer.sms.BuildFailedEventFrom
 import com.ovoenergy.comms.model._
 import org.apache.kafka.clients.producer.RecordMetadata
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.control.NonFatal
 import com.ovoenergy.comms.helpers.Topic
-import com.ovoenergy.comms.serialisation.Retry
 import com.sksamuel.avro4s.{FromRecord, SchemaFor}
 
 import scala.reflect.ClassTag
@@ -28,9 +27,10 @@ object ComposerGraph extends Logging {
   def build[InEvent <: LoggableEvent: SchemaFor: FromRecord: ClassTag, OutEvent <: LoggableEvent](
       topic: Topic[InEvent],
       outputProducer: => OutEvent => Future[RecordMetadata],
-      failedProducer: FailedV2 => Future[RecordMetadata])(processEvent: InEvent => Either[FailedV2, OutEvent])(
+      failedProducer: FailedV2 => Future[RecordMetadata])(processEvent: InEvent => Either[ComposerError, OutEvent])(
       implicit scheduler: Scheduler,
       actorSystem: ActorSystem,
+      buildFailedEventFrom: BuildFailedEventFrom[InEvent],
       ec: ExecutionContext): Source[Done, Control] = {
 
     def sendOutput(event: OutEvent): Future[_] = {
@@ -42,7 +42,8 @@ object ComposerGraph extends Logging {
       }
     }
 
-    def sendFailed(failed: FailedV2): Future[_] = {
+    def sendFailed(failedToComposeError: ComposerError, inEvent: InEvent): Future[_] = {
+      val failed = buildFailedEventFrom(inEvent, failedToComposeError)
       failedProducer(failed).recover {
         case NonFatal(e) =>
           warnT(failed)(
@@ -75,7 +76,7 @@ object ComposerGraph extends Logging {
             processEvent(inputEvent) match {
               case Left(failed) =>
                 info(inputEvent)(s"Processing failed, sending failed event")
-                sendFailed(failed)
+                sendFailed(failed, inputEvent)
               case Right(result) =>
                 sendOutput(result)
             }

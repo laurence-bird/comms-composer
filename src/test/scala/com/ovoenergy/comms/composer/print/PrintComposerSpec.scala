@@ -23,12 +23,12 @@ class PrintComposerSpec extends FlatSpec with Matchers {
           body = HandlebarsTemplate("<h2>Thanks for your payment of £{{amount}}</h2>", requiredFields)
         )
 
-      case RenderPrintHtml(_, template) =>
+      case RenderPrintHtml(_, template, _) =>
         RenderedPrintHtml(
           htmlBody = template.body.rawExpandedContent.replaceAllLiterally("{{amount}}", "1.23")
         )
 
-      case RenderPrintPdf(incomingEvent, r) => RenderedPrintPdf("Hello".getBytes())
+      case RenderPrintPdf(r) => RenderedPrintPdf("Hello".getBytes())
       case PersistRenderedPdf(incomingEvent, r) => "PdfIdentifier"
     }
   }

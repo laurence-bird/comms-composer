@@ -34,8 +34,6 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     textBody = Some(HandlebarsTemplate("The amounts were", requiredFields))
   )
 
-  val renderEmail = EmailTemplateRendering.renderEmail(Clock.systemDefaultZone()) _
-
   it should "render a simple template" in {
     val manifest = CommManifest(model.Service, "simple", "0.1")
     val template = EmailTemplate[Id](
@@ -47,7 +45,10 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
 
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderEmail(manifest, template, data, Some(profile), emailAddress).right.value
+    val result = EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(), manifest, template, EmailTemplateData(data, Some(profile), emailAddress))
+      .right
+      .value
     result.subject should be("Thanks for your payment of £1.23")
     result.htmlBody should be("You paid £1.23")
     result.textBody should be(Some("The amount was £1.23"))
@@ -67,7 +68,10 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
       "firstName" -> TemplateData(Coproduct[TemplateData.TD]("Jim"))
     )
 
-    val result = renderEmail(manifest, template, data, None, emailAddress).right.value
+    val result = EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(), manifest, template, EmailTemplateData(data, None, emailAddress))
+      .right
+      .value
     result.subject should be("Jim thanks for your payment of £1.23")
     result.htmlBody should be("You paid £1.23")
     result.textBody should be(Some("The amount was £1.23"))
@@ -81,7 +85,10 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
       htmlBody = HandlebarsTemplate("", requiredFields),
       textBody = Some(HandlebarsTemplate("", requiredFields))
     )
-    renderEmail(manifest, template, Map.empty, Some(profile), emailAddress) should be('left)
+    EmailTemplateRendering.renderEmail(Clock.systemDefaultZone(),
+                                       manifest,
+                                       template,
+                                       EmailTemplateData(Map.empty, Some(profile), emailAddress)) should be('left)
   }
 
   it should "render a template that references fields in the customer profile" in {
@@ -95,7 +102,10 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
     val resultEither: Either[FailedToRender, RenderedEmail] =
-      renderEmail(manifest, template, data, Some(profile), emailAddress)
+      EmailTemplateRendering.renderEmail(Clock.systemDefaultZone(),
+                                         manifest,
+                                         template,
+                                         EmailTemplateData(data, Some(profile), emailAddress))
     resultEither shouldBe Right(
       RenderedEmail(
         "SUBJECT Joe 1.23",
@@ -114,7 +124,10 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val renderingErrors = renderEmail(manifest, template, data, None, emailAddress).left.value
+    val renderingErrors = EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(), manifest, template, EmailTemplateData(data, None, emailAddress))
+      .left
+      .value
     renderingErrors.reason should include("profile.firstName")
   }
 
@@ -128,7 +141,10 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result: RenderedEmail = renderEmail(manifest, template, data, Some(profile), emailAddress).right.value
+    val result: RenderedEmail = EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(), manifest, template, EmailTemplateData(data, Some(profile), emailAddress))
+      .right
+      .value
     result.htmlBody should be("HTML BODY joe.bloggs@ovoenergy.com")
   }
 
@@ -142,7 +158,10 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val renderingErrors = renderEmail(manifest, template, data, Some(profile), emailAddress).left.value
+    val renderingErrors = EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(), manifest, template, EmailTemplateData(data, Some(profile), emailAddress))
+      .left
+      .value
     renderingErrors.reason should include("profile.prefix")
     renderingErrors.reason should include("thing")
     "thing".r.findAllMatchIn(renderingErrors.reason) should have size 1
@@ -158,9 +177,18 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     )
     val validData = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")),
                         "thing" -> TemplateData(Coproduct[TemplateData.TD]("widget")))
-    renderEmail(manifest, template, validData, Some(profile), emailAddress) should be('right)
+    EmailTemplateRendering.renderEmail(Clock.systemDefaultZone(),
+                                       manifest,
+                                       template,
+                                       EmailTemplateData(validData, Some(profile), emailAddress)) should be('right)
     val invalidData = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
-    val errorMessage = renderEmail(manifest, template, invalidData, Some(profile), emailAddress).left.value
+    val errorMessage = EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(),
+                   manifest,
+                   template,
+                   EmailTemplateData(invalidData, Some(profile), emailAddress))
+      .left
+      .value
     errorMessage.reason should include("thing")
   }
 
@@ -180,7 +208,10 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
     val result =
-      EmailTemplateRendering.renderEmail(clock)(manifest, template, data, Some(profile), emailAddress).right.value
+      EmailTemplateRendering
+        .renderEmail(clock, manifest, template, EmailTemplateData(data, Some(profile), emailAddress))
+        .right
+        .value
     result.subject should be("SUBJECT 31/12/2015 1.23")
     result.htmlBody should be("HTML BODY 31/12/2015 1.23")
     result.textBody should be(Some("TEXT BODY 31/12/2015 1.23"))
@@ -224,7 +255,11 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     }
 
     val result: Either[FailedToRender, RenderedEmail] =
-      renderEmail(manifest, template, templateData, Some(profile), emailAddress)
+      EmailTemplateRendering
+        .renderEmail(Clock.systemDefaultZone(),
+                     manifest,
+                     template,
+                     EmailTemplateData(templateData, Some(profile), emailAddress))
     if (result.isLeft) fail(result.left.value.reason)
     else {
       result.right.value.subject should be("Thanks for your payments of £1.23 (transactionId: 5453ffsdfsdf) £100.23 ")
@@ -250,7 +285,14 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     )
     val templateData = Map.empty[String, TemplateData]
 
-    renderEmail(manifest, template, templateData, Some(profile), emailAddress).right.value.subject shouldBe "Thanks for your payment of £0.00"
+    EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(),
+                   manifest,
+                   template,
+                   EmailTemplateData(templateData, Some(profile), emailAddress))
+      .right
+      .value
+      .subject shouldBe "Thanks for your payment of £0.00"
   }
 
   it should "render the else block of an each" in {
@@ -259,14 +301,28 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
       "payments" -> TemplateData(Coproduct[TemplateData.TD](Seq[TemplateData]()))
     )
 
-    renderEmail(manifest, emailTemplate, templateData, Some(profile), emailAddress).right.value.subject shouldBe "Thanks for your payment of NA"
+    EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(),
+                   manifest,
+                   emailTemplate,
+                   EmailTemplateData(templateData, Some(profile), emailAddress))
+      .right
+      .value
+      .subject shouldBe "Thanks for your payment of NA"
   }
 
   it should "Known issue with missing each parameter" in {
     val manifest = CommManifest(model.Service, "simple", "0.1")
     val templateData = Map[String, TemplateData]()
 
-    renderEmail(manifest, emailTemplate, templateData, Some(profile), emailAddress).right.value.subject shouldBe "Thanks for your payment of "
+    EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(),
+                   manifest,
+                   emailTemplate,
+                   EmailTemplateData(templateData, Some(profile), emailAddress))
+      .right
+      .value
+      .subject shouldBe "Thanks for your payment of "
   }
   it should "validate missing field from each context" in {
     val manifest = CommManifest(model.Service, "simple", "0.1")
@@ -278,8 +334,14 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
           )))
     )
 
-    renderEmail(manifest, emailTemplate, templateData, Some(profile), emailAddress).left.value.reason should (include(
-      "The template referenced the following non-existent keys:") and include("- this.amount"))
+    EmailTemplateRendering
+      .renderEmail(Clock.systemDefaultZone(),
+                   manifest,
+                   emailTemplate,
+                   EmailTemplateData(templateData, Some(profile), emailAddress))
+      .left
+      .value
+      .reason should (include("The template referenced the following non-existent keys:") and include("- this.amount"))
 
   }
 }
