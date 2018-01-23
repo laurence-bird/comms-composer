@@ -160,7 +160,6 @@ Resources:
           Value: ovo-comms-logs
         - Key: access_logs.s3.prefix
           Value: !Sub "composer/${Environment}/loadbalancer"
-      Name: !Sub "composer-${Environment}"
       Scheme: internet-facing
       SecurityGroups:
         - Ref: LoadBalancerSecurityGroup
@@ -176,7 +175,6 @@ Resources:
     Properties:
       HealthCheckPath: '/admin/health'
       HealthCheckProtocol: HTTP
-      Name: !Sub "composer-${Environment}"
       Port: 80
       Protocol: HTTP
       TargetGroupAttributes:
