@@ -2,6 +2,7 @@ package com.ovoenergy.comms.composer.rendering.templating
 
 import java.time.Clock
 
+import cats.data.Validated
 import cats.implicits._
 import cats.kernel.Monoid
 import cats.{Apply, Id}
@@ -37,7 +38,7 @@ object EmailTemplateRendering extends Rendering {
       }
 
     val errorsOrResult: ErrorsOr[RenderedEmail] =
-      Apply[ErrorsOr].map3(subject, htmlBody, textBody.sequenceU) {
+      Apply[ErrorsOr].map3(subject, htmlBody, textBody.sequence[ErrorsOr, String]) {
         case (s, h, t) => RenderedEmail(s, h, t)
       }
 

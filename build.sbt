@@ -1,3 +1,5 @@
+import Dependencies._
+
 name := "composer"
 organization := "com.ovoenergy"
 
@@ -24,25 +26,37 @@ resolvers := Resolver.withDefaultResolvers(
 )
 
 val kafkaMessagesVersion = "1.38"
-val kafkaSerialisationVersion = "3.4"
-val Http4sVersion = "0.17.5"
+val kafkaSerialisationVersion = "3.12"
+val Http4sVersion = "0.18.4"
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-stream-kafka" % "0.17",
-  "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion,
-  "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaSerialisationVersion,
-  "com.ovoenergy" %% "comms-kafka-helpers"       % kafkaSerialisationVersion,
-  "io.circe" %% "circe-generic" % "0.7.0",
-  "io.circe" %% "circe-literal" % "0.7.0",
+//    "com.typesafe.akka" %% "akka-stream-kafka" % "0.17",
+//  fs2.core,
+//  fs2.io,
+  fs2.kafkaClient,
+  circe.core,
+  circe.generic,
+  circe.parser,
+  circe.literal,
+  http4s.core,
+  http4s.circe,
+  http4s.dsl,
+  http4s.server,
+  http4s.blazeServer,
+  kafkaSerialization.cats,  "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion,
+  "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaSerialisationVersion exclude("com.typesafe.akka", "akka-stream-kafka_2.12"),
+  "com.ovoenergy" %% "comms-kafka-helpers"       % kafkaSerialisationVersion exclude("com.typesafe.akka", "akka-stream-kafka_2.12"),
+//  "io.circe" %% "circe-generic" % "0.7.0",
+//  "io.circe" %% "circe-literal" % "0.7.0",
   "com.github.jknack" % "handlebars" % "4.0.6",
   "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57",
   "com.typesafe.akka" %% "akka-slf4j" % "2.4.18",
   "org.typelevel" %% "cats-free" % "0.9.0",
   "com.chuusai" %% "shapeless" % "2.3.2",
   "com.squareup.okhttp3" % "okhttp" % "3.4.2",
-  "org.http4s"      %% "http4s-blaze-server" % Http4sVersion,
-  "org.http4s"      %% "http4s-circe"        % Http4sVersion,
-  "org.http4s"      %% "http4s-dsl"          % Http4sVersion,
+//  "org.http4s"      %% "http4s-blaze-server" % Http4sVersion,
+//  "org.http4s"      %% "http4s-circe"        % Http4sVersion,
+//  "org.http4s"      %% "http4s-dsl"          % Http4sVersion,
   "org.http4s"      %% "http4s-blaze-client" % Http4sVersion % Test,
   "com.fortysevendeg" %% "scalacheck-toolbox-datetime" % "0.2.1" % Test,
   "ch.qos.logback" % "logback-classic" % "1.1.7",

@@ -2,20 +2,21 @@ package com.ovoenergy.comms.composer.http
 
 import java.util.Base64
 
+import cats.effect.Effect
 import com.ovoenergy.comms.composer.http.RenderRestApi._
 import com.ovoenergy.comms.composer.print.RenderedPrintPdf
 import com.ovoenergy.comms.model._
-import fs2.Task
-import org.http4s.{HttpService, Request, Response}
-import org.http4s.dsl._
-import org.http4s.circe._
+import io.circe.{Decoder, Encoder, Json}
+import org.http4s.{EntityDecoder, HttpService, Message, Request, Response, Status}
+import org.http4s.dsl.Http4sDsl
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import cats.implicits._
 import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
-import fs2.util.Attempt
 import shapeless.{Inl, Inr}
+import org.http4s.circe._
+import org.http4s.dsl._
 
 case class CommName(value: String) extends AnyVal
 
@@ -34,7 +35,7 @@ object RenderRestApi {
         s => Right(TemplateData.fromString(s)),
         xs => {
           xs.map(_.as[TemplateData])
-            .sequenceU
+            .sequence
             .map(TemplateData.fromSeq)
         },
         obj => {
@@ -44,7 +45,7 @@ object RenderRestApi {
                 value.as[TemplateData].map(key -> _)
             }
             .toVector
-            .sequenceU
+            .sequence
             .map(x => TemplateData.fromMap(x.toMap))
         }
       )
@@ -60,13 +61,19 @@ object RenderRestApi {
 
   implicit val renderRequestEncoder: Encoder[RenderRequest] = deriveEncoder[RenderRequest]
 
-  implicit def renderRequest: Decoder[RenderRequest] = deriveDecoder[RenderRequest]
+  implicit val renderRequestDecoder: Decoder[RenderRequest] = deriveDecoder[RenderRequest]
 
   case class RenderResponse(renderedPrint: RenderedPrintPdf)
 
-  implicit def renderResponseCirceEncoder: Encoder[RenderResponse] = deriveEncoder[RenderResponse]
+  implicit def renderResponseEncoder: Encoder[RenderResponse] = deriveEncoder[RenderResponse]
 
-  implicit def renderResponseCirceDecoder: Decoder[RenderResponse] = deriveDecoder[RenderResponse]
+  implicit def renderResponseDecoder: Decoder[RenderResponse] = deriveDecoder[RenderResponse]
+
+//  implicit def renderResponseCirceEncoder[F[_]: Effect]: Encoder[EntityDecoder[F, RenderResponse]] =
+//    deriveEncoder[EntityDecoder[F, RenderResponse]]
+//
+//  implicit def renderResponseCirceDecoder[F[_]: Effect]: Decoder[EntityDecoder[F, RenderResponse]] =
+//    deriveDecoder[EntityDecoder[F, RenderResponse]]
 
   implicit def renderedPrintPdfCirceEncoder: Encoder[RenderedPrintPdf] =
     Encoder.encodeString.contramap[RenderedPrintPdf](x => Base64.getEncoder.encodeToString(x.pdfBody))
@@ -98,41 +105,48 @@ object RenderRestApi {
 
 trait RenderRestApi { logger: Logging =>
 
-  def renderService(
-      renderPrint: (CommManifest, Map[String, TemplateData]) => Task[FailedOr[RenderedPrintPdf]]): HttpService = {
-    def handleRenderRequest(renderRequest: RenderRequest, commManifest: CommManifest) = {
+  def renderService[F[_]: Effect](
+      renderPrint: (CommManifest, Map[String, TemplateData]) => F[FailedOr[RenderedPrintPdf]]): HttpService[F] = {
+
+    val dsl = Http4sDsl[F]
+    import dsl._
+
+    def handleRenderRequest(renderRequest: RenderRequest, commManifest: CommManifest) =
       for {
         renderedPrint <- renderPrint(commManifest, renderRequest.data)
         response <- buildApiResponse(renderedPrint)
       } yield response
-    }
 
-    HttpService {
+    HttpService[F] {
       case req @ POST -> Root / "render" / CommNamePath(commName) / CommVersionPath(commVersion) / CommTypePath(
             commType) / "print" => {
 
-        deserialiseRequest(req).flatMap {
+        deserialiseRequest[F](req).flatMap {
           case Left(err) => BadRequest(err)
-          case Right(r) => handleRenderRequest(r, CommManifest(commType, commName.value, commVersion.value))
+          case Right(r: RenderRequest) =>
+            handleRenderRequest(r, CommManifest(commType, commName.value, commVersion.value))
         }
       }
     }
   }
 
-  private def deserialiseRequest(req: Request): Task[Either[String, RenderRequest]] = {
+  private def deserialiseRequest[F[_]: Effect](req: Request[F]): F[Either[String, RenderRequest]] =
     req
-      .as(jsonOf[RenderRequest])
+      .decodeJson[RenderRequest]
       .attempt
-      .map { (requestAttempt: Attempt[RenderRequest]) =>
+      .map { requestAttempt =>
         requestAttempt.left.map { a =>
           log.warn(s"Failed to deserialise request: ${a.getMessage}")
           s"Failed to deserialise request body: ${a.getMessage}"
         }
       }
-  }
 
-  private def buildApiResponse(renderResult: FailedOr[RenderedPrintPdf]): Task[Response] = {
-    def handleError(error: ComposerError): Task[Response] = {
+  private def buildApiResponse[F[_]: Effect](renderResult: FailedOr[RenderedPrintPdf]): F[Response[F]] = {
+
+    val dsl = Http4sDsl[F]
+    import dsl._
+
+    def handleError(error: ComposerError): F[Response[F]] = {
       error.errorCode match {
         case TemplateDownloadFailed => NotFound(ErrorResponse(error.reason).asJson)
         case MissingTemplateData => UnprocessableEntity(ErrorResponse(error.reason).asJson)

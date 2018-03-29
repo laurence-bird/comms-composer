@@ -73,12 +73,12 @@ trait TestGenerators {
     }
   }
 
-  implicit def arbTriggeredV2: Arbitrary[TriggeredV2] = {
+  implicit def arbTriggeredV2: Arbitrary[TriggeredV3] = {
     Arbitrary {
-      TriggeredV2(
-        metadata = generate[Metadata],
+      TriggeredV3(
+        metadata = generate[MetadataV2],
         templateData = Map("someKey" -> TemplateData(Coproduct[TemplateData.TD]("someValue"))),
-        deliverAt = Some(generate[OffsetDateTime].toString),
+        deliverAt = Some(generate[Instant]),
         expireAt = None,
         preferredChannels = None
       )
