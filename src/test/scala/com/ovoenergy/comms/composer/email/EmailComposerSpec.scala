@@ -4,6 +4,7 @@ import java.time.Instant
 import java.util.UUID
 
 import cats.{Id, ~>}
+import cats.Cartesian
 import com.ovoenergy.comms._
 import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model._

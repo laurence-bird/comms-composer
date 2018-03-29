@@ -25,15 +25,18 @@ object StreamBuilder extends Logging {
   }
 
   def apply[F[_]: Effect, InEvent <: LoggableEvent, OutEvent <: LoggableEvent](
-        topic: Topic[InEvent],
-        outputProducer: => OutEvent => Future[RecordMetadata],
-        failedProducer: FailedV2 => Future[RecordMetadata],
-        processEvent: InEvent => Either[ComposerError, OutEvent])(implicit buildFailedEventFrom: BuildFailedEventFrom[InEvent]): Record[InEvent] => F[Unit] = {
+      topic: Topic[InEvent],
+      outputProducer: => OutEvent => Future[RecordMetadata],
+      failedProducer: FailedV2 => Future[RecordMetadata],
+      processEvent: InEvent => Either[ComposerError, OutEvent])(
+      implicit buildFailedEventFrom: BuildFailedEventFrom[InEvent]): Record[InEvent] => F[Unit] = {
 
     def sendOutput(event: OutEvent): Future[_] = {
       outputProducer(event).recover {
         case NonFatal(e) =>
-          warnT(event)("Unable to produce event, however, processing has completed so offset will be committed regardless", e)
+          warnT(event)(
+            "Unable to produce event, however, processing has completed so offset will be committed regardless",
+            e)
       }
     }
 
@@ -43,7 +46,9 @@ object StreamBuilder extends Logging {
 
       failedProducer(failed).recover {
         case NonFatal(e) =>
-          warnT(failed)("Unable to produce Failed event, however, processing has completed so offset will be committed regardless", e)
+          warnT(failed)(
+            "Unable to produce Failed event, however, processing has completed so offset will be committed regardless",
+            e)
       }
     }
 

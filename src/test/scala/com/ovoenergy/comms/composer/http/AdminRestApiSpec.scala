@@ -14,8 +14,8 @@ class AdminRestApiSpec extends FlatSpec with Matchers with AdminRestApi {
   import org.http4s.circe._
 
   "admin/health" should "return HTTP 200 when the service is healthy" in {
-    val response = adminService.run(Request(GET, Uri.unsafeFromString("/admin/health"))).unsafeRun().orNotFound
-
+    val response =
+      adminService[IO].run(Request(GET, Uri.unsafeFromString("/admin/health"))).value.unsafeRunSync().orNull
     response.status shouldBe Ok
   }
 

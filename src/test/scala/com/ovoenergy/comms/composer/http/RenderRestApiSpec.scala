@@ -1,10 +1,12 @@
 package com.ovoenergy.comms.composer.http
 
+import akka.io.IO
+import cats.effect.IO
 import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
 import com.ovoenergy.comms.composer.http.RenderRestApi.RenderRequest
 import com.ovoenergy.comms.composer.print.RenderedPrintPdf
 import com.ovoenergy.comms.model._
-import fs2.Task
+import io.circe.generic.semiauto.deriveEncoder
 import org.http4s._
 import org.scalatest.{FlatSpec, Matchers}
 import io.circe._
@@ -12,7 +14,6 @@ import io.circe.syntax._
 import org.http4s.circe._
 import org.http4s.client._
 import org.http4s.dsl._
-import io.circe.generic.semiauto.deriveEncoder
 import shapeless.{Inl, Inr}
 
 class RenderRestApiSpec extends FlatSpec with Matchers {
@@ -21,7 +22,7 @@ class RenderRestApiSpec extends FlatSpec with Matchers {
 
   def buildRenderPrint(response: FailedOr[RenderedPrintPdf]) = {
     (manifest: CommManifest, template: Map[String, TemplateData]) =>
-      Task.now(response)
+      response[IO]
   }
   val successfulRender = buildRenderPrint(Right(RenderedPrintPdf("Hi".getBytes)))
 
