@@ -2,6 +2,29 @@ import sbt._
 
 object Dependencies {
 
+  lazy val handlebars = "com.github.jknack" % "handlebars" % "4.0.6"
+  lazy val s3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57"
+  lazy val catsFree = "org.typelevel" %% "cats-free" % "0.9.0"
+  lazy val shapeless = "com.chuusai" %% "shapeless" % "2.3.2"
+  lazy val okhttp = "com.squareup.okhttp3" % "okhttp" % "3.4.2"
+
+  object scalacheck {
+    lazy val shapeless = "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % "1.1.4"
+    lazy val toolboxDatetime = "com.fortysevendeg" %% "scalacheck-toolbox-datetime" % "0.2.1"
+    lazy val scalacheck = "org.scalacheck" %% "scalacheck" % "1.13.4"
+  }
+
+  lazy val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
+  lazy val kafka = "org.apache.kafka" %% "kafka" % "0.10.2.1"
+  lazy val mockserver = "org.mock-server" % "mockserver-client-java" % "3.11"
+
+  object logging {
+    lazy val slf4j = "com.typesafe.akka" %% "akka-slf4j" % "2.4.18"
+    lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.1.7"
+    lazy val logzIoLogbackAppender = "io.logz.logback" % "logzio-logback-appender" % "1.0.11"
+    lazy val logbackGelf = "me.moocar" % "logback-gelf" % "0.2"
+  }
+
   object fs2 {
     private val fs2Version = "0.10.2"
     private val fs2KafkaClientVersion = "0.1.8"

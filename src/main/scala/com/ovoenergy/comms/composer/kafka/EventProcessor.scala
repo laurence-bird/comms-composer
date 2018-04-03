@@ -18,7 +18,7 @@ import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object StreamBuilder extends Logging {
+object EventProcessor extends Logging {
 
   implicit def consumerRecordShow[K, V]: Show[ConsumerRecord[K, V]] = Show.show[ConsumerRecord[K, V]] { record =>
     s"kafkaTopic: ${record.topic()}, kafkaPartition: ${record.partition()}, kafkaOffset: ${record.offset()}"
@@ -68,7 +68,7 @@ object StreamBuilder extends Logging {
         }
         case None => {
           log.warn(s"Failed to deserialise kafka record ${record.show}")
-          Sync[F].pure(())
+          Async[F].pure(())
         }
       }
     }

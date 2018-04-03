@@ -12,7 +12,7 @@ import cats.effect.{Async, IO, Sync}
 import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import cats.effect.Effect
-import com.ovoenergy.comms.composer.kafka.StreamBuilder
+import com.ovoenergy.comms.composer.kafka.EventProcessor
 import com.ovoenergy.comms.helpers.Topic
 import com.typesafe.config.Config
 //import akka.kafka.scaladsl.Consumer
@@ -135,10 +135,8 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   )
 
   implicit val actorSystem = ActorSystem("kafka")
-//  implicit val materializer = ActorMaterializer()
   implicit val executionContext = actorSystem.dispatcher
   implicit val scheduler = actorSystem.scheduler
-//  implicit val strate9gy = Strategy.fromExecutor(executionContext)
 
   def exitOnFailure[T](either: Either[Retry.Failed, T], errorMessage: String): T = either match {
     case Left(l) => {
@@ -158,29 +156,16 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   val failedEventProducer = exitOnFailure(Kafka.aiven.failed.v2.retryPublisher, "failed")
 
   val emailInterpreter: ~>[EmailComposerA, FailedOr] = EmailInterpreter(templateContext)
-  val emailComposer: OrchestratedEmailV3 => FailedOr[ComposedEmailV3] = (orchestratedEmail: OrchestratedEmailV3) =>
+  val emailComposer = (orchestratedEmail: OrchestratedEmailV3) =>
     EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
-//  val emailGraph =
-//    ComposerGraph.build(Kafka.aiven.orchestratedEmail.v3, composedEmailEventProducer, failedEventProducer)(
-//      (orchestratedEmail: OrchestratedEmailV3) => emailComposer(orchestratedEmail))
 
   val smsInterpreter: ~>[SMSComposerA, FailedOr] = SMSInterpreter(templateContext)
   val smsComposer = (orchestratedSMS: OrchestratedSMSV2) =>
     SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
-//  val smsGraph = ComposerGraph.build(Kafka.aiven.orchestratedSMS.v2, composedSMSEventProducer, failedEventProducer)(
-//    (orchestratedSMS: OrchestratedSMSV2) => smsComposer(orchestratedSMS))
 
   val printInterpreter: ~>[PrintComposerA, FailedOr] = PrintInterpreter(printContext)
   val printComposer = (orchestratedPrint: OrchestratedPrint) =>
     PrintComposer.program(orchestratedPrint).foldMap(printInterpreter)
-//  val printGraph =
-//    ComposerGraph.build(Kafka.aiven.orchestratedPrint.v1, composedPrintEventProducer, failedEventProducer)(
-//      (orchestratedPrint: OrchestratedPrint) => printComposer(orchestratedPrint))
-
-//  val decider: Supervision.Decider = { e =>
-//    log.error("Stopping due to error", e)
-//    Supervision.Stop
-//  }
 
   def renderPrint(commManifest: CommManifest, data: Map[String, TemplateData]): IO[FailedOr[RenderedPrintPdf]] = {
     IO(PrintComposer.httpProgram(commManifest, data).foldMap(printInterpreter))
@@ -194,29 +179,6 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     .mountService(renderService(renderPrint), "/")
     .start
     .unsafeRunSync()
-
-//  log.info("Creating graphs")
-//
-//  Seq(
-//    (emailGraph, "Email Composition"),
-//    (printGraph, "Print Composition"),
-//    (smsGraph, "SMS Composition")
-//  ) foreach {
-//    case (graph, description) =>
-//      val control = graph
-//        .withAttributes(ActorAttributes.supervisionStrategy(decider))
-//        .to(Sink.ignore.withAttributes(ActorAttributes.supervisionStrategy(decider)))
-//        .run()
-//
-//      log.info(s"Started $description graph")
-//
-//      control.isShutdown.foreach { _ =>
-//        log.error("ARGH! The Kafka source has shut down. Killing the JVM and nuking from orbit.")
-//        System.exit(1)
-//      }
-//  }
-
-  type Record[T] = ConsumerRecord[Unit, Option[T]]
 
   val aivenCluster = Kafka.aiven
   val kafkaClusterConfig: KafkaClusterConfig = aivenCluster.kafkaConfig
@@ -250,7 +212,9 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     nativeSettings = consumerNativeSettings
   )
 
-  def deserialize[F[_], T: SchemaFor: ToRecord: FromRecord: ClassTag, A](
+  type Record[T] = ConsumerRecord[Unit, Option[T]]
+
+  def processEvent[F[_], T: SchemaFor: ToRecord: FromRecord: ClassTag, A](
       f: Record[T] => F[A],
       topic: Topic[T])(implicit F: Effect[F], config: Config, ec: ExecutionContext): fs2.Stream[F, A] = {
 
@@ -264,47 +228,35 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     )(f)
   }
 
-  def emailHelper =
-    StreamBuilder[IO, OrchestratedEmailV3, ComposedEmailV3](aivenCluster.orchestratedEmail.v3,
-                                                            composedEmailEventProducer,
-                                                            failedEventProducer,
-                                                            emailComposer)
-  def smsHelper =
-    StreamBuilder[IO, OrchestratedSMSV2, ComposedSMSV3](aivenCluster.orchestratedSMS.v2,
-                                                        composedSMSEventProducer,
-                                                        failedEventProducer,
-                                                        smsComposer)
-  def printHelper =
-    StreamBuilder[IO, OrchestratedPrint, ComposedPrint](aivenCluster.orchestratedPrint.v1,
-                                                        composedPrintEventProducer,
-                                                        failedEventProducer,
-                                                        printComposer)
+  def emailProcessor =
+    EventProcessor[IO, OrchestratedEmailV3, ComposedEmailV3](aivenCluster.orchestratedEmail.v3,
+                                                             composedEmailEventProducer,
+                                                             failedEventProducer,
+                                                             emailComposer)
+  def smsProcessor =
+    EventProcessor[IO, OrchestratedSMSV2, ComposedSMSV3](aivenCluster.orchestratedSMS.v2,
+                                                         composedSMSEventProducer,
+                                                         failedEventProducer,
+                                                         smsComposer)
+  def printProcessor =
+    EventProcessor[IO, OrchestratedPrint, ComposedPrint](aivenCluster.orchestratedPrint.v1,
+                                                         composedPrintEventProducer,
+                                                         failedEventProducer,
+                                                         printComposer)
 
   override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] = {
 
-//    val emailStream = Scheduler[IO](5).flatMap { implicit scheduler =>
-//      Stream.eval(IO(info("Starting OrchestratedEmailV3 kafka consumer"))) >> deserialize[IO,
-//                                                                                          OrchestratedEmailV3,
-//                                                                                          Unit](
-//        r => emailHelper(r),
-//        aivenCluster.orchestratedEmail.v3)
-//    }
-//    val smsStream = Scheduler[IO](5).flatMap { implicit scheduler =>
-//      Stream.eval(IO(info("Starting OrchestratedSMSV2 kafka consumer"))) >> deserialize[IO, OrchestratedSMSV2, Unit](
-//        r => smsHelper(r),
-//        aivenCluster.orchestratedSMS.v2)
-//    }
-//    val printStream = Scheduler[IO](5).flatMap { implicit scheduler =>
-//      Stream.eval(IO(info("Starting OrchestratedPrint kafka consumer"))) >> deserialize[IO, OrchestratedPrint, Unit](
-//        r => printHelper(r),
-//        aivenCluster.orchestratedPrint.v1)
-
-    val emailStream = {
-      deserialize[IO, OrchestratedEmailV3, Unit]((r: Record[OrchestratedEmailV3]) => emailHelper(r),
-                                                 aivenCluster.orchestratedEmail.v3)
+    val emailStream = Scheduler[IO](5).flatMap { implicit scheduler =>
+      processEvent[IO, OrchestratedEmailV3, Unit](emailProcessor, aivenCluster.orchestratedEmail.v3)
     }
-    val smsStream = deserialize[IO, OrchestratedSMSV2, Unit](r => smsHelper(r), aivenCluster.orchestratedSMS.v2)
-    val printStream = deserialize[IO, OrchestratedPrint, Unit](r => printHelper(r), aivenCluster.orchestratedPrint.v1)
+
+    val smsStream = Scheduler[IO](5).flatMap { implicit scheduler =>
+      processEvent[IO, OrchestratedSMSV2, Unit](smsProcessor, aivenCluster.orchestratedSMS.v2)
+    }
+
+    val printStream = Scheduler[IO](5).flatMap { implicit scheduler =>
+      processEvent[IO, OrchestratedPrint, Unit](printProcessor, aivenCluster.orchestratedPrint.v1)
+    }
 
     emailStream.drain >> Stream.emit(StreamApp.ExitCode.Error)
     smsStream.drain >> Stream.emit(StreamApp.ExitCode.Error)

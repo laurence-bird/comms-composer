@@ -69,12 +69,6 @@ object RenderRestApi {
 
   implicit def renderResponseDecoder: Decoder[RenderResponse] = deriveDecoder[RenderResponse]
 
-//  implicit def renderResponseCirceEncoder[F[_]: Effect]: Encoder[EntityDecoder[F, RenderResponse]] =
-//    deriveEncoder[EntityDecoder[F, RenderResponse]]
-//
-//  implicit def renderResponseCirceDecoder[F[_]: Effect]: Decoder[EntityDecoder[F, RenderResponse]] =
-//    deriveDecoder[EntityDecoder[F, RenderResponse]]
-
   implicit def renderedPrintPdfCirceEncoder: Encoder[RenderedPrintPdf] =
     Encoder.encodeString.contramap[RenderedPrintPdf](x => Base64.getEncoder.encodeToString(x.pdfBody))
 

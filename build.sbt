@@ -26,17 +26,15 @@ resolvers := Resolver.withDefaultResolvers(
 )
 
 
-val Http4sVersion = "0.18.4"
-
 libraryDependencies ++= Seq(
-//    "com.typesafe.akka" %% "akka-stream-kafka" % "0.17",
-//  fs2.core,
-//  fs2.io,
+
   fs2.kafkaClient,
+
   circe.core,
   circe.generic,
   circe.parser,
   circe.literal,
+
   http4s.core,
   http4s.circe,
   http4s.dsl,
@@ -50,30 +48,28 @@ libraryDependencies ++= Seq(
   ovoEnergy.commsSerialisation,
   ovoEnergy.commsTemplates,
 
+  handlebars,
+  s3Sdk,
+  catsFree,
+  shapeless,
+  okhttp,
 
-  "com.github.jknack"     %   "handlebars"              % "4.0.6",
-  "com.amazonaws"         %   "aws-java-sdk-s3"         % "1.11.57",
-  "com.typesafe.akka"     %%  "akka-slf4j"              % "2.4.18",
-  "org.typelevel"         %%  "cats-free"               % "0.9.0",
-  "com.chuusai"           %%  "shapeless"               % "2.3.2",
-  "com.squareup.okhttp3"  %   "okhttp"                  % "3.4.2",
-  "ch.qos.logback"        %   "logback-classic"         % "1.1.7",
-  "io.logz.logback"       %   "logzio-logback-appender" % "1.0.11",
-  "me.moocar"             %   "logback-gelf"            % "0.2",
+  logging.slf4j,
+  logging.logbackClassic,
+  logging.logzIoLogbackAppender,
+  logging.logbackGelf,
 
+  http4s.blazeClient            % Test,
+  scalacheck.shapeless          % Test exclude("org.slf4j", "log4j-over-slf4j"),
+  scalacheck.toolboxDatetime    % Test,
+  scalacheck.scalacheck         % Test,
+  scalatest                     % Test,
+  kafka                         % Test exclude ("org.scalatest", "scalatest"),
+  mockserver                    % Test,
 
-  http4s.blazeClient % Test,
-  "com.github.alexarchambault"  %% "scalacheck-shapeless_1.13"    % "1.1.4"         % Test exclude("org.slf4j", "log4j-over-slf4j"),
-  "com.fortysevendeg"           %% "scalacheck-toolbox-datetime"  % "0.2.1"         % Test,
-  "org.scalacheck"              %% "scalacheck"                   % "1.13.4"        % Test,
-  "org.scalatest"               %% "scalatest"                    % "3.0.1"         % Test,
-  "org.apache.kafka"            %% "kafka"                        % "0.10.2.1"      % Test exclude ("org.scalatest", "scalatest"),
-  "org.mock-server"             %  "mockserver-client-java"       % "3.11"          % Test,
-
-
-  whisk.scalaTest   % ServiceTest,
-  whisk.dockerJava  % ServiceTest,
-  ovoEnergy.commsTestHelpers % ServiceTest
+  whisk.scalaTest               % ServiceTest,
+  whisk.dockerJava              % ServiceTest,
+  ovoEnergy.commsTestHelpers    % ServiceTest
 )
 
 enablePlugins(JavaServerAppPackaging, DockerPlugin)
