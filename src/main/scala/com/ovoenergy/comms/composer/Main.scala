@@ -2,97 +2,46 @@ package com.ovoenergy.comms.composer
 
 import java.nio.file.Paths
 
-//import io.circe.generic.auto._
-import io.circe.syntax._
-import java.time.OffsetDateTime
-
-import cats.Show
-import cats.syntax.all._
-import cats.effect.{Async, IO, Sync}
-import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
+import cats.~>
+import cats.effect.IO
 import cats.effect.Effect
-import com.ovoenergy.comms.composer.kafka.EventProcessor
-import com.ovoenergy.comms.helpers.Topic
-import com.typesafe.config.Config
-//import akka.kafka.scaladsl.Consumer
-//import akka.kafka.scaladsl.Consumer.Control
-//import akka.stream.scaladsl.{RunnableGraph, Sink, Source}
-//import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
-import cats.effect.{Async, IO}
+import cats.instances.either._
+import com.amazonaws.regions.Regions
 import com.ovoenergy.comms.composer.aws.{AwsClientProvider, TemplateContextFactory}
 import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA, EmailInterpreter}
-import com.sksamuel.avro4s.ToRecord
-
-import scala.reflect.ClassTag
-//import com.ovoenergy.comms.composer.kafka.ComposerGraph
-import com.ovoenergy.comms.model.email.{ComposedEmailV2, ComposedEmailV3, OrchestratedEmailV3}
-import com.ovoenergy.comms.model.sms.{ComposedSMSV2, OrchestratedSMSV2}
-import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.composer.sms.{SMSComposer, SMSComposerA, SMSInterpreter}
-import com.typesafe.config.ConfigFactory
-import org.slf4j.LoggerFactory
-import cats.instances.either._
-//import cats.implicits._
-import cats.~>
-import com.amazonaws.regions.Regions
 import com.ovoenergy.comms.composer.http.{AdminRestApi, HttpClient, HttpServerConfig, RenderRestApi}
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
-import com.ovoenergy.comms.composer.print.PrintInterpreter.PrintContext
+import com.ovoenergy.comms.composer.kafka.EventProcessor
 import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA, PrintInterpreter, RenderedPrintPdf}
+import com.ovoenergy.comms.composer.print.PrintInterpreter.PrintContext
 import com.ovoenergy.comms.composer.rendering.pdf.DocRaptorConfig
 import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
-import com.ovoenergy.comms.helpers.{Kafka, KafkaClusterConfig}
+import com.ovoenergy.comms.composer.sms.{SMSComposer, SMSComposerA, SMSInterpreter}
+import com.ovoenergy.comms.helpers.{Kafka, KafkaClusterConfig, Topic}
+import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.model.email.{ComposedEmailV3, OrchestratedEmailV3}
 import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
+import com.ovoenergy.comms.model.sms.{ComposedSMSV3, OrchestratedSMSV2}
+import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.serialisation.Retry
 import com.ovoenergy.fs2.kafka.{ConsumerSettings, Subscription, consumeProcessAndCommit}
-import fs2.internal.NonFatal
-import fs2.{Scheduler, StreamApp}
+import com.ovoenergy.kafka.serialization.core.{constDeserializer}
+import com.sksamuel.avro4s.{FromRecord, SchemaFor, ToRecord}
+import com.typesafe.config.{Config, ConfigFactory}
 import fs2._
-import cats.Show
-import cats.syntax.all._
-import cats.effect.{Async, IO, Sync}
+
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.common.config.SslConfigs
-import org.http4s.server.Server
 import org.http4s.server.blaze.BlazeBuilder
-import com.ovoenergy.kafka.serialization.cats._
-import com.ovoenergy.comms.serialisation.Serialisation._
-
-import com.ovoenergy.comms.model.email.{ComposedEmailV2, ComposedEmailV3, EmailProgressedV2, OrchestratedEmailV3}
-import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
-import com.ovoenergy.comms.model.sms.{ComposedSMSV2, ComposedSMSV3, OrchestratedSMSV2, SMSProgressedV2}
-import com.ovoenergy.comms.model._
-import com.typesafe.config.Config
-import com.sksamuel.avro4s.{FromRecord, SchemaFor}
+import org.http4s.server.Server
 
 import scala.concurrent.duration._
-import scala.language.{higherKinds, reflectiveCalls}
-import com.ovoenergy.kafka.serialization.core.{constDeserializer, failingDeserializer, topicDemultiplexerDeserializer}
-import cats.data.NonEmptyList
-import com.ovoenergy.fs2.kafka._
-import cats.effect._
-import cats.syntax.all._
-import com.ovoenergy.comms.helpers.{Kafka, KafkaClusterConfig, Topic}
-import com.ovoenergy.comms.model.email.OrchestratedEmailV3
-import com.ovoenergy.kafka.serialization.cats._
-import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
-import org.apache.kafka.common.serialization.Deserializer
-import com.ovoenergy.comms.serialisation.Codecs._
-import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.common.config.SslConfigs
-
 import scala.concurrent.ExecutionContext
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
-// Implicits
+import scala.language.{higherKinds, reflectiveCalls}
 import scala.language.reflectiveCalls
-import com.ovoenergy.comms.serialisation.Codecs._
-import scala.concurrent.duration.FiniteDuration
-
-import com.ovoenergy.kafka.serialization.core.{constDeserializer, failingDeserializer, topicDemultiplexerDeserializer}
+import scala.reflect.ClassTag
 
 object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRestApi {
 
