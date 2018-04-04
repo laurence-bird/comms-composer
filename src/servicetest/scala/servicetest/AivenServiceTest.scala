@@ -13,13 +13,15 @@ import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.model.sms._
 import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.scalatest.{Failed => _, _}
 import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
 import shapeless.Coproduct
+
 import scala.concurrent.duration._
 import com.ovoenergy.comms.model.email.OrchestratedEmailV3.schemaFor
 import com.ovoenergy.comms.serialisation.Codecs._
+
 import scala.language.reflectiveCalls
 class AivenServiceTest
     extends FlatSpec
@@ -29,8 +31,6 @@ class AivenServiceTest
     with DockerIntegrationTest {
 
   behavior of "Composer service"
-
-  implicit val config: Config = ConfigFactory.load("servicetest.conf")
 
   val s3Endpoint = "http://localhost:4569"
 

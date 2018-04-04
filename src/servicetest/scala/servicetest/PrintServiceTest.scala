@@ -36,7 +36,6 @@ class PrintServiceTest
 
   behavior of "Composer print service"
 
-  implicit val config = ConfigFactory.load("servicetest.conf")
   lazy val topics = Kafka.aiven
 
   val s3Endpoint = "http://localhost:4569"

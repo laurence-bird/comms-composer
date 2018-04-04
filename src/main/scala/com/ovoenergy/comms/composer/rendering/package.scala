@@ -14,21 +14,19 @@ package object rendering {
     def toErrorMessage: String = {
       val missingKeysMsg = {
         if (missingKeys.nonEmpty)
-          s"""The template referenced the following non-existent keys:
-             |${missingKeys.map(k => s" - $k").mkString("\n")}
-           """.stripMargin
+          List(s"""The template referenced the following non-existent keys: ${missingKeys.mkString("[", ",", "]")}""")
         else
-          ""
+          List.empty[String]
       }
       val exceptionsMsg = {
         if (exceptions.nonEmpty)
-          s"""The following exceptions were thrown:
-             |${exceptions.map(e => s" - ${e.getMessage}").mkString("\n")}
-           """.stripMargin
+          List(
+            s"""The following exceptions were thrown: ${exceptions.map(e => e.getMessage).mkString("[", ",", "]")}""")
         else
-          ""
+          List.empty[String]
       }
-      s"$missingKeysMsg$exceptionsMsg"
+
+      (missingKeysMsg ++ exceptionsMsg).mkString(". ")
     }
   }
 

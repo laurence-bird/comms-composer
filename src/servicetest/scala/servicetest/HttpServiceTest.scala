@@ -1,40 +1,30 @@
 package servicetest
 
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
-import java.time.OffsetDateTime
-import java.util.UUID
 
+import cats.data.Kleisli
+import io.circe._
+import io.circe.generic.semiauto._
+import io.circe.syntax._
+import cats.effect.IO
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.composer.http.RenderRestApi.{ErrorResponse, RenderRequest, RenderResponse}
-import com.ovoenergy.comms.model.email.OrchestratedEmailV3.schemaFor
-import com.ovoenergy.comms.model.email._
-import com.ovoenergy.comms.model.sms._
-import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
 import com.typesafe.config.{Config, ConfigFactory}
-import fs2.Task
-import io.circe.Json
-import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.scalatest.{Failed => _, _}
-import shapeless.Coproduct
 
 import scala.concurrent.duration._
 import scala.language.reflectiveCalls
 import org.http4s.{Status, _}
 import org.http4s.client.Client
-import org.http4s.client.blaze.PooledHttp1Client
-import org.http4s.dsl._
-import fs2.Task
-import org.http4s.{HttpService, Request, Response}
-import org.http4s.dsl._
+import org.http4s.client.blaze.Http1Client
+import org.http4s.Request
+import org.http4s.dsl.io._
 import org.http4s.circe._
 import org.http4s.client._
-import io.circe._
-import io.circe.generic.semiauto._
-import io.circe.syntax._
 import cats.implicits._
-import com.ovoenergy.comms.composer.print.RenderedPrintPdf
 import com.ovoenergy.comms.model.TemplateData
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
@@ -46,7 +36,7 @@ class HttpServiceTest
     with BeforeAndAfterAll
     with DockerIntegrationTest {
 
-  implicit val config: Config = ConfigFactory.load("servicetest.conf")
+//  override val config: Config = ConfigFactory.load("servicetest.conf")
 
   implicit val patience: PatienceConfig = PatienceConfig(5.minutes, 1.second)
 
@@ -101,17 +91,16 @@ class HttpServiceTest
   behavior of "Composer HTTP service"
 
   it should "respond OK to /admin/health" in newHttpClient { client =>
-    whenReady(
-      client
-        .status(Request(GET, Uri.unsafeFromString(s"$composerHttpEndpoint/admin/health")))
-        .unsafeRunAsyncFuture()) { status =>
-      status shouldBe Ok
+    val req = Request[IO](Method.GET, Uri.unsafeFromString(s"$composerHttpEndpoint/admin/health"))
+
+    whenReady {
+      client.status(req).unsafeToFuture()
+    } { status =>
+      status shouldBe Status.Ok
     }
   }
 
   it should "respond OK to /render/canary/1.0/Service/print" in newHttpClient { client =>
-    import io.circe.syntax._
-
     val templateData = {
       val accountNumber = TemplateData.fromString("11112222")
       val ovoId = TemplateData.fromString("myOvo999")
@@ -126,23 +115,26 @@ class HttpServiceTest
     }
 
     val renderRequest: RenderRequest = RenderRequest(templateData)
-    val req: Task[Request] =
-      POST(Uri.unsafeFromString(s"$composerHttpEndpoint/render/composer-service-test/0.1/Service/print"),
-           renderRequest.asJson)
+
+    val req = Request[IO](
+      Method.POST,
+      Uri.unsafeFromString(s"$composerHttpEndpoint/render/composer-service-test/0.1/Service/print"),
+      body = fs2.Stream
+        .emit(renderRequest.asJson)
+        .flatMap(json => fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
+        .covary[IO]
+    )
 
     whenReady {
-      import com.ovoenergy.comms.composer.http.RenderRestApi.RenderResponse._
       client
-        .fetch(req)(_.as(jsonOf[RenderResponse]))
-        .unsafeRunAsyncFuture()
-    } { r =>
+        .fetch(req)(_.decodeJson[RenderResponse])
+        .unsafeToFuture()
+    } { r: RenderResponse =>
       r.renderedPrint.pdfBody should contain theSameElementsAs pdfResponseByteArray
     }
   }
 
   it should "return an appropriate error if invalid comm type is passed in URL" in newHttpClient { client =>
-    import io.circe.syntax._
-
     val templateData = {
       val accountNumber = TemplateData.fromString("11112222")
       val ovoId = TemplateData.fromString("myOvo999")
@@ -157,44 +149,48 @@ class HttpServiceTest
     }
 
     val renderRequest: RenderRequest = RenderRequest(templateData)
-    val req: Task[Request] =
-      POST(Uri.unsafeFromString(s"$composerHttpEndpoint/render/composer-service-test/0.1/invalid/print"),
-           renderRequest.asJson)
+
+    val req = Request[IO](
+      Method.POST,
+      Uri.unsafeFromString(s"$composerHttpEndpoint/render/composer-service-test/0.1/invalid/print"),
+      body = fs2.Stream
+        .emit(renderRequest.asJson)
+        .flatMap(json => fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
+        .covary[IO]
+    )
 
     whenReady {
-      import com.ovoenergy.comms.composer.http.RenderRestApi.RenderResponse._
-      client
-        .status(req)
-        .unsafeRunAsyncFuture()
+      client.status(req).unsafeToFuture()
     } { status =>
-      status shouldBe NotFound
+      status shouldBe Status.NotFound
     }
   }
 
   it should "return an appropriate error if template data is missing fields" in newHttpClient { client =>
-    import io.circe.syntax._
-
     val templateData = {
       val accountNumber = TemplateData.fromString("11112222")
       val ovoId = TemplateData.fromString("myOvo999")
       Map(
         "accountNumber" -> accountNumber,
-        "myOvoId" -> ovoId,
+        "myOvoId" -> ovoId
       )
     }
 
     val renderRequest: RenderRequest = RenderRequest(templateData)
-    val req: Task[Request] =
-      POST(Uri.unsafeFromString(s"$composerHttpEndpoint/render/composer-service-test/0.1/Service/print"),
-           renderRequest.asJson)
+
+    val req = Request[IO](
+      Method.POST,
+      Uri.unsafeFromString(s"$composerHttpEndpoint/render/composer-service-test/0.1/Service/print"),
+      body = fs2.Stream
+        .emit(renderRequest.asJson)
+        .flatMap(json => fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
+        .covary[IO]
+    )
 
     whenReady {
-      import com.ovoenergy.comms.composer.http.RenderRestApi._
-      client
-        .fetch(req)(_.as(jsonOf[ErrorResponse]))
-        .unsafeRunAsyncFuture()
+      client.fetch(req)(_.decodeJson[ErrorResponse]).unsafeToFuture()
     } { error =>
-      error.message shouldBe "The template referenced the following non-existent keys:\n - profile.firstName\n           "
+      error.message shouldBe "The template referenced the following non-existent keys: [profile.firstName]"
     }
   }
 
@@ -213,12 +209,12 @@ class HttpServiceTest
       )
   }
 
-  def newHttpClient[A](f: Client => A): A = {
-    val httpClient: Client = PooledHttp1Client()
-    try {
-      f(httpClient)
-    } finally {
-      httpClient.shutdownNow()
-    }
+  def newHttpClient[A](f: Client[IO] => A): A = {
+    val httpClient: IO[Client[IO]] = Http1Client[IO]()
+
+    val s: fs2.Stream[IO, A] =
+      fs2.Stream.bracket(Http1Client[IO]())(client => fs2.Stream.emit(f(client)), client => client.shutdown)
+
+    s.compile.toVector.unsafeRunSync().head
   }
 }
