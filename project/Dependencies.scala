@@ -15,7 +15,6 @@ object Dependencies {
   }
 
   lazy val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
-  lazy val kafka = "org.apache.kafka" %% "kafka" % "0.10.2.1"
   lazy val mockserver = "org.mock-server" % "mockserver-client-java" % "3.11"
 
   object logging {
@@ -32,7 +31,7 @@ object Dependencies {
     lazy val core = "co.fs2" %% "fs2-core" % fs2Version
     lazy val io = "co.fs2" %% "fs2-io" % fs2Version
 
-    lazy val kafkaClient = "com.ovoenergy" %% "fs2-kafka-client" % fs2KafkaClientVersion exclude ("co.fs2", "fs2-core")
+    lazy val kafkaClient = "com.ovoenergy" %% "fs2-kafka-client" % fs2KafkaClientVersion
   }
 
   object kafkaSerialization {
@@ -45,15 +44,17 @@ object Dependencies {
   }
 
   object ovoEnergy {
-    private val kafkaMessagesVersion = "1.38"
-    private val kafkaSerialisationVersion = "3.12"
+    private val kafkaMessagesVersion = "1.44"
+    private val kafkaSerialisationVersion = "3.13"
     private val templateVersion = "0.17"
+    private val commsDockerTestkitVersion = "1.8"
 
     lazy val commsMessages = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion
     lazy val commsTemplates = "com.ovoenergy" %% "comms-templates" % templateVersion
     lazy val commsSerialisation = "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaSerialisationVersion exclude ("com.typesafe.akka", "akka-stream-kafka_2.12")
     lazy val commsHelpers = "com.ovoenergy" %% "comms-kafka-helpers" % kafkaSerialisationVersion exclude ("com.typesafe.akka", "akka-stream-kafka_2.12")
     lazy val commsTestHelpers = "com.ovoenergy" %% "comms-kafka-test-helpers" % kafkaSerialisationVersion
+    lazy val dockerKit = "com.ovoenergy" %% "comms-docker-testkit" % commsDockerTestkitVersion
   }
 
   object circe {

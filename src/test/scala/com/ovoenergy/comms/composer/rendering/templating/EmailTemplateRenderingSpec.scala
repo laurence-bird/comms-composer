@@ -341,7 +341,7 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
                    EmailTemplateData(templateData, Some(profile), emailAddress))
       .left
       .value
-      .reason should (include("The template referenced the following non-existent keys:") and include("- this.amount"))
+      .reason should (include("The template referenced the following non-existent keys:") and include("this.amount"))
 
   }
 }

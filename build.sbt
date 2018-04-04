@@ -64,8 +64,8 @@ libraryDependencies ++= Seq(
   scalacheck.toolboxDatetime    % Test,
   scalacheck.scalacheck         % Test,
   scalatest                     % Test,
-  kafka                         % Test exclude ("org.scalatest", "scalatest"),
   mockserver                    % Test,
+  ovoEnergy.dockerKit           % Test,
 
   whisk.scalaTest               % ServiceTest,
   whisk.dockerJava              % ServiceTest,

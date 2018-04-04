@@ -36,7 +36,7 @@ class HttpServiceTest
     with BeforeAndAfterAll
     with DockerIntegrationTest {
 
-  implicit val config: Config = ConfigFactory.load("servicetest.conf")
+//  override val config: Config = ConfigFactory.load("servicetest.conf")
 
   implicit val patience: PatienceConfig = PatienceConfig(5.minutes, 1.second)
 
@@ -94,7 +94,7 @@ class HttpServiceTest
     val req = Request[IO](Method.GET, Uri.unsafeFromString(s"$composerHttpEndpoint/admin/health"))
 
     whenReady {
-      client.flatMap(_.status(req)).unsafeToFuture()
+      client.status(req).unsafeToFuture()
     } { status =>
       status shouldBe Status.Ok
     }
@@ -127,7 +127,7 @@ class HttpServiceTest
 
     whenReady {
       client
-        .flatMap(_.fetch(req)(_.decodeJson[RenderResponse]))
+        .fetch(req)(_.decodeJson[RenderResponse])
         .unsafeToFuture()
     } { r: RenderResponse =>
       r.renderedPrint.pdfBody should contain theSameElementsAs pdfResponseByteArray
@@ -160,9 +160,7 @@ class HttpServiceTest
     )
 
     whenReady {
-      client
-        .flatMap(_.status(req))
-        .unsafeToFuture()
+      client.status(req).unsafeToFuture()
     } { status =>
       status shouldBe Status.NotFound
     }
@@ -190,11 +188,9 @@ class HttpServiceTest
     )
 
     whenReady {
-      client
-        .flatMap(_.fetch(req)(_.decodeJson[ErrorResponse]))
-        .unsafeToFuture()
+      client.fetch(req)(_.decodeJson[ErrorResponse]).unsafeToFuture()
     } { error =>
-      error.message shouldBe "The template referenced the following non-existent keys:\n - profile.firstName\n           "
+      error.message shouldBe "The template referenced the following non-existent keys: [profile.firstName]"
     }
   }
 
@@ -213,12 +209,12 @@ class HttpServiceTest
       )
   }
 
-  def newHttpClient[A](f: IO[Client[IO]] => A): A = {
-    val httpClient = Http1Client[IO]()
-    try {
-      f(httpClient)
-    } finally {
-      httpClient.map(_.shutdownNow)
-    }
+  def newHttpClient[A](f: Client[IO] => A): A = {
+    val httpClient: IO[Client[IO]] = Http1Client[IO]()
+
+    val s: fs2.Stream[IO, A] =
+      fs2.Stream.bracket(Http1Client[IO]())(client => fs2.Stream.emit(f(client)), client => client.shutdown)
+
+    s.compile.toVector.unsafeRunSync().head
   }
 }

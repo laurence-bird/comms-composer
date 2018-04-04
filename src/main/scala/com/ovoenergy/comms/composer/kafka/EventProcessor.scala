@@ -24,6 +24,13 @@ object EventProcessor extends Logging {
     s"kafkaTopic: ${record.topic()}, kafkaPartition: ${record.partition()}, kafkaOffset: ${record.offset()}"
   }
 
+  implicit def consumerRecordLoggable[K, V]: Loggable[ConsumerRecord[K, V]] =
+    Loggable.instance(
+      record =>
+        Map("kafkaTopic" -> record.topic(),
+            "kafkaPartition" -> record.partition().toString,
+            "kafkaOffset" -> record.offset().toString))
+
   def apply[F[_]: Effect, InEvent <: LoggableEvent, OutEvent <: LoggableEvent](
       topic: Topic[InEvent],
       outputProducer: => OutEvent => Future[RecordMetadata],
@@ -34,9 +41,8 @@ object EventProcessor extends Logging {
     def sendOutput(event: OutEvent): Future[_] = {
       outputProducer(event).recover {
         case NonFatal(e) =>
-          warnT(event)(
-            "Unable to produce event, however, processing has completed so offset will be committed regardless",
-            e)
+          warnWithException(event)(
+            "Unable to produce event, however, processing has completed so offset will be committed regardless")(e)
       }
     }
 
@@ -46,15 +52,15 @@ object EventProcessor extends Logging {
 
       failedProducer(failed).recover {
         case NonFatal(e) =>
-          warnT(failed)(
-            "Unable to produce Failed event, however, processing has completed so offset will be committed regardless",
+          warnWithException(failed)(
+            "Unable to produce Failed event, however, processing has completed so offset will be committed regardless")(
             e)
       }
     }
 
     def result[F[_]: Effect]: Record[InEvent] => F[Unit] = (record: Record[InEvent]) => {
 
-      record.value match {
+      Async[F].delay(info(record)(s"Consumed ${record.show}")) >> (record.value match {
         case Some(inEvent) => {
           processEvent(inEvent) match {
             case Left(failed) =>
@@ -67,10 +73,10 @@ object EventProcessor extends Logging {
           }
         }
         case None => {
-          log.warn(s"Failed to deserialise kafka record ${record.show}")
+          warn(record)(s"Failed to deserialise kafka record ${record.show}")
           Async[F].pure(())
         }
-      }
+      })
     }
 
     result[F]

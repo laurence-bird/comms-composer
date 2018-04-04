@@ -122,12 +122,11 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
 
   log.info(s"Starting HTTP server on host=${httpServerConfig.host} port=${httpServerConfig.port}")
 
-  val httpServer: Server[IO] = BlazeBuilder[IO]
+  val httpServer: IO[Server[IO]] = BlazeBuilder[IO]
     .bindHttp(httpServerConfig.port, httpServerConfig.host)
     .mountService(adminService, "/")
     .mountService(renderService(renderPrint), "/")
     .start
-    .unsafeRunSync()
 
   val aivenCluster = Kafka.aiven
   val kafkaClusterConfig: KafkaClusterConfig = aivenCluster.kafkaConfig
@@ -195,21 +194,25 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
 
   override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] = {
 
-    val emailStream = Scheduler[IO](5).flatMap { implicit scheduler =>
+    val emailStream: Stream[IO, Unit] =
       processEvent[IO, OrchestratedEmailV3, Unit](emailProcessor, aivenCluster.orchestratedEmail.v3)
-    }
 
-    val smsStream = Scheduler[IO](5).flatMap { implicit scheduler =>
+    val smsStream: Stream[IO, Unit] =
       processEvent[IO, OrchestratedSMSV2, Unit](smsProcessor, aivenCluster.orchestratedSMS.v2)
-    }
 
-    val printStream = Scheduler[IO](5).flatMap { implicit scheduler =>
+    val printStream: Stream[IO, Unit] =
       processEvent[IO, OrchestratedPrint, Unit](printProcessor, aivenCluster.orchestratedPrint.v1)
-    }
 
-    emailStream.drain >> Stream.emit(StreamApp.ExitCode.Error)
-    smsStream.drain >> Stream.emit(StreamApp.ExitCode.Error)
-    printStream.drain >> Stream.emit(StreamApp.ExitCode.Error)
+    val httpServerStream =
+      Stream.bracket[IO, Server[IO], Server[IO]](httpServer)(server => Stream.emit(server), server => server.shutdown)
+
+    httpServerStream.flatMap { server =>
+      emailStream
+        .mergeHaltBoth(smsStream)
+        .mergeHaltBoth(printStream)
+        .drain
+        .covaryOutput[StreamApp.ExitCode] ++ Stream.emit(StreamApp.ExitCode.Error)
+    }
   }
 
   log.info("Composer now running")

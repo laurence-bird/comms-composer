@@ -11,36 +11,61 @@ trait Logging {
 
   val log: Logger = LoggerFactory.getLogger(getClass)
 
-  private def loggableEventToString(event: LoggableEvent): String = {
-    event.loggableString.map(ls => s": \n$ls").getOrElse("")
-  }
-
-  def debug[A <: LoggableEvent](a: A)(message: String): Unit = {
+  def debug[A: Loggable](a: A)(message: => String): Unit = {
     withMDC(a)(log.debug(message))
   }
 
-  def info[A <: LoggableEvent](a: A)(message: String): Unit = {
+  def debug(message: => String): Unit = {
+    log.debug(message)
+  }
+
+  def info[A: Loggable](a: A)(message: => String): Unit = {
     withMDC(a)(log.info(message))
   }
 
-  def infoE[A <: LoggableEvent](a: A)(message: String): Unit = {
-    withMDC(a)(log.info(s"$message${loggableEventToString(a)}"))
+  def info(message: => String): Unit = {
+    log.info(message)
   }
 
-  def warn[A <: LoggableEvent](a: A)(message: String): Unit = {
+  def warn[A: Loggable](a: A)(message: => String): Unit = {
     withMDC(a)(log.warn(message))
   }
 
-  def warnT[A <: LoggableEvent](a: A)(message: String, throwable: Throwable): Unit = {
-    withMDC(a)(log.warn(message, throwable))
+  def warn(message: => String): Unit = {
+    log.warn(message)
   }
 
-  private def withMDC[A <: LoggableEvent](a: A)(block: => Unit): Unit = {
-    a.mdcMap.foreach { case (mdcParam, mdcValue) => MDC.put(mdcParam, mdcValue) }
+  def warnWithException[A: Loggable](a: A)(message: => String)(throwable: Throwable): Unit = {
+    withMDC(a -> throwable)(log.warn(message, throwable))
+  }
+
+  def warnWithException(message: => String)(throwable: Throwable): Unit = {
+    withMDC(throwable)(log.warn(message, throwable))
+  }
+
+  def fail[A: Loggable](a: A)(message: => String): Unit = {
+    withMDC(a)(log.error(message))
+  }
+  def failWithException[A: Loggable](a: A)(message: => String)(throwable: Throwable): Unit = {
+    withMDC(a -> throwable)(log.error(message, throwable))
+  }
+
+  def failWithException(message: => String)(throwable: Throwable): Unit = {
+    withMDC(throwable)(log.error(message, throwable))
+  }
+
+  def fail(message: => String): Unit = {
+    log.error(message)
+  }
+
+  private def withMDC[A: Loggable, B](a: A)(block: => B): B = {
+    val A = implicitly[Loggable[A]]
+
     try {
+      A.mdcMap(a).foreach { case (mdcParam, mdcValue) => MDC.put(mdcParam, mdcValue) }
       block
     } finally {
-      a.mdcMap.foreach { case (mdcParam, _) => MDC.remove(mdcParam) }
+      A.mdcMap(a).foreach { case (mdcParam, _) => MDC.remove(mdcParam) }
     }
   }
 }
@@ -181,5 +206,7 @@ object Loggable {
         a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2) ++ a3Loggable.mdcMap(a3) ++ a4Loggable.mdcMap(a4) ++ a5Loggable
           .mdcMap(a5)
     }
+
+  implicit def loggableEventLoggable[A <: LoggableEvent]: Loggable[A] = Loggable.instance(_.mdcMap)
 
 }
