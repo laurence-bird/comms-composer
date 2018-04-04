@@ -32,7 +32,6 @@ object EventProcessor extends Logging {
             "kafkaOffset" -> record.offset().toString))
 
   def apply[F[_]: Effect, InEvent <: LoggableEvent, OutEvent <: LoggableEvent](
-      topic: Topic[InEvent],
       outputProducer: => OutEvent => Future[RecordMetadata],
       failedProducer: FailedV2 => Future[RecordMetadata],
       processEvent: InEvent => Either[ComposerError, OutEvent])(

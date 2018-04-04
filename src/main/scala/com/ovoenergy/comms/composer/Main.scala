@@ -177,18 +177,13 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   }
 
   def emailProcessor =
-    EventProcessor[IO, OrchestratedEmailV3, ComposedEmailV3](aivenCluster.orchestratedEmail.v3,
-                                                             composedEmailEventProducer,
+    EventProcessor[IO, OrchestratedEmailV3, ComposedEmailV3](composedEmailEventProducer,
                                                              failedEventProducer,
                                                              emailComposer)
   def smsProcessor =
-    EventProcessor[IO, OrchestratedSMSV2, ComposedSMSV3](aivenCluster.orchestratedSMS.v2,
-                                                         composedSMSEventProducer,
-                                                         failedEventProducer,
-                                                         smsComposer)
+    EventProcessor[IO, OrchestratedSMSV2, ComposedSMSV3](composedSMSEventProducer, failedEventProducer, smsComposer)
   def printProcessor =
-    EventProcessor[IO, OrchestratedPrint, ComposedPrint](aivenCluster.orchestratedPrint.v1,
-                                                         composedPrintEventProducer,
+    EventProcessor[IO, OrchestratedPrint, ComposedPrint](composedPrintEventProducer,
                                                          failedEventProducer,
                                                          printComposer)
 

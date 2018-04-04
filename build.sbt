@@ -28,6 +28,7 @@ resolvers := Resolver.withDefaultResolvers(
 
 libraryDependencies ++= Seq(
 
+  fs2.core,
   fs2.kafkaClient,
 
   circe.core,
