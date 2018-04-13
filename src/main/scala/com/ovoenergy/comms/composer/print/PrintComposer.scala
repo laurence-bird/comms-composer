@@ -32,8 +32,9 @@ object PrintComposer {
     liftF(RenderPrintHtml(commTemplateData, template, commManifest))
   }
 
-  def renderPrintPdf(renderedPrintHtml: RenderedPrintHtml): PrintComposer[RenderedPrintPdf] = {
-    liftF(RenderPrintPdf(renderedPrintHtml))
+  def renderPrintPdf(renderedPrintHtml: RenderedPrintHtml,
+                     commManifest: CommManifest): PrintComposer[RenderedPrintPdf] = {
+    liftF(RenderPrintPdf(renderedPrintHtml, commManifest))
   }
 
   def persistRenderedPdf(event: OrchestratedPrint, renderedPrintPdf: RenderedPrintPdf): PrintComposer[PdfReference] = {
@@ -57,7 +58,7 @@ object PrintComposer {
     for {
       template <- retrieveTemplate(event.metadata.commManifest)
       renderedPrintHtml <- renderPrintHtml(buildPrintTemplateData(event), template, event.metadata.commManifest)
-      renderedPrintPdf <- renderPrintPdf(renderedPrintHtml)
+      renderedPrintPdf <- renderPrintPdf(renderedPrintHtml, event.metadata.commManifest)
       pdfIdentifier <- persistRenderedPdf(event, renderedPrintPdf)
     } yield buildEvent(event, pdfIdentifier)
   }
@@ -67,7 +68,7 @@ object PrintComposer {
     for {
       template <- retrieveTemplate(commManifest)
       renderedPrintHtml <- renderPrintHtml(TemplateDataWrapper(data), template, commManifest)
-      renderedPrintPdf <- renderPrintPdf(renderedPrintHtml)
+      renderedPrintPdf <- renderPrintPdf(renderedPrintHtml, commManifest)
     } yield renderedPrintPdf
   }
 }

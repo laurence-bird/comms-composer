@@ -13,7 +13,8 @@ case class RetrieveTemplate(commManifest: CommManifest) extends PrintComposerA[P
 case class RenderPrintHtml(handlebarsData: CommTemplateData, template: PrintTemplate[Id], commManifest: CommManifest)
     extends PrintComposerA[RenderedPrintHtml]
 
-case class RenderPrintPdf(renderedPrintHtml: RenderedPrintHtml) extends PrintComposerA[RenderedPrintPdf]
+case class RenderPrintPdf(renderedPrintHtml: RenderedPrintHtml, commManifest: CommManifest)
+    extends PrintComposerA[RenderedPrintPdf]
 
 case class PersistRenderedPdf(incomingEvent: OrchestratedPrint, renderedPrintPdf: RenderedPrintPdf)
     extends PrintComposerA[String]

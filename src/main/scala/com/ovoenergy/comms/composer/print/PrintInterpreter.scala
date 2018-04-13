@@ -4,7 +4,7 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
-import com.ovoenergy.comms.composer.{ComposerError, FailedOr}
+import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
 import com.ovoenergy.comms.composer.rendering.templating.{PrintTemplateData, PrintTemplateRendering}
 import com.ovoenergy.comms.composer.repo.{S3PdfRepo, S3TemplateRepo}
 import com.ovoenergy.comms.model._
@@ -20,7 +20,7 @@ import okhttp3.{Request, Response}
 import scala.util.Try
 import scala.util.control.NonFatal
 
-object PrintInterpreter {
+object PrintInterpreter extends Logging {
   case class PrintContext(docRaptorConfig: DocRaptorConfig,
                           s3Config: S3Config,
                           retryConfig: RetryConfig,
@@ -36,28 +36,46 @@ object PrintInterpreter {
               S3TemplateRepo
                 .getPrintTemplate(commManifest)
                 .run(printContext.templateContext)
-                .leftMap(err => failPrint(err, TemplateDownloadFailed))
+                .leftMap { err =>
+                  warn(commManifest)("Failed to retrieve template")
+                  failPrint(err, TemplateDownloadFailed)
+                }
             } catch {
-              case NonFatal(e) => Left(failPrintWithException(e))
+              case NonFatal(e) => {
+                warnWithException(commManifest)("Failed to retrieve template")(e)
+                Left(failPrintWithException(e))
+              }
             }
           case RenderPrintHtml(handlebarsData: templating.CommTemplateData, template, commManifest) =>
             try {
               PrintTemplateRendering
                 .renderHtml(handlebarsData.buildHandlebarsData, commManifest, template, Clock.systemDefaultZone())
-                .leftMap(templateErrors => failPrint(templateErrors.reason, templateErrors.errorCode))
+                .leftMap { templateErrors =>
+                  warn(commManifest)(s"Failed to render print HTML ${templateErrors.reason}")
+                  failPrint(templateErrors.reason, templateErrors.errorCode)
+                }
             } catch {
-              case NonFatal(e) => Left(failPrintWithException(e))
+              case NonFatal(e) => {
+                warnWithException(commManifest)("Failed to render print HTML")(e)
+                Left(failPrintWithException(e))
+              }
             }
-          case RenderPrintPdf(renderedPrintHtml) =>
-            DocRaptorClient
+          case RenderPrintPdf(renderedPrintHtml: RenderedPrintHtml, commManifest) =>
+            val result = DocRaptorClient
               .renderPdf(printContext, renderedPrintHtml)
               .leftMap((error: DocRaptorError) => {
                 failPrint(s"Failed to render pdf: ${error.httpError}", CompositionError)
               })
+            result.fold(e => warn(commManifest)(e.reason), _ => info(commManifest)("Persisted PDF successfully"))
+            result
           case PersistRenderedPdf(event, renderedPrintPdf) =>
-            S3PdfRepo
+            val result = S3PdfRepo
               .saveRenderedPdf(renderedPrintPdf, event, printContext.s3Config)
               .leftMap(error => failPrint(s"Failed to persist rendered pdf: $error", CompositionError))
+
+            result.fold(e => warn(event)(e.reason), _ => info(event)("Persisted PDF successfully"))
+
+            result
         }
       }
     }

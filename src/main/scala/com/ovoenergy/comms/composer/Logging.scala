@@ -2,7 +2,7 @@ package com.ovoenergy.comms.composer
 
 import cats.{Contravariant, Show, Traverse}
 import cats.syntax.all._
-import com.ovoenergy.comms.model.LoggableEvent
+import com.ovoenergy.comms.model.{CommManifest, LoggableEvent}
 import org.slf4j.{Logger, LoggerFactory, MDC}
 
 import scala.language.higherKinds
@@ -208,5 +208,12 @@ object Loggable {
     }
 
   implicit def loggableEventLoggable[A <: LoggableEvent]: Loggable[A] = Loggable.instance(_.mdcMap)
+
+  implicit def commManifestLoggable: Loggable[CommManifest] = Loggable.instance { cm =>
+    Map(
+      "commName" -> cm.name,
+      "commVersion" -> cm.version
+    )
+  }
 
 }
