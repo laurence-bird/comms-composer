@@ -24,7 +24,6 @@ object EmailInterpreter extends Logging {
                 .getEmailTemplate(event.metadata.commManifest)
                 .run(context)
                 .leftMap(err => failEmail(err, TemplateDownloadFailed))
-              warn(event)(s"Failed to retrieve Email template")
               result.left.map(e => warn(event)(s"Failed to retrieve Email template: ${e.reason}"))
               result
             } catch {
