@@ -4,7 +4,7 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
-import com.ovoenergy.comms.composer.{ComposerError, FailedOr}
+import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
 import com.ovoenergy.comms.composer.rendering.templating.{SMSTemplateData, SMSTemplateRendering}
 import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.model._
@@ -13,7 +13,7 @@ import com.ovoenergy.comms.templates.TemplatesContext
 
 import scala.util.control.NonFatal
 
-object SMSInterpreter {
+object SMSInterpreter extends Logging {
 
   def apply(context: TemplatesContext): SMSComposerA ~> FailedOr =
     new (SMSComposerA ~> FailedOr) {
@@ -24,20 +24,35 @@ object SMSInterpreter {
               S3TemplateRepo
                 .getSMSTemplate(event.metadata.commManifest)
                 .run(context)
-                .leftMap(err => failSMS(err, TemplateDownloadFailed))
+                .leftMap { err =>
+                  warn(event)("Failed to retrieve template")
+                  failSMS(err, TemplateDownloadFailed)
+                }
             } catch {
-              case NonFatal(e) => Left(failSMSWithException(e))
+              case NonFatal(e) => {
+                warn(event)("Failed to retrieve template")
+                Left(failSMSWithException(e))
+              }
             }
           case Render(event, template) =>
             try {
-              SMSTemplateRendering
+              val result = SMSTemplateRendering
                 .renderSMS(Clock.systemDefaultZone(),
                            event.metadata.commManifest,
                            template,
                            SMSTemplateData(event.templateData, event.customerProfile, event.recipientPhoneNumber))
-                .leftMap(templateErrors => failSMS(templateErrors.reason, templateErrors.errorCode))
+                .leftMap { templateErrors =>
+                  failSMS(templateErrors.reason, templateErrors.errorCode)
+                }
+              result.fold(e => warn(event)(s"Failed to render SMS: ${e.reason}"),
+                          _ => info(event)("Rendered SMS successfully"))
+
+              result
             } catch {
-              case NonFatal(e) => Left(failSMSWithException(e))
+              case NonFatal(e) => {
+                warnWithException(event)(s"Failed to render SMS")(e)
+                Left(failSMSWithException(e))
+              }
             }
         }
       }

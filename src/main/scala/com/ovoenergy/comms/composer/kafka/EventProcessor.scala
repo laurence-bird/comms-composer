@@ -2,22 +2,19 @@ package com.ovoenergy.comms.composer.kafka
 
 import cats.Show
 import cats.syntax.all._
-import cats.effect.{Async, Effect, IO, Sync}
-import com.ovoenergy.comms.composer.Main.{Record, warn}
+import cats.effect.{Async, Effect}
+import com.ovoenergy.comms.composer.Main.{Record}
 import com.ovoenergy.comms.composer.{ComposerError, Loggable, Logging}
 import com.ovoenergy.comms.composer.sms.BuildFailedEventFrom
-import com.ovoenergy.comms.helpers.Topic
 import com.ovoenergy.comms.model.{FailedV2, LoggableEvent}
-import com.sksamuel.avro4s.{FromRecord, SchemaFor}
 import org.apache.kafka.clients.producer.RecordMetadata
 import fs2._
 import org.apache.kafka.clients.consumer.ConsumerRecord
 
 import scala.concurrent.Future
-import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext.Implicits.global
-
+import scala.language.higherKinds
 object EventProcessor extends Logging {
 
   implicit def consumerRecordShow[K, V]: Show[ConsumerRecord[K, V]] = Show.show[ConsumerRecord[K, V]] { record =>
@@ -61,6 +58,7 @@ object EventProcessor extends Logging {
 
       Async[F].delay(info(record)(s"Consumed ${record.show}")) >> (record.value match {
         case Some(inEvent) => {
+          info(inEvent)("Processing event")
           processEvent(inEvent) match {
             case Left(failed) =>
               info(inEvent)(s"Processing failed, sending failed event")
