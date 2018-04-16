@@ -12,6 +12,7 @@ import com.ovoenergy.comms.helpers.Kafka
 import com.typesafe.config.ConfigFactory
 import com.whisk.docker.impl.dockerjava.{Docker, DockerJavaExecutorFactory, DockerKitDockerJava}
 import com.whisk.docker.{ContainerLink, DockerContainer, DockerFactory, VolumeMapping}
+import org.apache.kafka.clients.admin.{AdminClient, AdminClientConfig, NewTopic}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.mockserver.client.server.MockServerClient
@@ -77,7 +78,7 @@ trait DockerIntegrationTest
       .withLogWritingAndReadyChecker("MockServer proxy started", "mockservers")
   }
 
-  lazy val zookeeperContainer = DockerContainer("confluentinc/cp-zookeeper:3.1.1", name = Some("zookeeper"))
+  lazy val zookeeperContainer = DockerContainer("confluentinc/cp-zookeeper:3.3.1", name = Some("zookeeper"))
     .withPorts(32182 -> Some(32182))
     .withEnv(
       "ZOOKEEPER_CLIENT_PORT=32182",
@@ -88,26 +89,20 @@ trait DockerIntegrationTest
 
   lazy val kafkaContainer = {
     // create each topic with 1 partition and replication factor 1
-    val createTopicsString = TopicNames.map(t => s"$t:1:1").mkString(",")
-    val lastTopicName = TopicNames.last
-
-    DockerContainer("wurstmeister/kafka:0.10.2.1", name = Some("kafka"))
+    DockerContainer("confluentinc/cp-kafka:3.3.1", name = Some("kafka"))
       .withPorts(DefaultKafkaPort -> Some(DefaultKafkaPort))
       .withLinks(ContainerLink(zookeeperContainer, "zookeeper"))
       .withEnv(
-        "KAFKA_BROKER_ID=2",
-        "KAFKA_ZOOKEEPER_CONNECT=zookeeper:32182",
-        s"KAFKA_PORT=${DefaultKafkaPort}",
-        s"KAFKA_ADVERTISED_PORT=${DefaultKafkaPort}",
+        s"KAFKA_ZOOKEEPER_CONNECT=zookeeper:32182",
+        "KAFKA_BROKER_ID=1",
         s"KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://$hostIp:$DefaultKafkaPort",
-        "KAFKA_HEAP_OPTS=-Xmx256M -Xms128M",
-        s"KAFKA_CREATE_TOPICS=$createTopicsString"
+        "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1"
       )
-      .withLogWritingAndReadyChecker(s"""Created topic "$lastTopicName"""", "kafka") // Note: this needs to be the last topic in the list of topics above
+      .withLogWritingAndReadyChecker(s"""started (kafka.server.KafkaServer)""", "kafka")
   }
 
   lazy val schemaRegistryContainer =
-    DockerContainer("confluentinc/cp-schema-registry:3.2.2", name = Some("schema-registry"))
+    DockerContainer("confluentinc/cp-schema-registry:3.3.1", name = Some("schema-registry"))
       .withPorts(DefaultSchemaRegistryPort -> Some(DefaultSchemaRegistryPort))
       .withLinks(
         ContainerLink(zookeeperContainer, "zookeeper"),
@@ -187,12 +182,29 @@ trait DockerIntegrationTest
     println("Yes we can!")
   }
 
+  def createTopics(topics: Iterable[String], bootstrapServers: String) {
+    println(s"Creating kafka topics")
+    import scala.collection.JavaConverters._
+
+    val adminClient =
+      AdminClient.create(Map[String, AnyRef](AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> bootstrapServers).asJava)
+    try {
+      val r = adminClient.createTopics(topics.map(t => new NewTopic(t, 1, 1)).asJavaCollection)
+      r.all().get()
+    } catch {
+      case e: java.util.concurrent.ExecutionException => ()
+    } finally {
+      adminClient.close()
+    }
+  }
+
   abstract override def beforeAll(): Unit = {
     super.beforeAll()
 
     println(
       "Starting a whole bunch of Docker containers. This could take a few minutes, but I promise it'll be worth the wait!")
     startAllOrFail()
+    createTopics(TopicNames, s"localhost:$DefaultKafkaPort")
     TopicNames.foreach(t => checkCanConsumeFromKafkaTopic(t, s"localhost:$DefaultKafkaPort", "Aiven"))
   }
 

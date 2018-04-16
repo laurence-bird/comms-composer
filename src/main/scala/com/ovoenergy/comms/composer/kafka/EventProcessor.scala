@@ -10,8 +10,7 @@ import com.ovoenergy.comms.model.{FailedV2, LoggableEvent}
 import org.apache.kafka.clients.producer.RecordMetadata
 import fs2._
 import org.apache.kafka.clients.consumer.ConsumerRecord
-
-import scala.concurrent.Future
+import cats.syntax.functor._
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.higherKinds
@@ -29,53 +28,53 @@ object EventProcessor extends Logging {
             "kafkaOffset" -> record.offset().toString))
 
   def apply[F[_]: Effect, InEvent <: LoggableEvent, OutEvent <: LoggableEvent](
-      outputProducer: => OutEvent => Future[RecordMetadata],
-      failedProducer: FailedV2 => Future[RecordMetadata],
+      outputProducer: => OutEvent => F[RecordMetadata],
+      failedProducer: FailedV2 => F[RecordMetadata],
       processEvent: InEvent => Either[ComposerError, OutEvent])(
       implicit buildFailedEventFrom: BuildFailedEventFrom[InEvent]): Record[InEvent] => F[Unit] = {
 
-    def sendOutput(event: OutEvent): Future[_] = {
-      outputProducer(event).recover {
+    def sendOutput(event: OutEvent): F[RecordMetadata] = {
+      outputProducer(event).onError {
         case NonFatal(e) =>
-          warnWithException(event)(
-            "Unable to produce event, however, processing has completed so offset will be committed regardless")(e)
+          Async[F].delay(
+            warnWithException(event)(
+              "Unable to produce event, however, processing has completed so offset will be committed regardless")(e))
       }
     }
 
-    def sendFailed(failedToComposeError: ComposerError, inEvent: InEvent): Future[_] = {
+    def sendFailed(failedToComposeError: ComposerError, inEvent: InEvent): F[RecordMetadata] = {
 
       val failed = buildFailedEventFrom(inEvent, failedToComposeError)
 
-      failedProducer(failed).recover {
+      failedProducer(failed).onError {
         case NonFatal(e) =>
-          warnWithException(failed)(
+          Async[F].delay(warnWithException(failed)(
             "Unable to produce Failed event, however, processing has completed so offset will be committed regardless")(
-            e)
+            e))
       }
     }
 
-    def result[F[_]: Effect]: Record[InEvent] => F[Unit] = (record: Record[InEvent]) => {
+    def result: Record[InEvent] => F[Unit] = (record: Record[InEvent]) => {
 
       Async[F].delay(info(record)(s"Consumed ${record.show}")) >> (record.value match {
         case Some(inEvent) => {
           info(inEvent)("Processing event")
-          processEvent(inEvent) match {
-            case Left(failed) =>
+          val result: F[RecordMetadata] = processEvent(inEvent) match {
+            case Left(failed: ComposerError) =>
               info(inEvent)(s"Processing failed, sending failed event")
               sendFailed(failed, inEvent)
-              Async[F].pure(())
             case Right(result) =>
               sendOutput(result)
-              Async[F].pure(())
           }
+          import cats.implicits._
+          result.map(_ => ())
         }
         case None => {
-          warn(record)(s"Failed to deserialise kafka record ${record.show}")
-          Async[F].pure(())
+          Async[F].delay(warn(record)(s"Failed to deserialise kafka record ${record.show}"))
         }
       })
     }
 
-    result[F]
+    result
   }
 }
