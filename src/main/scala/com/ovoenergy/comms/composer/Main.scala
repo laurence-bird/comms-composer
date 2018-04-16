@@ -12,7 +12,7 @@ import com.ovoenergy.comms.composer.aws.{AwsClientProvider, TemplateContextFacto
 import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA, EmailInterpreter}
 import com.ovoenergy.comms.composer.http.{AdminRestApi, HttpClient, HttpServerConfig, RenderRestApi}
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
-import com.ovoenergy.comms.composer.kafka.EventProcessor
+import com.ovoenergy.comms.composer.kafka.{EventProcessor, Producer}
 import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA, PrintInterpreter, RenderedPrintPdf}
 import com.ovoenergy.comms.composer.print.PrintInterpreter.PrintContext
 import com.ovoenergy.comms.composer.rendering.pdf.DocRaptorConfig
@@ -26,19 +26,19 @@ import com.ovoenergy.comms.model.sms.{ComposedSMSV3, OrchestratedSMSV2}
 import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.serialisation.Retry
 import com.ovoenergy.fs2.kafka.{ConsumerSettings, Subscription, consumeProcessAndCommit}
-import com.ovoenergy.kafka.serialization.core.{constDeserializer}
+import com.ovoenergy.kafka.serialization.core.constDeserializer
 import com.sksamuel.avro4s.{FromRecord, SchemaFor, ToRecord}
 import com.typesafe.config.{Config, ConfigFactory}
 import fs2._
-
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
+import org.apache.kafka.clients.producer.{KafkaProducer, RecordMetadata}
 import org.apache.kafka.common.config.SslConfigs
 import org.http4s.server.blaze.BlazeBuilder
 import org.http4s.server.Server
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{higherKinds, reflectiveCalls}
 import scala.language.reflectiveCalls
 import scala.reflect.ClassTag
@@ -58,6 +58,16 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
       "kafkaPartition" -> a.partition().toString,
       "kafkaOffset" -> a.offset().toString
     )
+  }
+
+  implicit def recordLoggable = new Loggable[RecordMetadata] {
+    override def mdcMap(rm: RecordMetadata): Map[String, String] = {
+      Map(
+        "kafkaTopic" -> rm.topic(),
+        "kafkaPartition" -> rm.partition().toString,
+        "kafkaOffset" -> rm.offset().toString
+      )
+    }
   }
 
   implicit val config = ConfigFactory.load()
@@ -96,13 +106,12 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   }
 
   val composedEmailEventProducer =
-    exitOnFailure(Kafka.aiven.composedEmail.v3.retryPublisher, "composed email")
-  val composedSMSEventProducer =
-    exitOnFailure(Kafka.aiven.composedSms.v3.retryPublisher, "composed sms")
+    publisherFor[ComposedEmailV3](Kafka.aiven.composedEmail.v3, _.metadata.eventId)
+  val composedSMSEventProducer = publisherFor[ComposedSMSV3](Kafka.aiven.composedSms.v3, _.metadata.eventId)
   val composedPrintEventProducer =
-    exitOnFailure(Kafka.aiven.composedPrint.v1.retryPublisher, "composed print")
+    publisherFor[ComposedPrint](Kafka.aiven.composedPrint.v1, _.metadata.eventId)
 
-  val failedEventProducer = exitOnFailure(Kafka.aiven.failed.v2.retryPublisher, "failed")
+  val failedEventProducer = publisherFor[FailedV2](Kafka.aiven.failed.v2, _.metadata.eventId)
 
   val emailInterpreter: ~>[EmailComposerA, FailedOr] = EmailInterpreter(templateContext)
   val emailComposer = (orchestratedEmail: OrchestratedEmailV3) =>
@@ -208,6 +217,19 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
         .drain
         .covaryOutput[StreamApp.ExitCode] ++ Stream.emit(StreamApp.ExitCode.Error)
     }
+  }
+
+  def publisherFor[E](topic: Topic[E], key: E => String)(implicit schemaFor: SchemaFor[E],
+                                                         toRecord: ToRecord[E],
+                                                         classTag: ClassTag[E]): E => IO[RecordMetadata] = {
+    import cats.syntax.flatMap._
+    val producer: KafkaProducer[String, E] = exitOnFailure(Producer[E](topic), topic.name)
+    val publisher: E => IO[RecordMetadata] = { e: E =>
+      log.info(s"Sending event to topic ${topic.name} \n event: $e ")
+
+      Producer.publisher[E, IO](key, producer, topic.name)(e)
+    }
+    publisher.andThen(f => f.flatMap(rm => IO(info(rm)(s"Event sent to topic ${topic.name}")) >> IO.pure(rm)))
   }
 
   log.info("Composer now running")
