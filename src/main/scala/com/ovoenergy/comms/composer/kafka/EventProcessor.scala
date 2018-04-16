@@ -66,7 +66,7 @@ object EventProcessor extends Logging {
             case Right(result) =>
               sendOutput(result)
           }
-          import cats.implicits._
+          import cats.syntax.functor._
           result.map(_ => ())
         }
         case None => {
