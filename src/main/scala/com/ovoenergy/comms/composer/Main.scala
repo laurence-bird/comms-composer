@@ -219,13 +219,13 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     }
   }
 
-  def publisherFor[E](topic: Topic[E], key: E => String)(implicit schemaFor: SchemaFor[E],
-                                                         toRecord: ToRecord[E],
-                                                         classTag: ClassTag[E]): E => IO[RecordMetadata] = {
+  def publisherFor[E: Loggable](topic: Topic[E], key: E => String)(implicit schemaFor: SchemaFor[E],
+                                                                   toRecord: ToRecord[E],
+                                                                   classTag: ClassTag[E]): E => IO[RecordMetadata] = {
     import cats.syntax.flatMap._
     val producer: KafkaProducer[String, E] = exitOnFailure(Producer[E](topic), topic.name)
     val publisher: E => IO[RecordMetadata] = { e: E =>
-      log.info(s"Sending event to topic ${topic.name} \n event: $e ")
+      info(e)(s"Sending event to topic ${topic.name} \n")
 
       Producer.publisher[E, IO](key, producer, topic.name)(e)
     }
