@@ -46,7 +46,7 @@ object Dependencies {
   object ovoEnergy {
     private val kafkaMessagesVersion = "1.44"
     private val kafkaSerialisationVersion = "3.13"
-    private val templateVersion = "0.17"
+    private val templateVersion = "0.22"
     private val commsDockerTestkitVersion = "1.8"
 
     lazy val commsMessages = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion
