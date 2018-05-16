@@ -81,11 +81,7 @@ class AivenServiceTest
     withThrowawayConsumerFor(Kafka.aiven.composedEmail.v3, Kafka.aiven.failed.v2) {
       (composedConsumer, failedConsumer) =>
         sendOrchestratedEmailEvent(
-          CommManifest(
-            model.Service,
-            "composer-service-test",
-            "0.1"
-          ),
+          validTemplateCommManifest,
           Map.empty
         )
         composedConsumer.checkNoMessages(5.seconds)
@@ -118,37 +114,6 @@ class AivenServiceTest
       failedConsumer.checkNoMessages(5.seconds)
     }
   }
-
-//  private def uploadTemplateToS3(): Unit = {
-//    // disable chunked encoding to work around https://github.com/jubos/fake-s3/issues/164
-//    val s3clientOptions = S3ClientOptions.builder().setPathStyleAccess(true).disableChunkedEncoding().build()
-//
-//    val s3: AmazonS3Client = new AmazonS3Client(new BasicAWSCredentials("service-test", "dummy"))
-//      .withRegion(Regions.fromName(config.getString("aws.region")))
-//    s3.setS3ClientOptions(s3clientOptions)
-//    s3.setEndpoint(s3Endpoint)
-//
-//    s3.createBucket("ovo-comms-templates")
-//
-//    // template
-//    s3.putObject("ovo-comms-templates",
-//                 "service/composer-service-test/0.1/email/subject.txt",
-//                 "SUBJECT {{profile.firstName}}")
-//    s3.putObject("ovo-comms-templates",
-//                 "service/composer-service-test/0.1/email/body.html",
-//                 "{{> header}} HTML BODY {{amount}}")
-//    s3.putObject("ovo-comms-templates",
-//                 "service/composer-service-test/0.1/email/body.txt",
-//                 "{{> header}} TEXT BODY {{amount}}")
-//    s3.putObject("ovo-comms-templates",
-//                 "service/composer-service-test/0.1/sms/body.txt",
-//                 "{{> header}} SMS BODY {{amount}}")
-//
-//    // fragments
-//    s3.putObject("ovo-comms-templates", "service/fragments/email/html/header.html", "HTML HEADER")
-//    s3.putObject("ovo-comms-templates", "service/fragments/email/txt/header.txt", "TEXT HEADER")
-//    s3.putObject("ovo-comms-templates", "service/fragments/sms/txt/header.txt", "SMS HEADER")
-//  }
 
   def metadata(commManifest: CommManifest) = MetadataV2(
     OffsetDateTime.now().toInstant,
