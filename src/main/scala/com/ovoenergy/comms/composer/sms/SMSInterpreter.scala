@@ -25,7 +25,7 @@ object SMSInterpreter extends Logging {
                 .getSMSTemplate(event.metadata.commManifest)
                 .run(context)
                 .leftMap { err =>
-                  warn(event)("Failed to retrieve template")
+                  warn(event)(s"Failed to retrieve template: $err")
                   failSMS(err, TemplateDownloadFailed)
                 }
             } catch {

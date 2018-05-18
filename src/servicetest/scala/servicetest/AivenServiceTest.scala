@@ -21,6 +21,7 @@ import shapeless.Coproduct
 import scala.concurrent.duration._
 import com.ovoenergy.comms.model.email.OrchestratedEmailV3.schemaFor
 import com.ovoenergy.comms.serialisation.Codecs._
+import servicetest.util.MockTemplates
 
 import scala.language.reflectiveCalls
 class AivenServiceTest
@@ -28,25 +29,46 @@ class AivenServiceTest
     with Matchers
     with OptionValues
     with BeforeAndAfterAll
-    with DockerIntegrationTest {
+    with DockerIntegrationTest
+    with MockTemplates {
 
   behavior of "Composer service"
 
   val s3Endpoint = "http://localhost:4569"
 
+  lazy val s3Client = {
+    val s3clientOptions = S3ClientOptions.builder().setPathStyleAccess(true).disableChunkedEncoding().build()
+    val s3: AmazonS3Client = new AmazonS3Client(new BasicAWSCredentials("service-test", "dummy"))
+      .withRegion(Regions.fromName(config.getString("aws.region")))
+    s3.setS3ClientOptions(s3clientOptions)
+    s3.setEndpoint(s3Endpoint)
+    s3
+  }
+
+  final private val validTemplateCommManifest = CommManifest(
+    model.Service,
+    "composer-service-test",
+    "0.1"
+  )
+
+  final private val invalidTemplateCommManifest = CommManifest(
+    model.Service,
+    "no-such-template",
+    "9.9"
+  )
+
   override def beforeAll(): Unit = {
+    val templatesBucket = "ovo-comms-templates"
     super.beforeAll()
-    uploadTemplateToS3()
+    s3Client.createBucket(templatesBucket)
+    s3Client.createBucket("dev-ovo-comms-pdfs")
+    uploadTemplateToS3(validTemplateCommManifest, s3Client, templatesBucket)
   }
 
   it should "compose an email" in {
     withThrowawayConsumerFor(Kafka.aiven.composedEmail.v3, Kafka.aiven.failed.v2) {
       (composedConsumer, failedConsumer) =>
-        sendOrchestratedEmailEvent(CommManifest(
-                                     model.Service,
-                                     "composer-service-test",
-                                     "0.1"
-                                   ),
+        sendOrchestratedEmailEvent(validTemplateCommManifest,
                                    Map(
                                      "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23"))
                                    ))
@@ -59,11 +81,7 @@ class AivenServiceTest
     withThrowawayConsumerFor(Kafka.aiven.composedEmail.v3, Kafka.aiven.failed.v2) {
       (composedConsumer, failedConsumer) =>
         sendOrchestratedEmailEvent(
-          CommManifest(
-            model.Service,
-            "composer-service-test",
-            "0.1"
-          ),
+          validTemplateCommManifest,
           Map.empty
         )
         composedConsumer.checkNoMessages(5.seconds)
@@ -77,12 +95,7 @@ class AivenServiceTest
   it should "send a failed event if the template does not exist" in {
     withThrowawayConsumerFor(Kafka.aiven.composedEmail.v3, Kafka.aiven.failed.v2) {
       (composedConsumer, failedConsumer) =>
-        sendOrchestratedEmailEvent(CommManifest(
-                                     model.Service,
-                                     "no-such-template",
-                                     "9.9"
-                                   ),
-                                   Map.empty)
+        sendOrchestratedEmailEvent(invalidTemplateCommManifest, Map.empty)
         composedConsumer.checkNoMessages(5.seconds)
         val failedResult = failedConsumer.pollFor(noOfEventsExpected = 1)
         failedResult.foreach { failed =>
@@ -93,48 +106,13 @@ class AivenServiceTest
 
   it should "compose an SMS" in {
     withThrowawayConsumerFor(Kafka.aiven.composedSms.v3, Kafka.aiven.failed.v2) { (composedConsumer, failedConsumer) =>
-      sendOrchestratedSMSEvent(CommManifest(
-                                 model.Service,
-                                 "composer-service-test",
-                                 "0.1"
-                               ),
+      sendOrchestratedSMSEvent(validTemplateCommManifest,
                                Map(
                                  "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23"))
                                ))
       verifyComposedSMSEvent(composedConsumer)
       failedConsumer.checkNoMessages(5.seconds)
     }
-  }
-
-  private def uploadTemplateToS3(): Unit = {
-    // disable chunked encoding to work around https://github.com/jubos/fake-s3/issues/164
-    val s3clientOptions = S3ClientOptions.builder().setPathStyleAccess(true).disableChunkedEncoding().build()
-
-    val s3: AmazonS3Client = new AmazonS3Client(new BasicAWSCredentials("service-test", "dummy"))
-      .withRegion(Regions.fromName(config.getString("aws.region")))
-    s3.setS3ClientOptions(s3clientOptions)
-    s3.setEndpoint(s3Endpoint)
-
-    s3.createBucket("ovo-comms-templates")
-
-    // template
-    s3.putObject("ovo-comms-templates",
-                 "service/composer-service-test/0.1/email/subject.txt",
-                 "SUBJECT {{profile.firstName}}")
-    s3.putObject("ovo-comms-templates",
-                 "service/composer-service-test/0.1/email/body.html",
-                 "{{> header}} HTML BODY {{amount}}")
-    s3.putObject("ovo-comms-templates",
-                 "service/composer-service-test/0.1/email/body.txt",
-                 "{{> header}} TEXT BODY {{amount}}")
-    s3.putObject("ovo-comms-templates",
-                 "service/composer-service-test/0.1/sms/body.txt",
-                 "{{> header}} SMS BODY {{amount}}")
-
-    // fragments
-    s3.putObject("ovo-comms-templates", "service/fragments/email/html/header.html", "HTML HEADER")
-    s3.putObject("ovo-comms-templates", "service/fragments/email/txt/header.txt", "TEXT HEADER")
-    s3.putObject("ovo-comms-templates", "service/fragments/sms/txt/header.txt", "SMS HEADER")
   }
 
   def metadata(commManifest: CommManifest) = MetadataV2(
