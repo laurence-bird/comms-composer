@@ -9,13 +9,13 @@ import cats.{Apply, Id}
 import com.ovoenergy.comms.composer.email.RenderedEmail
 import com.ovoenergy.comms.composer.rendering.{ErrorsOr, FailedToRender}
 import com.ovoenergy.comms.model
-import com.ovoenergy.comms.model.{CommManifest, CustomerProfile, TemplateData}
+import com.ovoenergy.comms.model.TemplateManifest
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 
 object EmailTemplateRendering extends Rendering {
 
   def renderEmail(clock: Clock,
-                  commManifest: CommManifest,
+                  templateManifest: TemplateManifest,
                   template: EmailTemplate[Id],
                   emailTemplateData: CommTemplateData): Either[FailedToRender, RenderedEmail] = {
     val context = buildHandlebarsContext(
@@ -24,16 +24,16 @@ object EmailTemplateRendering extends Rendering {
     )
 
     val subject: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, model.Email, "subject")
+      val filename = buildFilename(templateManifest, model.Email, "subject")
       HandlebarsWrapper.render(filename, template.subject)(context)
     }
     val htmlBody: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, model.Email, "htmlBody")
+      val filename = buildFilename(templateManifest, model.Email, "htmlBody")
       HandlebarsWrapper.render(filename, template.htmlBody)(context)
     }
     val textBody: Option[ErrorsOr[String]] =
       template.textBody map { tb =>
-        val filename = buildFilename(commManifest, model.Email, "textBody")
+        val filename = buildFilename(templateManifest, model.Email, "textBody")
         HandlebarsWrapper.render(filename, tb)(context)
       }
 

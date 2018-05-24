@@ -6,13 +6,13 @@ import cats.Id
 import com.ovoenergy.comms.composer.rendering.{ErrorsOr, FailedToRender}
 import com.ovoenergy.comms.composer.sms.RenderedSMS
 import com.ovoenergy.comms.model
-import com.ovoenergy.comms.model.{CommManifest}
+import com.ovoenergy.comms.model.TemplateManifest
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 
 object SMSTemplateRendering extends Rendering {
 
   def renderSMS(clock: Clock,
-                commManifest: CommManifest,
+                templateManifest: TemplateManifest,
                 template: SMSTemplate[Id],
                 smsTemplateData: CommTemplateData): Either[FailedToRender, RenderedSMS] = {
 
@@ -22,7 +22,7 @@ object SMSTemplateRendering extends Rendering {
     )
 
     val textBody: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, model.SMS, "textBody")
+      val filename = buildFilename(templateManifest, model.SMS, "textBody")
       HandlebarsWrapper.render(filename, template.textBody)(context)
     }
 

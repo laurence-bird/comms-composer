@@ -12,25 +12,26 @@ import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplat
 object EmailComposer {
 
   import scala.language.implicitConversions
-  implicit def emailHashData(email: OrchestratedEmailV3): EmailHashData =
-    new EmailHashData(email.metadata.deliverTo, email.templateData, email.metadata.commManifest)
+
+  implicit def emailHashData(email: OrchestratedEmailV4): EmailHashData =
+    new EmailHashData(email.metadata.deliverTo, email.templateData, email.metadata.templateManifest)
 
   type EmailComposer[A] = Free[EmailComposerA, A]
 
-  def retrieveTemplate(incomingEvent: OrchestratedEmailV3): EmailComposer[EmailTemplate[Id]] =
+  def retrieveTemplate(incomingEvent: OrchestratedEmailV4): EmailComposer[EmailTemplate[Id]] =
     liftF(RetrieveTemplate(incomingEvent))
 
-  def render(incomingEvent: OrchestratedEmailV3, template: EmailTemplate[Id]): EmailComposer[RenderedEmail] =
+  def render(incomingEvent: OrchestratedEmailV4, template: EmailTemplate[Id]): EmailComposer[RenderedEmail] =
     liftF(Render(incomingEvent, template))
 
   def lookupSender(template: EmailTemplate[Id], commType: CommType): EmailComposer[EmailSender] =
     liftF(LookupSender(template, commType))
 
-  def buildEvent(incomingEvent: OrchestratedEmailV3,
+  def buildEvent(incomingEvent: OrchestratedEmailV4,
                  renderedEmail: RenderedEmail,
-                 sender: EmailSender): ComposedEmailV3 =
-    ComposedEmailV3(
-      metadata = MetadataV2.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+                 sender: EmailSender): ComposedEmailV4 =
+    ComposedEmailV4(
+      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata),
       internalMetadata = incomingEvent.internalMetadata,
       sender = sender.toString,
       recipient = incomingEvent.recipientEmailAddress,
@@ -41,11 +42,11 @@ object EmailComposer {
       hashedComm = HashFactory.getHashedComm(incomingEvent)
     )
 
-  def program(event: OrchestratedEmailV3) = {
+  def program(event: OrchestratedEmailV4) = {
     for {
       template <- retrieveTemplate(event)
       rendered <- render(event, template)
-      sender <- lookupSender(template, event.metadata.commManifest.commType)
+      sender <- lookupSender(template, event.metadata.commType)
     } yield buildEvent(event, rendered, sender)
   }
 

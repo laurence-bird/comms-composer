@@ -10,7 +10,7 @@ import com.ovoenergy.comms.composer.rendering.pdf.DocRaptorClient
 import com.ovoenergy.comms.composer.rendering.{ErrorsOr, FailedToRender}
 import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model.print.OrchestratedPrint
-import com.ovoenergy.comms.model.{CommManifest, CustomerAddress, CustomerProfile, TemplateData}
+import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
 
 import scala.collection.mutable
@@ -18,7 +18,7 @@ import scala.collection.mutable
 object PrintTemplateRendering extends Rendering {
 
   def renderHtml(handlebarsData: HandlebarsData,
-                 commManifest: CommManifest,
+                 templateManifest: TemplateManifest,
                  template: PrintTemplate[Id],
                  clock: Clock): Either[FailedToRender, RenderedPrintHtml] = {
 
@@ -28,7 +28,7 @@ object PrintTemplateRendering extends Rendering {
     )
 
     val htmlBody: ErrorsOr[String] = {
-      val filename = buildFilename(commManifest, model.Print, "htmlBody")
+      val filename = buildFilename(templateManifest, model.Print, "htmlBody")
       HandlebarsWrapper.render(filename, template.body)(context)
     }
 

@@ -10,20 +10,20 @@ import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 
 object SMSComposer {
   import scala.language.implicitConversions
-  implicit def smsHashData(sms: OrchestratedSMSV2) =
-    new SmsHashData(sms.metadata.deliverTo, sms.templateData, sms.metadata.commManifest)
+  implicit def smsHashData(sms: OrchestratedSMSV3) =
+    new SmsHashData(sms.metadata.deliverTo, sms.templateData, sms.metadata.templateManifest)
 
   type SMSComposer[A] = Free[SMSComposerA, A]
 
-  def retrieveTemplate(incomingEvent: OrchestratedSMSV2): SMSComposer[SMSTemplate[Id]] =
+  def retrieveTemplate(incomingEvent: OrchestratedSMSV3): SMSComposer[SMSTemplate[Id]] =
     liftF(RetrieveTemplate(incomingEvent))
 
-  def render(incomingEvent: OrchestratedSMSV2, template: SMSTemplate[Id]): SMSComposer[RenderedSMS] =
+  def render(incomingEvent: OrchestratedSMSV3, template: SMSTemplate[Id]): SMSComposer[RenderedSMS] =
     liftF(Render(incomingEvent, template))
 
-  def buildEvent(incomingEvent: OrchestratedSMSV2, renderedSMS: RenderedSMS): ComposedSMSV3 =
-    ComposedSMSV3(
-      metadata = MetadataV2.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+  def buildEvent(incomingEvent: OrchestratedSMSV3, renderedSMS: RenderedSMS): ComposedSMSV4 =
+    ComposedSMSV4(
+      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata),
       internalMetadata = incomingEvent.internalMetadata,
       recipient = incomingEvent.recipientPhoneNumber,
       textBody = renderedSMS.textBody,
@@ -31,7 +31,7 @@ object SMSComposer {
       hashedComm = HashFactory.getHashedComm(incomingEvent)
     )
 
-  def program(event: OrchestratedSMSV2) = {
+  def program(event: OrchestratedSMSV3) = {
     for {
       template <- retrieveTemplate(event)
       rendered <- render(event, template)

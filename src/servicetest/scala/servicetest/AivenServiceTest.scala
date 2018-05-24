@@ -8,6 +8,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.helpers.Kafka
 import com.ovoenergy.comms.model
+import com.ovoenergy.comms.model.Brand.Ovo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.model.sms._
@@ -21,6 +22,7 @@ import shapeless.Coproduct
 import scala.concurrent.duration._
 import com.ovoenergy.comms.model.email.OrchestratedEmailV3.schemaFor
 import com.ovoenergy.comms.serialisation.Codecs._
+import com.ovoenergy.comms.templates.util.Hash
 import servicetest.util.MockTemplates
 
 import scala.language.reflectiveCalls
@@ -45,15 +47,13 @@ class AivenServiceTest
     s3
   }
 
-  final private val validTemplateCommManifest = CommManifest(
-    model.Service,
-    "composer-service-test",
+  final private val validTemplateCommManifest = TemplateManifest(
+    Hash("composer-service-test"),
     "0.1"
   )
 
-  final private val invalidTemplateCommManifest = CommManifest(
-    model.Service,
-    "no-such-template",
+  final private val invalidTemplateCommManifest = TemplateManifest(
+    Hash("no-such-template"),
     "9.9"
   )
 
@@ -66,7 +66,7 @@ class AivenServiceTest
   }
 
   it should "compose an email" in {
-    withThrowawayConsumerFor(Kafka.aiven.composedEmail.v3, Kafka.aiven.failed.v2) {
+    withThrowawayConsumerFor(Kafka.aiven.composedEmail.v4, Kafka.aiven.failed.v3) {
       (composedConsumer, failedConsumer) =>
         sendOrchestratedEmailEvent(validTemplateCommManifest,
                                    Map(
@@ -78,7 +78,7 @@ class AivenServiceTest
   }
 
   it should "send a failed event if some template data is missing" in {
-    withThrowawayConsumerFor(Kafka.aiven.composedEmail.v3, Kafka.aiven.failed.v2) {
+    withThrowawayConsumerFor(Kafka.aiven.composedEmail.v4, Kafka.aiven.failed.v3) {
       (composedConsumer, failedConsumer) =>
         sendOrchestratedEmailEvent(
           validTemplateCommManifest,
@@ -93,7 +93,7 @@ class AivenServiceTest
   }
 
   it should "send a failed event if the template does not exist" in {
-    withThrowawayConsumerFor(Kafka.aiven.composedEmail.v3, Kafka.aiven.failed.v2) {
+    withThrowawayConsumerFor(Kafka.aiven.composedEmail.v4, Kafka.aiven.failed.v3) {
       (composedConsumer, failedConsumer) =>
         sendOrchestratedEmailEvent(invalidTemplateCommManifest, Map.empty)
         composedConsumer.checkNoMessages(5.seconds)
@@ -105,7 +105,7 @@ class AivenServiceTest
   }
 
   it should "compose an SMS" in {
-    withThrowawayConsumerFor(Kafka.aiven.composedSms.v3, Kafka.aiven.failed.v2) { (composedConsumer, failedConsumer) =>
+    withThrowawayConsumerFor(Kafka.aiven.composedSms.v4, Kafka.aiven.failed.v3) { (composedConsumer, failedConsumer) =>
       sendOrchestratedSMSEvent(validTemplateCommManifest,
                                Map(
                                  "amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23"))
@@ -115,17 +115,21 @@ class AivenServiceTest
     }
   }
 
-  def metadata(commManifest: CommManifest) = MetadataV2(
-    OffsetDateTime.now().toInstant,
-    UUID.randomUUID().toString,
-    "transaction123",
-    Customer("customer123"),
-    commManifest,
-    "composer service test",
-    "ServiceSpec",
+  def metadata(templateManifest: TemplateManifest) = MetadataV3(
+    createdAt = OffsetDateTime.now().toInstant,
+    eventId = UUID.randomUUID().toString,
+    traceToken = "transaction123",
+    deliverTo = Customer("customer123"),
+    templateManifest = templateManifest,
+    commId = "1234",
+    commName = "test-template",
+    commType = Service,
+    brand = Ovo,
+    friendlyDescription = "composer service test",
+    source = "ServiceSpec",
     canary = true,
-    None,
-    "SomeTriggerSource"
+    sourceMetadata = None,
+    triggerSource = "SomeTriggerSource"
   )
 
   val internalMetadata = InternalMetadata("yoooo")
@@ -136,9 +140,9 @@ class AivenServiceTest
     "Birchall"
   )
 
-  def orchestratedEmailEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]) =
-    OrchestratedEmailV3(
-      metadata(commManifest),
+  def orchestratedEmailEvent(templateManifest: TemplateManifest, templateData: Map[String, TemplateData]) =
+    OrchestratedEmailV4(
+      metadata(templateManifest),
       internalMetadata,
       recipientEmailAddress,
       Some(profile),
@@ -146,9 +150,9 @@ class AivenServiceTest
       expireAt = None
     )
 
-  def orchestratedSMSEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]) =
-    OrchestratedSMSV2(
-      metadata(commManifest),
+  def orchestratedSMSEvent(templateManifest: TemplateManifest, templateData: Map[String, TemplateData]) =
+    OrchestratedSMSV3(
+      metadata(templateManifest),
       internalMetadata,
       recipientPhoneNumber,
       Some(profile),
@@ -156,17 +160,19 @@ class AivenServiceTest
       expireAt = None
     )
 
-  private def sendOrchestratedEmailEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]): Unit = {
-    val event: OrchestratedEmailV3 = orchestratedEmailEvent(commManifest, templateData)
-    Kafka.aiven.orchestratedEmail.v3.publishOnce(event, 5.seconds)
+  private def sendOrchestratedEmailEvent(templateManifest: TemplateManifest,
+                                         templateData: Map[String, TemplateData]): Unit = {
+    val event: OrchestratedEmailV4 = orchestratedEmailEvent(templateManifest, templateData)
+    Kafka.aiven.orchestratedEmail.v4.publishOnce(event, 5.seconds)
   }
 
-  private def sendOrchestratedSMSEvent(commManifest: CommManifest, templateData: Map[String, TemplateData]): Unit = {
-    val event = orchestratedSMSEvent(commManifest, templateData)
-    Kafka.aiven.orchestratedSMS.v2.publishOnce(event, 5.seconds)
+  private def sendOrchestratedSMSEvent(templateManifest: TemplateManifest,
+                                       templateData: Map[String, TemplateData]): Unit = {
+    val event = orchestratedSMSEvent(templateManifest, templateData)
+    Kafka.aiven.orchestratedSMS.v3.publishOnce(event, 5.seconds)
   }
 
-  private def verifyComposedEmailEvent(consumer: KafkaConsumer[String, Option[ComposedEmailV3]]): Unit = {
+  private def verifyComposedEmailEvent(consumer: KafkaConsumer[String, Option[ComposedEmailV4]]): Unit = {
     val events = consumer.pollFor(noOfEventsExpected = 1)
     events.head.subject should be("SUBJECT Chris")
     events.head.htmlBody should be("HTML HEADER HTML BODY 1.23")
@@ -175,7 +181,7 @@ class AivenServiceTest
     events.head.metadata.traceToken should be("transaction123")
   }
 
-  private def verifyComposedSMSEvent(consumer: KafkaConsumer[String, Option[ComposedSMSV3]]): Unit = {
+  private def verifyComposedSMSEvent(consumer: KafkaConsumer[String, Option[ComposedSMSV4]]): Unit = {
     val events = consumer.pollFor(noOfEventsExpected = 1)
     events.head.textBody should be("SMS HEADER SMS BODY 1.23")
     events.head.metadata.traceToken should be("transaction123")
