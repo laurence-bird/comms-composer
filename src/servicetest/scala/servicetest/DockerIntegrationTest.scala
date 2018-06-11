@@ -137,8 +137,8 @@ trait DockerIntegrationTest
         ContainerLink(zookeeperContainer, "aivenZookeeper"),
         ContainerLink(schemaRegistryContainer, "schema-registry"),
         ContainerLink(mockServers, "docraptor"),
-        ContainerLink(fakes3ssl, "ovo-comms-templates.s3-eu-west-1.amazonaws.com"),
-        ContainerLink(fakes3ssl, "dev-ovo-comms-pdfs.s3-eu-west-1.amazonaws.com")
+        ContainerLink(fakes3ssl, "ovo-comms-templates.s3.eu-west-1.amazonaws.com"),
+        ContainerLink(fakes3ssl, "dev-ovo-comms-pdfs.s3.eu-west-1.amazonaws.com")
       )
       .withEnv(envVars: _*)
       .withVolumes(List(VolumeMapping(host = s"${sys.env("HOME")}/.aws", container = "/sbin/.aws"))) // share AWS creds so that credstash works

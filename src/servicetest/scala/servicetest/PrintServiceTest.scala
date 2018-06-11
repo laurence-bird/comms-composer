@@ -14,9 +14,9 @@ import com.ovoenergy.comms.testhelpers.KafkaTestHelpers.withThrowawayConsumerFor
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers, OptionValues}
 import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
 import com.ovoenergy.comms.helpers.Kafka
-import com.ovoenergy.comms.model.Brand.Ovo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.templates.util.Hash
+import org.joda.time.DateTime
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import servicetest.util.MockTemplates
@@ -56,9 +56,6 @@ class PrintServiceTest
       traceToken = "1234567890",
       templateManifest = TemplateManifest(Hash("composer-service-test"), "0.1"),
       commId = "1234",
-      commName = "composer-service-test",
-      commType = Service,
-      brand = Ovo,
       friendlyDescription = "very friendly",
       source = "origin",
       canary = true,
@@ -151,7 +148,6 @@ class PrintServiceTest
           .withBody(pdfResponseByteArray)
       )
   }
-
   def create400DocRaptorResponse() {
     mockServerClient.reset()
     mockServerClient

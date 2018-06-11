@@ -24,8 +24,8 @@ object EmailComposer {
   def render(incomingEvent: OrchestratedEmailV4, template: EmailTemplate[Id]): EmailComposer[RenderedEmail] =
     liftF(Render(incomingEvent, template))
 
-  def lookupSender(template: EmailTemplate[Id], commType: CommType): EmailComposer[EmailSender] =
-    liftF(LookupSender(template, commType))
+  def lookupSender(template: EmailTemplate[Id]): EmailComposer[EmailSender] =
+    liftF(LookupSender(template))
 
   def buildEvent(incomingEvent: OrchestratedEmailV4,
                  renderedEmail: RenderedEmail,
@@ -46,8 +46,7 @@ object EmailComposer {
     for {
       template <- retrieveTemplate(event)
       rendered <- render(event, template)
-      sender <- lookupSender(template, event.metadata.commType)
+      sender <- lookupSender(template)
     } yield buildEvent(event, rendered, sender)
   }
-
 }

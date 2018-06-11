@@ -7,20 +7,15 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.helpers.Kafka
-import com.ovoenergy.comms.model
-import com.ovoenergy.comms.model.Brand.Ovo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.model.sms._
-import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigResolveOptions}
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.{ProducerRecord, RecordMetadata}
 import org.scalatest.{Failed => _, _}
 import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
 import shapeless.Coproduct
 
 import scala.concurrent.duration._
-import com.ovoenergy.comms.model.email.OrchestratedEmailV3.schemaFor
 import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.templates.util.Hash
 import servicetest.util.MockTemplates
@@ -122,9 +117,6 @@ class AivenServiceTest
     deliverTo = Customer("customer123"),
     templateManifest = templateManifest,
     commId = "1234",
-    commName = "test-template",
-    commType = Service,
-    brand = Ovo,
     friendlyDescription = "composer service test",
     source = "ServiceSpec",
     canary = true,

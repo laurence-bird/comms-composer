@@ -7,7 +7,6 @@ import cats.{Id, ~>}
 import cats.Cartesian
 import com.ovoenergy.comms._
 import com.ovoenergy.comms.model
-import com.ovoenergy.comms.model.Brand.Ovo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.templates.model.{EmailSender, HandlebarsTemplate, RequiredTemplateData}
@@ -34,7 +33,7 @@ class EmailComposerSpec extends FlatSpec with Matchers {
           htmlBody = template.htmlBody.rawExpandedContent.replaceAllLiterally("{{amount}}", "1.23"),
           textBody = None
         )
-      case LookupSender(_, _) =>
+      case LookupSender(_) =>
         EmailSender("Ovo Energy", "no-reply@ovoenergy.com")
     }
   }
@@ -47,9 +46,6 @@ class EmailComposerSpec extends FlatSpec with Matchers {
       deliverTo = Customer("customerId"),
       templateManifest = TemplateManifest(Hash("test-template"), "0.1"),
       commId = "1234",
-      commName = "test-template",
-      commType = model.Service,
-      brand = Ovo,
       friendlyDescription = "test message",
       source = "test",
       canary = true,

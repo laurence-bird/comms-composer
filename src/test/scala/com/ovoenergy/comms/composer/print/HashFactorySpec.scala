@@ -3,15 +3,9 @@ package com.ovoenergy.comms.composer.print
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
-
-import cats.{Id, ~>}
 import com.ovoenergy.comms.composer.rendering.{HashFactory, PrintHashData}
-import com.ovoenergy.comms.model
-import com.ovoenergy.comms.model.Brand.Ovo
 import com.ovoenergy.comms.model.print.OrchestratedPrintV2
 import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
-import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
 import com.ovoenergy.comms.templates.util.Hash
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -25,9 +19,6 @@ class HashFactorySpec extends FlatSpec with Matchers {
       deliverTo = Customer("customerId"),
       templateManifest = TemplateManifest(Hash("test-template"), "0.1"),
       commId = "1234",
-      commName = "test-template",
-      commType = model.Service,
-      brand = Ovo,
       friendlyDescription = "test message",
       source = "test",
       canary = true,

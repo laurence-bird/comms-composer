@@ -13,4 +13,4 @@ case class RetrieveTemplate(incomingEvent: OrchestratedEmailV4) extends EmailCom
 case class Render(incomingEvent: OrchestratedEmailV4, template: EmailTemplate[Id])
     extends EmailComposerA[RenderedEmail]
 
-case class LookupSender(template: EmailTemplate[Id], commType: CommType) extends EmailComposerA[EmailSender]
+case class LookupSender(template: EmailTemplate[Id]) extends EmailComposerA[EmailSender]

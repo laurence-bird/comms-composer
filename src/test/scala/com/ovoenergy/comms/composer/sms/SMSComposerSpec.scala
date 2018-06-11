@@ -5,7 +5,6 @@ import java.util.UUID
 
 import cats.{Id, ~>}
 import com.ovoenergy.comms.model
-import com.ovoenergy.comms.model.Brand.Ovo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
@@ -30,6 +29,8 @@ class SMSComposerSpec extends FlatSpec with Matchers {
     }
   }
 
+  case class CustomerTransaction(bankCardNumber: Long, transactionTotal: Int, transactionDate: String)
+
   val incomingEvent = OrchestratedSMSV3(
     metadata = MetadataV3(
       createdAt = Instant.now,
@@ -38,9 +39,6 @@ class SMSComposerSpec extends FlatSpec with Matchers {
       deliverTo = Customer("customerId"),
       templateManifest = TemplateManifest(Hash("test-template"), "0.1"),
       commId = "1234",
-      commName = "test-template",
-      commType = model.Service,
-      brand = Ovo,
       friendlyDescription = "test message",
       source = "test",
       canary = true,
