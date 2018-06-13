@@ -83,7 +83,17 @@ Resources:
               Resource:
                 - 'arn:aws:s3:::ovo-comms-aiven'
                 - 'arn:aws:s3:::ovo-comms-aiven/*'
-
+        -
+          PolicyName: read-template-summary-table
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'dynamodb:Query'
+                - 'dynamodb:Get*'
+              Resource:
+                Fn::ImportValue:
+                  TemplateSummaryTableArn # <- Exported from Template manager cloudformation.yml
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
