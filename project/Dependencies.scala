@@ -1,4 +1,4 @@
-import sbt._
+  import sbt._
 
 object Dependencies {
 
@@ -45,7 +45,7 @@ object Dependencies {
   object ovoEnergy {
     private val kafkaMessagesVersion = "1.71"
     private val kafkaSerialisationVersion = "3.15"
-    private val templateVersion = "0.23"
+    private val templateVersion = "0.25"
     private val commsDockerTestkitVersion = "1.8"
 
     lazy val commsMessages = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion
