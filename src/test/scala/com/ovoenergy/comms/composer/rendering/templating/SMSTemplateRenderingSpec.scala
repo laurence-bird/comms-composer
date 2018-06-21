@@ -7,6 +7,7 @@ import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model.{TemplateData, _}
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
+import com.ovoenergy.comms.templates.util.Hash
 import org.scalatest._
 import shapeless.Coproduct
 
@@ -18,15 +19,15 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   val phoneNumber = "+447123123456"
   val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
-  def renderSMS(commManifest: CommManifest,
+  def renderSMS(templateManifest: TemplateManifest,
                 template: SMSTemplate[Id],
                 smsTd: CommTemplateData,
                 clock: Clock = Clock.systemDefaultZone()) = {
-    SMSTemplateRendering.renderSMS(clock, commManifest, template, smsTd)
+    SMSTemplateRendering.renderSMS(clock, templateManifest, template, smsTd)
   }
 
   it should "render a simple template" in {
-    val manifest = CommManifest(model.Service, "simple", "0.1")
+    val manifest = TemplateManifest(Hash("simple"), "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("You paid £{{amount}}", requiredFields)
     )
@@ -38,7 +39,7 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   }
 
   it should "render a simple template without a profile" in {
-    val manifest = CommManifest(model.Service, "simple", "0.1")
+    val manifest = TemplateManifest(Hash("simple"), "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("{{firstName}} you paid £{{amount}}", requiredFields)
     )
@@ -53,7 +54,7 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   }
 
   it should "render a template that references fields in the customer profile" in {
-    val manifest = CommManifest(model.Service, "profile-fields", "0.1")
+    val manifest = TemplateManifest(Hash("profile-fields"), "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("TEXT BODY {{profile.firstName}} {{amount}}", requiredFields)
     )
@@ -64,7 +65,7 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   }
 
   it should "fail to render a template that references fields in the customer profile without a profile being provided" in {
-    val manifest = CommManifest(model.Service, "profile-fields", "0.1")
+    val manifest = TemplateManifest(Hash("profile-fields"), "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("TEXT BODY {{profile.firstName}} {{amount}}", requiredFields)
     )
@@ -75,7 +76,7 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   }
 
   it should "make the recipient phone number available to the SMS template as 'recipient.phoneNumber'" in {
-    val manifest = CommManifest(model.Service, "recipient-phone-number", "0.1")
+    val manifest = TemplateManifest(Hash("recipient-phone-number"), "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("TEXT BODY {{recipient.phoneNumber}}", requiredFields)
     )
@@ -86,7 +87,7 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   }
 
   it should "fail if the template references non-existent data" in {
-    val manifest = CommManifest(model.Service, "missing-data", "0.1")
+    val manifest = TemplateManifest(Hash("missing-data"), "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("Hi {{profile.prefix}}. You bought a {{thing}}. The amount was £{{amount}}.",
                                     requiredFields)
@@ -99,7 +100,7 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   }
 
   it should "render a template that references fields in the system data" in {
-    val manifest = CommManifest(model.Service, "system-data-fields", "0.1")
+    val manifest = TemplateManifest(Hash("system-data-fields"), "0.1")
     val template = SMSTemplate[Id](
       textBody = HandlebarsTemplate("TEXT BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
                                     requiredFields)

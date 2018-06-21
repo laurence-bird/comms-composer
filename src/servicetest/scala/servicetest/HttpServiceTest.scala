@@ -2,6 +2,7 @@ package servicetest
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
+
 import io.circe._
 import io.circe.generic.semiauto._
 import io.circe.syntax._
@@ -11,6 +12,7 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.ovoenergy.comms.composer.http.RenderRestApi.{ErrorResponse, RenderRequest, RenderResponse}
 import org.scalatest.{Failed => _, _}
+
 import scala.concurrent.duration._
 import scala.language.reflectiveCalls
 import org.http4s.{Status, _}
@@ -21,8 +23,8 @@ import org.http4s.dsl.io._
 import org.http4s.circe._
 import org.http4s.client._
 import cats.implicits._
-import com.ovoenergy.comms.model.{CommManifest, TemplateData}
-import com.ovoenergy.comms.model.{Service => ServiceComm}
+import com.ovoenergy.comms.model.{CommManifest, TemplateData, TemplateManifest, Service => ServiceComm}
+import com.ovoenergy.comms.templates.util.Hash
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import servicetest.util.MockTemplates
@@ -43,6 +45,8 @@ class HttpServiceTest
 
   val validTemplateCommManifest = CommManifest(ServiceComm, "canary", "1.0")
 
+  val validTemplateManifest = TemplateManifest(Hash("canary"), "1.0")
+
   lazy val s3Client = {
     val s3clientOptions = S3ClientOptions.builder().setPathStyleAccess(true).disableChunkedEncoding().build()
     val s3: AmazonS3Client = new AmazonS3Client(new BasicAWSCredentials("service-test", "dummy"))
@@ -59,6 +63,7 @@ class HttpServiceTest
     s3Client.createBucket(templatesBucket)
     s3Client.createBucket("dev-ovo-comms-pdfs")
     uploadTemplateToS3(validTemplateCommManifest, s3Client, templatesBucket)
+    uploadTemplateToS3(validTemplateManifest, s3Client, templatesBucket)
     createOKDocRaptorResponse()
   }
 
@@ -109,6 +114,41 @@ class HttpServiceTest
     }
   }
 
+  it should "respond OK to /render/Hash(canary)/1.0/print" in newHttpClient { client =>
+    val templateData = {
+      val accountNumber = TemplateData.fromString("11112222")
+      val ovoId = TemplateData.fromString("myOvo999")
+      val firstName = TemplateData.fromString("David")
+      val lastName = TemplateData.fromString("Gilmour")
+      val profile = TemplateData.fromMap(Map("firstName" -> firstName, "lastName" -> lastName))
+      Map(
+        "accountNumber" -> accountNumber,
+        "myOvoId" -> ovoId,
+        "profile" -> profile
+      )
+    }
+
+    val renderRequest: RenderRequest = RenderRequest(templateData)
+
+    val req = Request[IO](
+      Method.POST,
+      Uri.unsafeFromString(
+        s"$composerHttpEndpoint/render/${validTemplateManifest.id}/${validTemplateManifest.version}/print"),
+      body = fs2.Stream
+        .emit(renderRequest.asJson)
+        .flatMap(json => fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
+        .covary[IO]
+    )
+
+    whenReady {
+      client
+        .fetch(req)(_.decodeJson[RenderResponse])
+        .unsafeToFuture()
+    } { r: RenderResponse =>
+      r.renderedPrint.pdfBody should contain theSameElementsAs pdfResponseByteArray
+    }
+  }
+
   it should "return an appropriate error if invalid comm type is passed in URL" in newHttpClient { client =>
     val templateData = {
       val accountNumber = TemplateData.fromString("11112222")
@@ -142,33 +182,64 @@ class HttpServiceTest
     }
   }
 
-  it should "return an appropriate error if template data is missing fields" in newHttpClient { client =>
-    val templateData = {
-      val accountNumber = TemplateData.fromString("11112222")
-      val ovoId = TemplateData.fromString("myOvo999")
-      Map(
-        "accountNumber" -> accountNumber,
-        "myOvoId" -> ovoId
+  "Using CommManifest" should "return an appropriate error if template data is missing fields" in newHttpClient {
+    client =>
+      val templateData = {
+        val accountNumber = TemplateData.fromString("11112222")
+        val ovoId = TemplateData.fromString("myOvo999")
+        Map(
+          "accountNumber" -> accountNumber,
+          "myOvoId" -> ovoId
+        )
+      }
+
+      val renderRequest: RenderRequest = RenderRequest(templateData)
+
+      val req = Request[IO](
+        Method.POST,
+        Uri.unsafeFromString(
+          s"$composerHttpEndpoint/render/${validTemplateCommManifest.name}/${validTemplateCommManifest.version}/Service/print"),
+        body = fs2.Stream
+          .emit(renderRequest.asJson)
+          .flatMap(json => fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
+          .covary[IO]
       )
-    }
 
-    val renderRequest: RenderRequest = RenderRequest(templateData)
+      whenReady {
+        client.fetch(req)(_.decodeJson[ErrorResponse]).unsafeToFuture()
+      } { error =>
+        error.message shouldBe "The template referenced the following non-existent keys: [profile.firstName]"
+      }
+  }
 
-    val req = Request[IO](
-      Method.POST,
-      Uri.unsafeFromString(
-        s"$composerHttpEndpoint/render/${validTemplateCommManifest.name}/${validTemplateCommManifest.version}/Service/print"),
-      body = fs2.Stream
-        .emit(renderRequest.asJson)
-        .flatMap(json => fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
-        .covary[IO]
-    )
+  "Using TemplateManifest" should "return an appropriate error if template data is missing fields" in newHttpClient {
+    client =>
+      val templateData = {
+        val accountNumber = TemplateData.fromString("11112222")
+        val ovoId = TemplateData.fromString("myOvo999")
+        Map(
+          "accountNumber" -> accountNumber,
+          "myOvoId" -> ovoId
+        )
+      }
 
-    whenReady {
-      client.fetch(req)(_.decodeJson[ErrorResponse]).unsafeToFuture()
-    } { error =>
-      error.message shouldBe "The template referenced the following non-existent keys: [profile.firstName]"
-    }
+      val renderRequest: RenderRequest = RenderRequest(templateData)
+
+      val req = Request[IO](
+        Method.POST,
+        Uri.unsafeFromString(
+          s"$composerHttpEndpoint/render/${validTemplateManifest.id}/${validTemplateManifest.version}/print"),
+        body = fs2.Stream
+          .emit(renderRequest.asJson)
+          .flatMap(json => fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
+          .covary[IO]
+      )
+
+      whenReady {
+        client.fetch(req)(_.decodeJson[ErrorResponse]).unsafeToFuture()
+      } { error =>
+        error.message shouldBe "The template referenced the following non-existent keys: [profile.firstName]"
+      }
   }
 
   def createOKDocRaptorResponse() {

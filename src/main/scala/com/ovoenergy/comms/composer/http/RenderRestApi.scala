@@ -14,6 +14,7 @@ import io.circe.generic.semiauto._
 import io.circe.syntax._
 import cats.implicits._
 import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
+import com.ovoenergy.comms.templates.util.Hash
 import shapeless.{Inl, Inr}
 import org.http4s.circe._
 import org.http4s.dsl._
@@ -21,6 +22,10 @@ import org.http4s.dsl._
 case class CommName(value: String) extends AnyVal
 
 case class CommVersion(value: String) extends AnyVal
+
+case class TemplateId(value: String) extends AnyVal
+
+case class TemplateVersion(value: String) extends AnyVal
 
 object RenderRestApi {
 
@@ -84,6 +89,18 @@ object RenderRestApi {
     }
   }
 
+  object TemplateIdPath {
+    def unapply(str: String): Option[TemplateId] = {
+      Some(TemplateId(str))
+    }
+  }
+
+  object TemplateVersionPath {
+    def unapply(str: String): Option[TemplateVersion] = {
+      Some(TemplateVersion(str))
+    }
+  }
+
   // TODO: Make case insensitive (fromStringCaseInsensitive)
   object CommTypePath {
     def unapply(str: String): Option[CommType] = {
@@ -100,14 +117,14 @@ object RenderRestApi {
 trait RenderRestApi { logger: Logging =>
 
   def renderService[F[_]: Effect](
-      renderPrint: (CommManifest, Map[String, TemplateData]) => F[FailedOr[RenderedPrintPdf]]): HttpService[F] = {
+      renderPrint: (TemplateManifest, Map[String, TemplateData]) => F[FailedOr[RenderedPrintPdf]]): HttpService[F] = {
 
     val dsl = Http4sDsl[F]
     import dsl._
 
-    def handleRenderRequest(renderRequest: RenderRequest, commManifest: CommManifest) =
+    def handleRenderRequest(renderRequest: RenderRequest, templateManifest: TemplateManifest) =
       for {
-        renderedPrint <- renderPrint(commManifest, renderRequest.data)
+        renderedPrint <- renderPrint(templateManifest, renderRequest.data)
         response <- buildApiResponse(renderedPrint)
       } yield response
 
@@ -118,7 +135,15 @@ trait RenderRestApi { logger: Logging =>
         deserialiseRequest[F](req).flatMap {
           case Left(err) => BadRequest(err)
           case Right(r: RenderRequest) =>
-            handleRenderRequest(r, CommManifest(commType, commName.value, commVersion.value))
+            handleRenderRequest(r, TemplateManifest(Hash(commName.value), commVersion.value))
+        }
+      }
+      case req @ POST -> Root / "render" / TemplateIdPath(templateId) / TemplateVersionPath(templateVersion) / "print" => {
+
+        deserialiseRequest[F](req).flatMap {
+          case Left(err) => BadRequest(err)
+          case Right(r: RenderRequest) =>
+            handleRenderRequest(r, TemplateManifest(templateId.value, templateVersion.value))
         }
       }
     }

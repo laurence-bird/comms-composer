@@ -4,12 +4,12 @@ import java.time.Instant
 import java.util.UUID
 
 import cats.{Id, ~>}
-import com.ovoenergy.comms.composer.print.PrintComposer.PrintComposer
 import com.ovoenergy.comms.model
 import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
+import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
 import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
+import com.ovoenergy.comms.templates.util.Hash
 import org.scalatest.{FlatSpec, Matchers}
 
 class PrintComposerSpec extends FlatSpec with Matchers {
@@ -33,13 +33,14 @@ class PrintComposerSpec extends FlatSpec with Matchers {
     }
   }
 
-  val incomingEvent = OrchestratedPrint(
-    metadata = MetadataV2(
+  val incomingEvent = OrchestratedPrintV2(
+    metadata = MetadataV3(
       createdAt = Instant.now,
       eventId = UUID.randomUUID().toString,
       traceToken = "abc",
-      Customer("customerId"),
-      commManifest = CommManifest(model.Service, "test-template", "0.1"),
+      deliverTo = Customer("customerId"),
+      templateManifest = TemplateManifest(Hash("test-template"), "0.1"),
+      commId = "1234",
       friendlyDescription = "test message",
       source = "test",
       canary = true,
@@ -54,7 +55,7 @@ class PrintComposerSpec extends FlatSpec with Matchers {
   )
 
   it should "compose an email" in {
-    val event: ComposedPrint = PrintComposer.program(incomingEvent).foldMap(testInterpreter)
+    val event: ComposedPrintV2 = PrintComposer.program(incomingEvent).foldMap(testInterpreter)
     event.pdfIdentifier should be("PdfIdentifier")
     event.internalMetadata should be(incomingEvent.internalMetadata)
   }

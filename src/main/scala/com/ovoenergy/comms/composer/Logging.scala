@@ -2,7 +2,7 @@ package com.ovoenergy.comms.composer
 
 import cats.{Contravariant, Show, Traverse}
 import cats.syntax.all._
-import com.ovoenergy.comms.model.{CommManifest, LoggableEvent}
+import com.ovoenergy.comms.model.{CommManifest, LoggableEvent, TemplateManifest}
 import org.slf4j.{Logger, LoggerFactory, MDC}
 
 import scala.language.higherKinds
@@ -213,6 +213,13 @@ object Loggable {
     Map(
       "commName" -> cm.name,
       "commVersion" -> cm.version
+    )
+  }
+
+  implicit def templateManifestLoggable: Loggable[TemplateManifest] = Loggable.instance { tm =>
+    Map(
+      "templateId" -> tm.id,
+      "templateVersion" -> tm.version
     )
   }
 

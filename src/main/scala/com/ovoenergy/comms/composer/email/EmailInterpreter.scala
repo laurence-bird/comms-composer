@@ -20,12 +20,13 @@ object EmailInterpreter extends Logging {
         op match {
           case RetrieveTemplate(event) =>
             try {
-              val result = S3TemplateRepo
-                .getEmailTemplate(event.metadata.commManifest)
+              S3TemplateRepo
+                .getEmailTemplate(event.metadata.templateManifest)
                 .run(context)
-                .leftMap(err => failEmail(err, TemplateDownloadFailed))
-              result.left.map(e => warn(event)(s"Failed to retrieve Email template: ${e.reason}"))
-              result
+                .leftMap { err =>
+                  warn(event)(s"Failed to retrieve Email template: $err")
+                  failEmail(err, TemplateDownloadFailed)
+                }
             } catch {
               case NonFatal(e) => {
                 warnWithException(event)("Failed to retrieve email template")(e)
@@ -37,7 +38,7 @@ object EmailInterpreter extends Logging {
               val result: Either[ComposerError, RenderedEmail] = EmailTemplateRendering
                 .renderEmail(
                   Clock.systemDefaultZone(),
-                  event.metadata.commManifest,
+                  event.metadata.templateManifest,
                   template,
                   EmailTemplateData(event.templateData, event.customerProfile, event.recipientEmailAddress)
                 )
@@ -48,8 +49,8 @@ object EmailInterpreter extends Logging {
             } catch {
               case NonFatal(e) => Left(failEmailWithException(e))
             }
-          case LookupSender(template, commType) =>
-            Right(SenderLogic.chooseSender(template, commType))
+          case LookupSender(template) =>
+            Right(SenderLogic.chooseSender(template))
         }
       }
     }

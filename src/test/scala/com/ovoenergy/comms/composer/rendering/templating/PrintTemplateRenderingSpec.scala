@@ -7,10 +7,11 @@ import com.ovoenergy.comms.composer.TestGenerators
 import com.ovoenergy.comms.composer.print.RenderedPrintHtml
 import com.ovoenergy.comms.composer.rendering.FailedToRender
 import com.ovoenergy.comms.model
-import com.ovoenergy.comms.model.print.OrchestratedPrint
+import com.ovoenergy.comms.model.print.OrchestratedPrintV2
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
+import com.ovoenergy.comms.templates.util.Hash
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
 import shapeless.Coproduct
 
@@ -31,10 +32,11 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
                                 county = Some("London"),
                                 postcode = "W1 1AB")
 
-  def metadataWithCommManifest(commManifest: CommManifest) = generate[MetadataV2].copy(commManifest = commManifest)
+  def metadataWithCommManifest(templateManifest: TemplateManifest) =
+    generate[MetadataV3].copy(templateManifest = templateManifest)
 
   it should "render a simple template with header and footer" in {
-    val manifest = CommManifest(model.Service, "simple", "0.1")
+    val manifest = TemplateManifest(Hash("simple"), "0.1")
     val template = PrintTemplate[Id](HandlebarsTemplate("You paid £{{amount}}", requiredFields))
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
@@ -49,13 +51,13 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
   }
 
   it should "render a simple template without a profile" in {
-    val manifest = CommManifest(model.Service, "simple", "0.1")
+    val manifest = TemplateManifest(Hash("simple"), "0.1")
     val template = PrintTemplate[Id](HandlebarsTemplate("You paid £{{amount}}", requiredFields))
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
-    val orchestratedPrintEvent = generate[OrchestratedPrint].copy(address = address,
-                                                                  customerProfile = None,
-                                                                  metadata = metadataWithCommManifest(manifest),
-                                                                  templateData = data)
+    val orchestratedPrintEvent = generate[OrchestratedPrintV2].copy(address = address,
+                                                                    customerProfile = None,
+                                                                    metadata = metadataWithCommManifest(manifest),
+                                                                    templateData = data)
 
     val printTemplateData = PrintTemplateData(data, None, address)
 
@@ -68,7 +70,7 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
   }
 
   it should "fail to render an invalid HandlebarsTemplate template" in {
-    val manifest = CommManifest(model.Service, "broken", "0.1")
+    val manifest = TemplateManifest(Hash("broken"), "0.1")
     val template = PrintTemplate[Id](HandlebarsTemplate("hey check this out {{", requiredFields))
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23"))) //copied
 
@@ -82,7 +84,7 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
   }
 
   it should "render a template that references fields in the customer profile" in {
-    val manifest = CommManifest(model.Service, "profile-fields", "0.1")
+    val manifest = TemplateManifest(Hash("profile-fields"), "0.1")
     val template = PrintTemplate[Id](HandlebarsTemplate("HTML BODY {{profile.firstName}} {{amount}}", requiredFields))
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
@@ -101,7 +103,7 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
   }
 
   it should "make the recipient's postal address available to the print template as 'address.line1'" in {
-    val manifest = CommManifest(model.Service, "recipient-address", "0.1")
+    val manifest = TemplateManifest(Hash("recipient-address"), "0.1")
     val template = PrintTemplate[Id](HandlebarsTemplate("HTML BODY {{address.line1}}", requiredFields))
 
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
@@ -118,7 +120,7 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
   }
 
   it should "fail if the template references non-existent data" in {
-    val manifest = CommManifest(model.Service, "missing-data", "0.1")
+    val manifest = TemplateManifest(Hash("missing-data"), "0.1")
     val template = PrintTemplate[Id](
       HandlebarsTemplate(
         "Hi {{profile.prefix}} {{profile.lastName}}. You bought a {{thing}}. The amount was £{{amount}}.",
@@ -140,7 +142,7 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
   }
 
   it should "render a template that references fields in the system data" in {
-    val manifest = CommManifest(model.Service, "system-data-fields", "0.1")
+    val manifest = TemplateManifest(Hash("system-data-fields"), "0.1")
     val template = PrintTemplate[Id](
       HandlebarsTemplate("HTML BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
                          requiredFields))
@@ -157,7 +159,7 @@ class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
   }
 
   it should "render template with each and embedded if using this type reference" in {
-    val manifest = CommManifest(model.Service, "simple", "0.1")
+    val manifest = TemplateManifest(Hash("simple"), "0.1")
     val template = PrintTemplate[Id](
       HandlebarsTemplate(
         "Thanks for your payments of " +

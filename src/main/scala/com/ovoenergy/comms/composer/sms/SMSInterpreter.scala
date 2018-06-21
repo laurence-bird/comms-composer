@@ -22,7 +22,7 @@ object SMSInterpreter extends Logging {
           case RetrieveTemplate(event) =>
             try {
               S3TemplateRepo
-                .getSMSTemplate(event.metadata.commManifest)
+                .getSMSTemplate(event.metadata.templateManifest)
                 .run(context)
                 .leftMap { err =>
                   warn(event)(s"Failed to retrieve template: $err")
@@ -37,10 +37,12 @@ object SMSInterpreter extends Logging {
           case Render(event, template) =>
             try {
               val result = SMSTemplateRendering
-                .renderSMS(Clock.systemDefaultZone(),
-                           event.metadata.commManifest,
-                           template,
-                           SMSTemplateData(event.templateData, event.customerProfile, event.recipientPhoneNumber))
+                .renderSMS(
+                  Clock.systemDefaultZone(),
+                  event.metadata.templateManifest,
+                  template,
+                  SMSTemplateData(event.templateData, event.customerProfile, event.recipientPhoneNumber)
+                )
                 .leftMap { templateErrors =>
                   failSMS(templateErrors.reason, templateErrors.errorCode)
                 }

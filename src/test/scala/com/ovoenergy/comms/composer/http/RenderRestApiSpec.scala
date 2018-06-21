@@ -22,7 +22,7 @@ class RenderRestApiSpec extends FlatSpec with Matchers {
   object TestHttpServce extends RenderRestApi with Logging
 
   def buildRenderPrint(response: FailedOr[RenderedPrintPdf]) = {
-    (manifest: CommManifest, template: Map[String, TemplateData]) =>
+    (manifest: TemplateManifest, template: Map[String, TemplateData]) =>
       Async[IO].pure(response)
   }
 

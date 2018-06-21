@@ -31,18 +31,18 @@ object PrintInterpreter extends Logging {
     new (PrintComposerA ~> FailedOr) {
       override def apply[A](op: PrintComposerA[A]): FailedOr[A] = {
         op match {
-          case RetrieveTemplate(commManifest) =>
+          case RetrieveTemplate(templateManifest) =>
             try {
               S3TemplateRepo
-                .getPrintTemplate(commManifest)
+                .getPrintTemplate(templateManifest)
                 .run(printContext.templateContext)
                 .leftMap { err =>
-                  warn(commManifest)("Failed to retrieve template")
+                  warn(templateManifest)("Failed to retrieve template")
                   failPrint(err, TemplateDownloadFailed)
                 }
             } catch {
               case NonFatal(e) => {
-                warnWithException(commManifest)("Failed to retrieve template")(e)
+                warnWithException(templateManifest)("Failed to retrieve template")(e)
                 Left(failPrintWithException(e))
               }
             }

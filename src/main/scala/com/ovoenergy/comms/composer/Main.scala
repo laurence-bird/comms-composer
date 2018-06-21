@@ -20,9 +20,9 @@ import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
 import com.ovoenergy.comms.composer.sms.{SMSComposer, SMSComposerA, SMSInterpreter}
 import com.ovoenergy.comms.helpers.{Kafka, KafkaClusterConfig, Topic}
 import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.model.email.{ComposedEmailV3, OrchestratedEmailV3}
-import com.ovoenergy.comms.model.print.{ComposedPrint, OrchestratedPrint}
-import com.ovoenergy.comms.model.sms.{ComposedSMSV3, OrchestratedSMSV2}
+import com.ovoenergy.comms.model.email.{ComposedEmailV3, ComposedEmailV4, OrchestratedEmailV3, OrchestratedEmailV4}
+import com.ovoenergy.comms.model.print.{ComposedPrint, ComposedPrintV2, OrchestratedPrint, OrchestratedPrintV2}
+import com.ovoenergy.comms.model.sms.{ComposedSMSV3, ComposedSMSV4, OrchestratedSMSV2, OrchestratedSMSV3}
 import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.serialisation.Retry
 import com.ovoenergy.fs2.kafka.{ConsumerSettings, Subscription, consumeProcessAndCommit}
@@ -105,28 +105,27 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     case Right(r) => r
   }
 
-  val composedEmailEventProducer =
-    publisherFor[ComposedEmailV3](Kafka.aiven.composedEmail.v3, _.metadata.eventId)
-  val composedSMSEventProducer = publisherFor[ComposedSMSV3](Kafka.aiven.composedSms.v3, _.metadata.eventId)
-  val composedPrintEventProducer =
-    publisherFor[ComposedPrint](Kafka.aiven.composedPrint.v1, _.metadata.eventId)
+  val composedEmailEventProducer = publisherFor[ComposedEmailV4](Kafka.aiven.composedEmail.v4, _.metadata.eventId)
+  val composedSMSEventProducer = publisherFor[ComposedSMSV4](Kafka.aiven.composedSms.v4, _.metadata.eventId)
+  val composedPrintEventProducer = publisherFor[ComposedPrintV2](Kafka.aiven.composedPrint.v2, _.metadata.eventId)
 
-  val failedEventProducer = publisherFor[FailedV2](Kafka.aiven.failed.v2, _.metadata.eventId)
+  val failedEventProducer = publisherFor[FailedV3](Kafka.aiven.failed.v3, _.metadata.eventId)
 
   val emailInterpreter: ~>[EmailComposerA, FailedOr] = EmailInterpreter(templateContext)
-  val emailComposer = (orchestratedEmail: OrchestratedEmailV3) =>
+  val emailComposer = (orchestratedEmail: OrchestratedEmailV4) =>
     EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
 
   val smsInterpreter: ~>[SMSComposerA, FailedOr] = SMSInterpreter(templateContext)
-  val smsComposer = (orchestratedSMS: OrchestratedSMSV2) =>
+  val smsComposer = (orchestratedSMS: OrchestratedSMSV3) =>
     SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
 
   val printInterpreter: ~>[PrintComposerA, FailedOr] = PrintInterpreter(printContext)
-  val printComposer = (orchestratedPrint: OrchestratedPrint) =>
+  val printComposer = (orchestratedPrint: OrchestratedPrintV2) =>
     PrintComposer.program(orchestratedPrint).foldMap(printInterpreter)
 
-  def renderPrint(commManifest: CommManifest, data: Map[String, TemplateData]): IO[FailedOr[RenderedPrintPdf]] = {
-    IO(PrintComposer.httpProgram(commManifest, data).foldMap(printInterpreter))
+  def renderPrint(templateManifest: TemplateManifest,
+                  data: Map[String, TemplateData]): IO[FailedOr[RenderedPrintPdf]] = {
+    IO(PrintComposer.httpProgram(templateManifest, data).foldMap(printInterpreter))
   }
 
   log.info(s"Starting HTTP server on host=${httpServerConfig.host} port=${httpServerConfig.port}")
@@ -186,26 +185,26 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   }
 
   def emailProcessor =
-    EventProcessor[IO, OrchestratedEmailV3, ComposedEmailV3](composedEmailEventProducer,
+    EventProcessor[IO, OrchestratedEmailV4, ComposedEmailV4](composedEmailEventProducer,
                                                              failedEventProducer,
                                                              emailComposer)
   def smsProcessor =
-    EventProcessor[IO, OrchestratedSMSV2, ComposedSMSV3](composedSMSEventProducer, failedEventProducer, smsComposer)
+    EventProcessor[IO, OrchestratedSMSV3, ComposedSMSV4](composedSMSEventProducer, failedEventProducer, smsComposer)
   def printProcessor =
-    EventProcessor[IO, OrchestratedPrint, ComposedPrint](composedPrintEventProducer,
-                                                         failedEventProducer,
-                                                         printComposer)
+    EventProcessor[IO, OrchestratedPrintV2, ComposedPrintV2](composedPrintEventProducer,
+                                                             failedEventProducer,
+                                                             printComposer)
 
   override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] = {
 
     val emailStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedEmailV3, Unit](emailProcessor, aivenCluster.orchestratedEmail.v3)
+      processEvent[IO, OrchestratedEmailV4, Unit](emailProcessor, aivenCluster.orchestratedEmail.v4)
 
     val smsStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedSMSV2, Unit](smsProcessor, aivenCluster.orchestratedSMS.v2)
+      processEvent[IO, OrchestratedSMSV3, Unit](smsProcessor, aivenCluster.orchestratedSMS.v3)
 
     val printStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedPrint, Unit](printProcessor, aivenCluster.orchestratedPrint.v1)
+      processEvent[IO, OrchestratedPrintV2, Unit](printProcessor, aivenCluster.orchestratedPrint.v2)
 
     val httpServerStream =
       Stream.bracket[IO, Server[IO], Server[IO]](httpServer)(server => Stream.emit(server), server => server.shutdown)

@@ -5,6 +5,7 @@ import java.util
 import java.util.{Map => JMap}
 
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.templates.s3.S3Prefix
 import shapeless.ops.hlist.ToTraversable
 import shapeless.{HList, Inl, Inr, LabelledGeneric}
 
@@ -63,8 +64,8 @@ trait Rendering {
    In fact we are not using a template cache, so the filename is not even used as a cache key,
    but it's still nice to have a unique, human-readable identifier for a Mustache template.
    */
-  def buildFilename(commManifest: CommManifest, channel: Channel, suffixes: String*): String =
-    (Seq(commManifest.commType, commManifest.name, commManifest.version, channel.toString) ++ suffixes).mkString("::")
+  def buildFilename(templateManifest: TemplateManifest, channel: Channel, suffixes: String*): String =
+    (Seq(S3Prefix.fromTemplateManifest(templateManifest), channel.toString) ++ suffixes).mkString("::")
 
   /*
   Use shapeless to turn an arbitrary value into a Map[String, String]

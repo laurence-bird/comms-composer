@@ -8,13 +8,9 @@ import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplat
 
 object SenderLogic {
 
-  def chooseSender(template: EmailTemplate[Id], commType: CommType): EmailSender =
-    template.sender.getOrElse(defaultSender(commType))
+  def chooseSender(template: EmailTemplate[Id]): EmailSender =
+    template.sender.getOrElse(defaultSender)
 
-  private def defaultSender(commType: CommType): EmailSender = commType match {
-    // TODO check these values with somebody
-    case Service => EmailSender("Ovo Energy", "no-reply@ovoenergy.com")
-    case Regulatory => EmailSender("Ovo Energy", "no-reply@ovoenergy.com")
-    case Marketing => EmailSender("Ovo Energy", "no-reply@ovoenergy.com")
-  }
+  val defaultSender = EmailSender("Ovo Energy", "no-reply@ovoenergy.com")
+
 }

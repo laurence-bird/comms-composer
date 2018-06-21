@@ -51,7 +51,6 @@ libraryDependencies ++= Seq(
 
   handlebars,
   s3Sdk,
-  catsFree,
   shapeless,
   okhttp,
 

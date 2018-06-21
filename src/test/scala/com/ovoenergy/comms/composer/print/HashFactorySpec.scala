@@ -3,25 +3,22 @@ package com.ovoenergy.comms.composer.print
 import java.security.MessageDigest
 import java.time.Instant
 import java.util.UUID
-
-import cats.{Id, ~>}
 import com.ovoenergy.comms.composer.rendering.{HashFactory, PrintHashData}
-import com.ovoenergy.comms.model
-import com.ovoenergy.comms.model.print.OrchestratedPrint
+import com.ovoenergy.comms.model.print.OrchestratedPrintV2
 import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
-import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
+import com.ovoenergy.comms.templates.util.Hash
 import org.scalatest.{FlatSpec, Matchers}
 
 class HashFactorySpec extends FlatSpec with Matchers {
 
-  val incomingEvent = OrchestratedPrint(
-    metadata = MetadataV2(
+  val incomingEvent = OrchestratedPrintV2(
+    metadata = MetadataV3(
       createdAt = Instant.now,
       eventId = UUID.randomUUID().toString,
       traceToken = "abc",
-      Customer("customerId"),
-      commManifest = CommManifest(model.Service, "test-template", "0.1"),
+      deliverTo = Customer("customerId"),
+      templateManifest = TemplateManifest(Hash("test-template"), "0.1"),
+      commId = "1234",
       friendlyDescription = "test message",
       source = "test",
       canary = true,
@@ -38,7 +35,7 @@ class HashFactorySpec extends FlatSpec with Matchers {
   val hashData = PrintHashData(incomingEvent.customerProfile,
                                incomingEvent.address,
                                incomingEvent.templateData,
-                               incomingEvent.metadata.commManifest)
+                               incomingEvent.metadata.templateManifest)
 
   it should "create the correct hashedComm" in {
 
@@ -55,7 +52,7 @@ class HashFactorySpec extends FlatSpec with Matchers {
       incomingEvent.customerProfile,
       CustomerAddress("line1", Some("line2"), "London", Some("Middlesex"), "HA98PH", Some("UK")),
       incomingEvent.templateData,
-      incomingEvent.metadata.commManifest
+      incomingEvent.metadata.templateManifest
     )
 
     val expected = MessageDigest

@@ -9,12 +9,14 @@ import com.amazonaws.regions.Regions
 import com.amazonaws.services.s3.model.ObjectListing
 import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
 import com.amazonaws.util.IOUtils
-import com.ovoenergy.comms.model.print.OrchestratedPrint
+import com.ovoenergy.comms.model.print.OrchestratedPrintV2
 import com.ovoenergy.comms.testhelpers.KafkaTestHelpers.withThrowawayConsumerFor
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers, OptionValues}
 import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
 import com.ovoenergy.comms.helpers.Kafka
 import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.templates.util.Hash
+import org.joda.time.DateTime
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import servicetest.util.MockTemplates
@@ -47,12 +49,13 @@ class PrintServiceTest
   val accountNumber = TemplateData.fromString("11112222")
   val ovoId = TemplateData.fromString("myOvo999")
 
-  val orchestratedPrintEvent = OrchestratedPrint(
-    MetadataV2(
+  val orchestratedPrintEvent = OrchestratedPrintV2(
+    MetadataV3(
       createdAt = now,
       eventId = "event1234",
       traceToken = "1234567890",
-      commManifest = CommManifest(Service, "composer-service-test", "0.1"),
+      templateManifest = TemplateManifest(Hash("composer-service-test"), "0.1"),
+      commId = "1234",
       friendlyDescription = "very friendly",
       source = "origin",
       canary = true,
@@ -85,7 +88,7 @@ class PrintServiceTest
     super.beforeAll()
     s3Client.createBucket("ovo-comms-templates")
     s3Client.createBucket("dev-ovo-comms-pdfs")
-    uploadTemplateToS3(orchestratedPrintEvent.metadata.commManifest, s3Client, templatesBucket)
+    uploadTemplateToS3(orchestratedPrintEvent.metadata.templateManifest, s3Client, templatesBucket)
   }
 
   lazy val s3Client = {
@@ -99,11 +102,13 @@ class PrintServiceTest
 
   it should "create a ComposedPrint event, for a valid request, archiving the rendered pdf in s3" in {
     createOKDocRaptorResponse()
-    withThrowawayConsumerFor(topics.composedPrint.v1) { consumer =>
-      topics.orchestratedPrint.v1.publishOnce(orchestratedPrintEvent, 10.seconds)
+    withThrowawayConsumerFor(topics.composedPrint.v2) { consumer =>
+      topics.orchestratedPrint.v2.publishOnce(orchestratedPrintEvent, 10.seconds)
       val composedPrintEvent = consumer.pollFor(noOfEventsExpected = 1).head
       val key =
-        s"composer-service-test/${LocalDateTime.ofInstant(now, ZoneId.systemDefault()).format(dateFormatter)}/${now.toEpochMilli}-${orchestratedPrintEvent.metadata.traceToken}-${orchestratedPrintEvent.internalMetadata.internalTraceToken}.pdf"
+        s"${Hash("composer-service-test")}/${LocalDateTime
+          .ofInstant(now, ZoneId.systemDefault())
+          .format(dateFormatter)}/${now.toEpochMilli}-${orchestratedPrintEvent.metadata.traceToken}-${orchestratedPrintEvent.internalMetadata.internalTraceToken}.pdf"
 
       composedPrintEvent.metadata.traceToken shouldBe orchestratedPrintEvent.metadata.traceToken
       composedPrintEvent.internalMetadata.internalTraceToken shouldBe orchestratedPrintEvent.internalMetadata.internalTraceToken
@@ -120,8 +125,8 @@ class PrintServiceTest
 
   it should "send a failed event if docRaptor is not available" in {
     create400DocRaptorResponse()
-    withThrowawayConsumerFor(topics.failed.v2) { consumer =>
-      topics.orchestratedPrint.v1.publishOnce(orchestratedPrintEvent, 10.seconds)
+    withThrowawayConsumerFor(topics.failed.v3) { consumer =>
+      topics.orchestratedPrint.v2.publishOnce(orchestratedPrintEvent, 10.seconds)
       val failedEvent = consumer.pollFor(noOfEventsExpected = 1).head
 
       failedEvent.errorCode should be(CompositionError)
@@ -143,7 +148,6 @@ class PrintServiceTest
           .withBody(pdfResponseByteArray)
       )
   }
-
   def create400DocRaptorResponse() {
     mockServerClient.reset()
     mockServerClient

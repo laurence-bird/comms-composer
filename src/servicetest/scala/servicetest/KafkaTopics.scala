@@ -1,5 +1,6 @@
 package servicetest
 
+// TODO: is this trait used anywhere?
 trait KafkaTopics {
 
   val orchestratedEmailTopic = "comms.orchestrated.email.v3"

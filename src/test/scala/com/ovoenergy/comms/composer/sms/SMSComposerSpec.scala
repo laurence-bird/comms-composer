@@ -9,6 +9,7 @@ import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.sms._
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
+import com.ovoenergy.comms.templates.util.Hash
 import org.scalatest.{FlatSpec, Matchers}
 
 class SMSComposerSpec extends FlatSpec with Matchers {
@@ -28,13 +29,16 @@ class SMSComposerSpec extends FlatSpec with Matchers {
     }
   }
 
-  val incomingEvent = OrchestratedSMSV2(
-    metadata = MetadataV2(
+  case class CustomerTransaction(bankCardNumber: Long, transactionTotal: Int, transactionDate: String)
+
+  val incomingEvent = OrchestratedSMSV3(
+    metadata = MetadataV3(
       createdAt = Instant.now,
       eventId = UUID.randomUUID().toString,
       traceToken = "abc",
-      Customer("customerId"),
-      commManifest = CommManifest(model.Service, "test-template", "0.1"),
+      deliverTo = Customer("customerId"),
+      templateManifest = TemplateManifest(Hash("test-template"), "0.1"),
+      commId = "1234",
       friendlyDescription = "test message",
       source = "test",
       canary = true,
@@ -49,7 +53,7 @@ class SMSComposerSpec extends FlatSpec with Matchers {
   )
 
   it should "compose an SMS" in {
-    val event: ComposedSMSV3 = SMSComposer.program(incomingEvent).foldMap(testInterpreter)
+    val event: ComposedSMSV4 = SMSComposer.program(incomingEvent).foldMap(testInterpreter)
     event.recipient should be("+447123123456")
     event.textBody should be("Thanks for your payment of £1.23")
   }

@@ -1,10 +1,9 @@
-import sbt._
+  import sbt._
 
 object Dependencies {
 
   lazy val handlebars = "com.github.jknack" % "handlebars" % "4.0.6"
   lazy val s3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57"
-  lazy val catsFree = "org.typelevel" %% "cats-free" % "0.9.0"
   lazy val shapeless = "com.chuusai" %% "shapeless" % "2.3.2"
   lazy val okhttp = "com.squareup.okhttp3" % "okhttp" % "3.4.2"
 
@@ -44,9 +43,9 @@ object Dependencies {
   }
 
   object ovoEnergy {
-    private val kafkaMessagesVersion = "1.44"
-    private val kafkaSerialisationVersion = "3.13"
-    private val templateVersion = "0.22"
+    private val kafkaMessagesVersion = "1.71"
+    private val kafkaSerialisationVersion = "3.15"
+    private val templateVersion = "0.25"
     private val commsDockerTestkitVersion = "1.8"
 
     lazy val commsMessages = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion

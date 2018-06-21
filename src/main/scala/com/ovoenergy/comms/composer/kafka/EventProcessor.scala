@@ -3,14 +3,15 @@ package com.ovoenergy.comms.composer.kafka
 import cats.Show
 import cats.syntax.all._
 import cats.effect.{Async, Effect}
-import com.ovoenergy.comms.composer.Main.{Record}
+import com.ovoenergy.comms.composer.Main.Record
 import com.ovoenergy.comms.composer.{ComposerError, Loggable, Logging}
 import com.ovoenergy.comms.composer.sms.BuildFailedEventFrom
-import com.ovoenergy.comms.model.{FailedV2, LoggableEvent}
+import com.ovoenergy.comms.model.{FailedV2, FailedV3, LoggableEvent}
 import org.apache.kafka.clients.producer.RecordMetadata
 import fs2._
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import cats.syntax.functor._
+
 import scala.util.control.NonFatal
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.higherKinds
@@ -29,7 +30,7 @@ object EventProcessor extends Logging {
 
   def apply[F[_]: Effect, InEvent <: LoggableEvent, OutEvent <: LoggableEvent](
       outputProducer: => OutEvent => F[RecordMetadata],
-      failedProducer: FailedV2 => F[RecordMetadata],
+      failedProducer: FailedV3 => F[RecordMetadata],
       processEvent: InEvent => Either[ComposerError, OutEvent])(
       implicit buildFailedEventFrom: BuildFailedEventFrom[InEvent]): Record[InEvent] => F[Unit] = {
 
