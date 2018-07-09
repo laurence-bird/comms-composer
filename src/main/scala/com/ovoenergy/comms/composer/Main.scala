@@ -218,7 +218,7 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
       processEvent[IO, OrchestratedSMSV3, Unit](smsProcessor, aivenCluster.orchestratedSMS.v3, consumerSettings)
 
     val printStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedPrintV2, Unit](printProcessor, aivenCluster.orchestratedPrint.v2, consumerSettings)
+      processEvent[IO, OrchestratedPrintV2, Unit](printProcessor, aivenCluster.orchestratedPrint.v2, printConsumerSettings)
 
     val httpServerStream =
       Stream.bracket[IO, Server[IO], Server[IO]](httpServer)(server => Stream.emit(server), server => server.shutdown)
