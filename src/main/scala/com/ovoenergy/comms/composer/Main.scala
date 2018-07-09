@@ -168,11 +168,25 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     nativeSettings = consumerNativeSettings
   )
 
+  /*
+      Temporary fix while we investigate issues with print consumer
+   */
+  val printNativeSettings: Map[String, AnyRef] = {
+    consumerNativeSettings ++ Map(ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> "1")
+  }
+
+  val printConsumerSettings = ConsumerSettings(
+    pollTimeout = pollTimeout,
+    maxParallelism = Int.MaxValue,
+    nativeSettings = printNativeSettings
+  )
+
   type Record[T] = ConsumerRecord[Unit, Option[T]]
 
   def processEvent[F[_], T: SchemaFor: ToRecord: FromRecord: ClassTag, A](
       f: Record[T] => F[A],
-      topic: Topic[T])(implicit F: Effect[F], config: Config, ec: ExecutionContext): fs2.Stream[F, A] = {
+      topic: Topic[T],
+      settings: ConsumerSettings)(implicit F: Effect[F], config: Config, ec: ExecutionContext): fs2.Stream[F, A] = {
 
     val valueDeserializer = topic.deserializer.right.get
 
@@ -180,7 +194,7 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
       Subscription.topics(topic.name),
       constDeserializer[Unit](()),
       valueDeserializer,
-      consumerSettings
+      settings
     )(f)
   }
 
@@ -198,13 +212,13 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] = {
 
     val emailStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedEmailV4, Unit](emailProcessor, aivenCluster.orchestratedEmail.v4)
+      processEvent[IO, OrchestratedEmailV4, Unit](emailProcessor, aivenCluster.orchestratedEmail.v4, consumerSettings)
 
     val smsStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedSMSV3, Unit](smsProcessor, aivenCluster.orchestratedSMS.v3)
+      processEvent[IO, OrchestratedSMSV3, Unit](smsProcessor, aivenCluster.orchestratedSMS.v3, consumerSettings)
 
     val printStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedPrintV2, Unit](printProcessor, aivenCluster.orchestratedPrint.v2)
+      processEvent[IO, OrchestratedPrintV2, Unit](printProcessor, aivenCluster.orchestratedPrint.v2, consumerSettings)
 
     val httpServerStream =
       Stream.bracket[IO, Server[IO], Server[IO]](httpServer)(server => Stream.emit(server), server => server.shutdown)
