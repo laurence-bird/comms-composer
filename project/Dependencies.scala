@@ -17,7 +17,6 @@ object Dependencies {
   lazy val mockserver = "org.mock-server" % "mockserver-client-java" % "3.11"
 
   object logging {
-    lazy val slf4j = "com.typesafe.akka" %% "akka-slf4j" % "2.4.18"
     lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.1.7"
     lazy val logzIoLogbackAppender = "io.logz.logback" % "logzio-logback-appender" % "1.0.11"
     lazy val logbackGelf = "me.moocar" % "logback-gelf" % "0.2"
@@ -43,11 +42,11 @@ object Dependencies {
   }
 
   object ovoEnergy {
-    private val kafkaMessagesVersion = "1.71"
-    private val kafkaSerialisationVersion = "3.16"
+    private val kafkaMessagesVersion = "1.74"
+    private val kafkaSerialisationVersion = "3.17"
     private val templateVersion = "0.25"
     private val commsDockerTestkitVersion = "1.8"
-
+    lazy val commsMessagesTests = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion classifier "tests"
     lazy val commsMessages = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion
     lazy val commsTemplates = "com.ovoenergy" %% "comms-templates" % templateVersion
     lazy val commsSerialisation = "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaSerialisationVersion exclude ("com.typesafe.akka", "akka-stream-kafka_2.12")

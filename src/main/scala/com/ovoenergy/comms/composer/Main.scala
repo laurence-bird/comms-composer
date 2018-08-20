@@ -1,12 +1,13 @@
 package com.ovoenergy.comms.composer
 
 import java.nio.file.Paths
+import java.util.concurrent.Executors
 
-import akka.actor.ActorSystem
 import cats.~>
 import cats.effect.IO
 import cats.effect.Effect
 import cats.instances.either._
+import cats.syntax.all._
 import com.amazonaws.regions.Regions
 import com.ovoenergy.comms.composer.aws.{AwsClientProvider, TemplateContextFactory}
 import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA, EmailInterpreter}
@@ -20,9 +21,9 @@ import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
 import com.ovoenergy.comms.composer.sms.{SMSComposer, SMSComposerA, SMSInterpreter}
 import com.ovoenergy.comms.helpers.{Kafka, KafkaClusterConfig, Topic}
 import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.model.email.{ComposedEmailV3, ComposedEmailV4, OrchestratedEmailV3, OrchestratedEmailV4}
-import com.ovoenergy.comms.model.print.{ComposedPrint, ComposedPrintV2, OrchestratedPrint, OrchestratedPrintV2}
-import com.ovoenergy.comms.model.sms.{ComposedSMSV3, ComposedSMSV4, OrchestratedSMSV2, OrchestratedSMSV3}
+import com.ovoenergy.comms.model.email.{ComposedEmailV4, OrchestratedEmailV4}
+import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
+import com.ovoenergy.comms.model.sms.{ComposedSMSV4, OrchestratedSMSV3}
 import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.serialisation.Retry
 import com.ovoenergy.fs2.kafka.{ConsumerSettings, Subscription, consumeProcessAndCommit}
@@ -30,6 +31,7 @@ import com.ovoenergy.kafka.serialization.core.constDeserializer
 import com.sksamuel.avro4s.{FromRecord, SchemaFor, ToRecord}
 import com.typesafe.config.{Config, ConfigFactory}
 import fs2._
+import fs2.internal.NonFatal
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
 import org.apache.kafka.clients.producer.{KafkaProducer, RecordMetadata}
@@ -38,7 +40,7 @@ import org.http4s.server.blaze.BlazeBuilder
 import org.http4s.server.Server
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.language.{higherKinds, reflectiveCalls}
 import scala.language.reflectiveCalls
 import scala.reflect.ClassTag
@@ -71,6 +73,8 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   }
 
   implicit val config = ConfigFactory.load()
+  // TODO: Move to async clients for s3, docraptor, and templates
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
   val region = config.getString("aws.region")
   val bucketName = config.getString("aws.s3.print-pdf.bucket-name")
@@ -93,10 +97,6 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     httpClient = HttpClient.apply
   )
 
-  implicit val actorSystem = ActorSystem("kafka")
-  implicit val executionContext = actorSystem.dispatcher
-  implicit val scheduler = actorSystem.scheduler
-
   def exitOnFailure[T](either: Either[Retry.Failed, T], errorMessage: String): T = either match {
     case Left(l) => {
       log.error(s"Failed to register $errorMessage schema. Made ${l.attemptsMade} attempts", l.finalException)
@@ -110,6 +110,7 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   val composedPrintEventProducer = publisherFor[ComposedPrintV2](Kafka.aiven.composedPrint.v2, _.metadata.eventId)
 
   val failedEventProducer = publisherFor[FailedV3](Kafka.aiven.failed.v3, _.metadata.eventId)
+  val feedbackEventProducer = publisherFor[Feedback](Kafka.aiven.feedback.v1, _.metadata.eventId)
 
   val emailInterpreter: ~>[EmailComposerA, FailedOr] = EmailInterpreter(templateContext)
   val emailComposer = (orchestratedEmail: OrchestratedEmailV4) =>
@@ -201,13 +202,20 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   def emailProcessor =
     EventProcessor[IO, OrchestratedEmailV4, ComposedEmailV4](composedEmailEventProducer,
                                                              failedEventProducer,
-                                                             emailComposer)
+                                                             feedbackEventProducer,
+                                                             emailComposer).andThen(_.void)
+
   def smsProcessor =
-    EventProcessor[IO, OrchestratedSMSV3, ComposedSMSV4](composedSMSEventProducer, failedEventProducer, smsComposer)
+    EventProcessor[IO, OrchestratedSMSV3, ComposedSMSV4](composedSMSEventProducer,
+                                                         failedEventProducer,
+                                                         feedbackEventProducer,
+                                                         smsComposer).andThen(_.void)
+
   def printProcessor =
     EventProcessor[IO, OrchestratedPrintV2, ComposedPrintV2](composedPrintEventProducer,
                                                              failedEventProducer,
-                                                             printComposer)
+                                                             feedbackEventProducer,
+                                                             printComposer).andThen(_.void)
 
   override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] = {
 
@@ -218,7 +226,9 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
       processEvent[IO, OrchestratedSMSV3, Unit](smsProcessor, aivenCluster.orchestratedSMS.v3, consumerSettings)
 
     val printStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedPrintV2, Unit](printProcessor, aivenCluster.orchestratedPrint.v2, printConsumerSettings)
+      processEvent[IO, OrchestratedPrintV2, Unit](printProcessor,
+                                                  aivenCluster.orchestratedPrint.v2,
+                                                  printConsumerSettings)
 
     val httpServerStream =
       Stream.bracket[IO, Server[IO], Server[IO]](httpServer)(server => Stream.emit(server), server => server.shutdown)
@@ -235,14 +245,16 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   def publisherFor[E: Loggable](topic: Topic[E], key: E => String)(implicit schemaFor: SchemaFor[E],
                                                                    toRecord: ToRecord[E],
                                                                    classTag: ClassTag[E]): E => IO[RecordMetadata] = {
-    import cats.syntax.flatMap._
-    val producer: KafkaProducer[String, E] = exitOnFailure(Producer[E](topic), topic.name)
-    val publisher: E => IO[RecordMetadata] = { e: E =>
-      info(e)(s"Sending event to topic ${topic.name} \n")
+    val producer = exitOnFailure(Producer[E](topic), topic.name)
+    event: E =>
+      val result = Producer.publisher[E, IO](key, producer, topic.name)(event)
+      result
+        .flatTap(rm => IO(info((rm, event))(s"Event sent to topic ${topic.name}")))
+        .onError {
+          case NonFatal(e) =>
+            IO(warnWithException(event)("Exception thrown producing kafka event")(e))
+        }
 
-      Producer.publisher[E, IO](key, producer, topic.name)(e)
-    }
-    publisher.andThen(f => f.flatMap(rm => IO(info(rm)(s"Event sent to topic ${topic.name}")) >> IO.pure(rm)))
   }
 
   log.info("Composer now running")

@@ -15,10 +15,12 @@ import com.ovoenergy.comms.templates.util.Hash
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
 import shapeless.Coproduct
 
-// Magic
-import org.scalacheck.Shapeless._
-
-class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues with TestGenerators {
+class PrintTemplateRenderingSpec
+    extends FlatSpec
+    with Matchers
+    with EitherValues
+    with Arbitraries
+    with TestGenerators {
 
   behavior of "rendering an print"
 

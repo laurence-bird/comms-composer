@@ -4,11 +4,11 @@ import java.time.format.DateTimeFormatter
 import java.time.{LocalDateTime, ZoneId}
 
 import com.ovoenergy.comms.composer.TestGenerators
+import com.ovoenergy.comms.model.Arbitraries
 import com.ovoenergy.comms.model.print.{OrchestratedPrint, OrchestratedPrintV2}
 import org.scalatest.{FlatSpec, Matchers}
-import org.scalacheck.Shapeless._
 
-class S3PdfRepoSpec extends FlatSpec with Matchers with TestGenerators {
+class S3PdfRepoSpec extends FlatSpec with Matchers with Arbitraries with TestGenerators {
 
   it should "build the correct key for the pdf file" in {
     val incomingEvent = generate[OrchestratedPrintV2]

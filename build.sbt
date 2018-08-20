@@ -9,7 +9,6 @@ scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf
 // Make ScalaTest write test reports that CircleCI understands
 val testReportsDir = sys.env.getOrElse("CI_REPORTS", "target/reports")
 testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF", "-u", testReportsDir)
-
 lazy val ServiceTest = config("servicetest") extend(Test)
 configs(ServiceTest)
 inConfig(ServiceTest)(Defaults.testSettings)
@@ -45,6 +44,7 @@ libraryDependencies ++= Seq(
   kafkaSerialization.cats,
 
   ovoEnergy.commsMessages,
+  ovoEnergy.commsMessagesTests,
   ovoEnergy.commsHelpers,
   ovoEnergy.commsSerialisation,
   ovoEnergy.commsTemplates,
@@ -54,7 +54,6 @@ libraryDependencies ++= Seq(
   shapeless,
   okhttp,
 
-  logging.slf4j,
   logging.logbackClassic,
   logging.logzIoLogbackAppender,
   logging.logbackGelf,

@@ -60,8 +60,8 @@ trait DockerIntegrationTest
       config = DefaultDockerClientConfig.createDefaultConfigBuilder().build(),
       factory = new JerseyDockerCmdExecFactory()
       // increase connection pool size so we can tail the logs of all containers
-        .withMaxTotalConnections(100)
-        .withMaxPerRouteConnections(20)
+        .withMaxTotalConnections(200)
+        .withMaxPerRouteConnections(40)
     )
   )
 
