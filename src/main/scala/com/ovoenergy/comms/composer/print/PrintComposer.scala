@@ -36,9 +36,13 @@ object PrintComposer {
     liftF(PersistRenderedPdf(event, renderedPrintPdf))
   }
 
-  def buildEvent(incomingEvent: OrchestratedPrintV2, pdfIdentifier: String): ComposedPrintV2 = {
+  def hashString(str: String): PrintComposer[String] = {
+    liftF(HashString(str))
+  }
+
+  def buildEvent(incomingEvent: OrchestratedPrintV2, pdfIdentifier: String, eventId: String): ComposedPrintV2 = {
     ComposedPrintV2(
-      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata, eventId),
       internalMetadata = incomingEvent.internalMetadata,
       pdfIdentifier = pdfIdentifier,
       hashedComm = HashFactory.getHashedComm(incomingEvent),
@@ -55,7 +59,8 @@ object PrintComposer {
       renderedPrintHtml <- renderPrintHtml(buildPrintTemplateData(event), template, event.metadata.templateManifest)
       renderedPrintPdf <- renderPrintPdf(renderedPrintHtml, event.metadata.templateManifest)
       pdfIdentifier <- persistRenderedPdf(event, renderedPrintPdf)
-    } yield buildEvent(event, pdfIdentifier)
+      eventIdHash <- hashString(event.metadata.eventId)
+    } yield buildEvent(event, pdfIdentifier, eventIdHash)
   }
 
   def httpProgram(templateManifest: TemplateManifest,

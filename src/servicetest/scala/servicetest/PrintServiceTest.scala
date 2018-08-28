@@ -16,17 +16,11 @@ import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
 import com.ovoenergy.comms.helpers.Kafka
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.templates.util.Hash
-import org.joda.time.DateTime
 import org.mockserver.model.HttpRequest.request
 import org.mockserver.model.HttpResponse.response
 import servicetest.util.MockTemplates
-
 import scala.collection.JavaConverters._
 import scala.language.reflectiveCalls
-//Implicits
-import com.ovoenergy.comms.serialisation.Codecs._
-import org.scalacheck.Shapeless._
-import scala.concurrent.duration._
 import scala.concurrent.duration._
 
 class PrintServiceTest
@@ -35,7 +29,8 @@ class PrintServiceTest
     with OptionValues
     with BeforeAndAfterAll
     with DockerIntegrationTest
-    with MockTemplates {
+    with MockTemplates
+    with Arbitraries {
 
   behavior of "Composer print service"
 

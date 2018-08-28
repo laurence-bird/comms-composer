@@ -10,6 +10,7 @@ import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email.OrchestratedEmailV3
 import com.ovoenergy.comms.templates.TemplatesContext
+import com.ovoenergy.comms.templates.util.Hash
 
 import scala.util.control.NonFatal
 
@@ -51,6 +52,9 @@ object EmailInterpreter extends Logging {
             }
           case LookupSender(template) =>
             Right(SenderLogic.chooseSender(template))
+
+          case HashString(str) =>
+            Right(Hash(str))
         }
       }
     }

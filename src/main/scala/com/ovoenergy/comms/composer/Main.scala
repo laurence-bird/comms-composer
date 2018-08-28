@@ -24,7 +24,6 @@ import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email.{ComposedEmailV4, OrchestratedEmailV4}
 import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
 import com.ovoenergy.comms.model.sms.{ComposedSMSV4, OrchestratedSMSV3}
-import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.serialisation.Retry
 import com.ovoenergy.fs2.kafka.{ConsumerSettings, Subscription, consumeProcessAndCommit}
 import com.ovoenergy.kafka.serialization.core.constDeserializer

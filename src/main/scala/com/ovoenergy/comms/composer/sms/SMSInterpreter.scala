@@ -4,12 +4,14 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
+import com.ovoenergy.comms.composer.email.HashString
 import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
 import com.ovoenergy.comms.composer.rendering.templating.{SMSTemplateData, SMSTemplateRendering}
 import com.ovoenergy.comms.composer.repo.S3TemplateRepo
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.sms.OrchestratedSMSV2
 import com.ovoenergy.comms.templates.TemplatesContext
+import com.ovoenergy.comms.templates.util.Hash
 
 import scala.util.control.NonFatal
 
@@ -56,6 +58,7 @@ object SMSInterpreter extends Logging {
                 Left(failSMSWithException(e))
               }
             }
+          case HashString(str) => Right(Hash(str))
         }
       }
     }

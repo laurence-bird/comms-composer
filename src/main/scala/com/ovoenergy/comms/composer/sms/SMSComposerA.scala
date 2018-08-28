@@ -9,3 +9,5 @@ sealed trait SMSComposerA[T]
 case class RetrieveTemplate(incomingEvent: OrchestratedSMSV3) extends SMSComposerA[SMSTemplate[Id]]
 
 case class Render(incomingEvent: OrchestratedSMSV3, template: SMSTemplate[Id]) extends SMSComposerA[RenderedSMS]
+
+case class HashString(str: String) extends SMSComposerA[String]

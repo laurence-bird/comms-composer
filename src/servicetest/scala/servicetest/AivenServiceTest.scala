@@ -14,9 +14,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.scalatest.{Failed => _, _}
 import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
 import shapeless.Coproduct
-
 import scala.concurrent.duration._
-import com.ovoenergy.comms.serialisation.Codecs._
 import com.ovoenergy.comms.templates.util.Hash
 import servicetest.util.MockTemplates
 

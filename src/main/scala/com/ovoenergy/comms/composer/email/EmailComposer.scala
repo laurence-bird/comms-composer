@@ -8,6 +8,7 @@ import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.email._
 import com.ovoenergy.comms.templates.model.EmailSender
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
+import com.ovoenergy.comms.templates.util.Hash
 
 object EmailComposer {
 
@@ -27,11 +28,16 @@ object EmailComposer {
   def lookupSender(template: EmailTemplate[Id]): EmailComposer[EmailSender] =
     liftF(LookupSender(template))
 
+  def hashString(str: String): EmailComposer[String] = {
+    liftF(HashString(str))
+  }
+
   def buildEvent(incomingEvent: OrchestratedEmailV4,
                  renderedEmail: RenderedEmail,
-                 sender: EmailSender): ComposedEmailV4 =
+                 sender: EmailSender,
+                 eventId: String): ComposedEmailV4 =
     ComposedEmailV4(
-      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata, eventId),
       internalMetadata = incomingEvent.internalMetadata,
       sender = sender.toString,
       recipient = incomingEvent.recipientEmailAddress,
@@ -47,6 +53,7 @@ object EmailComposer {
       template <- retrieveTemplate(event)
       rendered <- render(event, template)
       sender <- lookupSender(template)
-    } yield buildEvent(event, rendered, sender)
+      eventIdHash <- hashString(event.metadata.eventId)
+    } yield buildEvent(event, rendered, sender, eventIdHash)
   }
 }

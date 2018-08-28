@@ -4,6 +4,7 @@ import java.time.Clock
 
 import cats.syntax.either._
 import cats.~>
+import com.ovoenergy.comms.composer.email.HashString
 import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
 import com.ovoenergy.comms.composer.rendering.templating.{PrintTemplateData, PrintTemplateRendering}
 import com.ovoenergy.comms.composer.repo.{S3PdfRepo, S3TemplateRepo}
@@ -15,6 +16,7 @@ import com.ovoenergy.comms.composer.rendering.pdf.{DocRaptorClient, DocRaptorCon
 import com.ovoenergy.comms.composer.rendering.templating
 import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
 import com.ovoenergy.comms.model
+import com.ovoenergy.comms.templates.util.Hash
 import okhttp3.{Request, Response}
 
 import scala.util.Try
@@ -76,6 +78,7 @@ object PrintInterpreter extends Logging {
             result.fold(e => warn(event)(e.reason), _ => info(event)("Persisted PDF successfully"))
 
             result
+          case HashString(str) => Right(Hash(str))
         }
       }
     }

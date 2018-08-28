@@ -26,10 +26,14 @@ class SMSComposerSpec extends FlatSpec with Matchers {
         RenderedSMS(
           textBody = template.textBody.rawExpandedContent.replaceAllLiterally("{{amount}}", "1.23")
         )
+
+      case HashString(str) => hashedStr
     }
   }
 
   case class CustomerTransaction(bankCardNumber: Long, transactionTotal: Int, transactionDate: String)
+
+  val hashedStr = "testing"
 
   val incomingEvent = OrchestratedSMSV3(
     metadata = MetadataV3(

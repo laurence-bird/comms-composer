@@ -35,8 +35,12 @@ class EmailComposerSpec extends FlatSpec with Matchers {
         )
       case LookupSender(_) =>
         EmailSender("Ovo Energy", "no-reply@ovoenergy.com")
+
+      case HashString(_) => hashedString
     }
   }
+
+  val hashedString = "testing"
 
   val incomingEvent = OrchestratedEmailV4(
     metadata = MetadataV3(
@@ -65,6 +69,7 @@ class EmailComposerSpec extends FlatSpec with Matchers {
     event.recipient should be("chris@foo.com")
     event.subject should be("Hello Chris")
     event.htmlBody should be("<h2>Thanks for your payment of £1.23</h2>")
+    event.metadata.eventId should be(hashedString)
   }
 
 }

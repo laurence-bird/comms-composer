@@ -3,6 +3,7 @@ package com.ovoenergy.comms.composer.sms
 import cats.Id
 import cats.free.Free
 import cats.free.Free.liftF
+import com.ovoenergy.comms.composer.sms.HashString
 import com.ovoenergy.comms.composer.rendering.{HashFactory, SmsHashData}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.sms._
@@ -21,9 +22,13 @@ object SMSComposer {
   def render(incomingEvent: OrchestratedSMSV3, template: SMSTemplate[Id]): SMSComposer[RenderedSMS] =
     liftF(Render(incomingEvent, template))
 
-  def buildEvent(incomingEvent: OrchestratedSMSV3, renderedSMS: RenderedSMS): ComposedSMSV4 =
+  def hashString(str: String): SMSComposer[String] = {
+    liftF(HashString(str))
+  }
+
+  def buildEvent(incomingEvent: OrchestratedSMSV3, renderedSMS: RenderedSMS, eventId: String): ComposedSMSV4 =
     ComposedSMSV4(
-      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata),
+      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata, eventId),
       internalMetadata = incomingEvent.internalMetadata,
       recipient = incomingEvent.recipientPhoneNumber,
       textBody = renderedSMS.textBody,
@@ -35,7 +40,8 @@ object SMSComposer {
     for {
       template <- retrieveTemplate(event)
       rendered <- render(event, template)
-    } yield buildEvent(event, rendered)
+      eventIdHash <- hashString(event.metadata.eventId)
+    } yield buildEvent(event, rendered, eventIdHash)
   }
 
 }

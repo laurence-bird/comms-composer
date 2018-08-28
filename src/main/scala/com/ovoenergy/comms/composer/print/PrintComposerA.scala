@@ -1,6 +1,7 @@
 package com.ovoenergy.comms.composer.print
 
 import cats.Id
+import com.ovoenergy.comms.composer.email.EmailComposerA
 import com.ovoenergy.comms.composer.rendering.templating.{BuildHandlebarsData, CommTemplateData, PrintTemplateData}
 import com.ovoenergy.comms.model.{CommManifest, TemplateManifest}
 import com.ovoenergy.comms.model.print.OrchestratedPrintV2
@@ -20,3 +21,5 @@ case class RenderPrintPdf(renderedPrintHtml: RenderedPrintHtml, templateManifest
 
 case class PersistRenderedPdf(incomingEvent: OrchestratedPrintV2, renderedPrintPdf: RenderedPrintPdf)
     extends PrintComposerA[String]
+
+case class HashString(str: String) extends PrintComposerA[String]

@@ -30,6 +30,8 @@ class PrintComposerSpec extends FlatSpec with Matchers {
 
       case RenderPrintPdf(r, _) => RenderedPrintPdf("Hello".getBytes())
       case PersistRenderedPdf(incomingEvent, r) => "PdfIdentifier"
+
+      case HashString(_) => hashedString
     }
   }
 
@@ -54,9 +56,12 @@ class PrintComposerSpec extends FlatSpec with Matchers {
     expireAt = None
   )
 
+  val hashedString = "testing"
+
   it should "compose an email" in {
     val event: ComposedPrintV2 = PrintComposer.program(incomingEvent).foldMap(testInterpreter)
     event.pdfIdentifier should be("PdfIdentifier")
     event.internalMetadata should be(incomingEvent.internalMetadata)
+    event.metadata.eventId should be(hashedString)
   }
 }
