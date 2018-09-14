@@ -3,12 +3,18 @@ import Dependencies._
 name := "composer"
 organization := "com.ovoenergy"
 
-scalaVersion := "2.12.4"
-scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8", "-Ypartial-unification")
+scalaVersion := "2.12.6"
+scalacOptions := Seq(
+  "-unchecked",
+  "-deprecation",
+  "-feature",
+  "-encoding", "utf8",
+  "-language:higherKinds",
+  "-Ypartial-unification"
+)
 
 // Make ScalaTest write test reports that CircleCI understands
-val testReportsDir = sys.env.getOrElse("CI_REPORTS", "target/reports")
-testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF", "-u", testReportsDir)
+testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
 lazy val ServiceTest = config("servicetest") extend(Test)
 configs(ServiceTest)
 inConfig(ServiceTest)(Defaults.testSettings)
