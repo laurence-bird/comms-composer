@@ -23,7 +23,7 @@ object Dependencies {
   }
 
   object fs2 {
-    private val fs2Version = "0.10.2"
+    private val fs2Version = "0.10.5"
     private val fs2KafkaClientVersion = "0.1.9"
 
     lazy val core = "co.fs2" %% "fs2-core" % fs2Version
