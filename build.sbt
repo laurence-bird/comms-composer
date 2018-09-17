@@ -82,7 +82,7 @@ enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, DockerPlugin)
 commsPackagingMaxMetaspaceSize := 128
 dockerExposedPorts += 8080
 
-scalafmtOnCompile := false
+scalafmtOnCompile := true
 
 version ~= (_.replace('+', '-'))
 dynver ~= (_.replace('+', '-'))

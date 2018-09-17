@@ -12,6 +12,7 @@ object HttpServerConfig {
 
   def unsafeFromConfig(config: Config): HttpServerConfig =
     fromConfig(config)
-      .fold(error => throw new RuntimeException(s"""Error parsing the config: ${error.toList.mkString(",")}"""),
-            identity)
+      .fold(
+        error => throw new RuntimeException(s"""Error parsing the config: ${error.toList.mkString(",")}"""),
+        identity)
 }

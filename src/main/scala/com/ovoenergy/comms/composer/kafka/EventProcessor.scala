@@ -19,9 +19,10 @@ object EventProcessor extends Logging {
   implicit def consumerRecordLoggable[K, V]: Loggable[ConsumerRecord[K, V]] =
     Loggable.instance(
       record =>
-        Map("kafkaTopic" -> record.topic(),
-            "kafkaPartition" -> record.partition().toString,
-            "kafkaOffset" -> record.offset().toString))
+        Map(
+          "kafkaTopic" -> record.topic(),
+          "kafkaPartition" -> record.partition().toString,
+          "kafkaOffset" -> record.offset().toString))
 
   def apply[F[_], InEvent <: LoggableEvent, OutEvent <: LoggableEvent](
       outputProducer: => OutEvent => F[RecordMetadata],

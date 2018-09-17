@@ -19,10 +19,11 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   val phoneNumber = "+447123123456"
   val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
-  def renderSMS(templateManifest: TemplateManifest,
-                template: SMSTemplate[Id],
-                smsTd: CommTemplateData,
-                clock: Clock = Clock.systemDefaultZone()) = {
+  def renderSMS(
+      templateManifest: TemplateManifest,
+      template: SMSTemplate[Id],
+      smsTd: CommTemplateData,
+      clock: Clock = Clock.systemDefaultZone()) = {
     SMSTemplateRendering.renderSMS(clock, templateManifest, template, smsTd)
   }
 
@@ -89,8 +90,8 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   it should "fail if the template references non-existent data" in {
     val manifest = TemplateManifest(Hash("missing-data"), "0.1")
     val template = SMSTemplate[Id](
-      textBody = HandlebarsTemplate("Hi {{profile.prefix}}. You bought a {{thing}}. The amount was £{{amount}}.",
-                                    requiredFields)
+      textBody =
+        HandlebarsTemplate("Hi {{profile.prefix}}. You bought a {{thing}}. The amount was £{{amount}}.", requiredFields)
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
@@ -102,8 +103,9 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   it should "render a template that references fields in the system data" in {
     val manifest = TemplateManifest(Hash("system-data-fields"), "0.1")
     val template = SMSTemplate[Id](
-      textBody = HandlebarsTemplate("TEXT BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
-                                    requiredFields)
+      textBody = HandlebarsTemplate(
+        "TEXT BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
+        requiredFields)
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))

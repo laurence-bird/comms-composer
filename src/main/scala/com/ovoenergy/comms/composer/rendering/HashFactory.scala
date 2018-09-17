@@ -5,18 +5,21 @@ import java.security.MessageDigest
 import com.ovoenergy.comms.model._
 
 sealed trait HashData
-case class EmailHashData(deliverTo: DeliverTo,
-                         templateData: Map[String, TemplateData],
-                         templateManifest: TemplateManifest)
+case class EmailHashData(
+    deliverTo: DeliverTo,
+    templateData: Map[String, TemplateData],
+    templateManifest: TemplateManifest)
     extends HashData
-case class SmsHashData(deliverTo: DeliverTo,
-                       templateData: Map[String, TemplateData],
-                       templateManifest: TemplateManifest)
+case class SmsHashData(
+    deliverTo: DeliverTo,
+    templateData: Map[String, TemplateData],
+    templateManifest: TemplateManifest)
     extends HashData
-case class PrintHashData(customerProfile: Option[CustomerProfile],
-                         customerAddress: CustomerAddress,
-                         templateData: Map[String, TemplateData],
-                         templateManifest: TemplateManifest)
+case class PrintHashData(
+    customerProfile: Option[CustomerProfile],
+    customerAddress: CustomerAddress,
+    templateData: Map[String, TemplateData],
+    templateManifest: TemplateManifest)
     extends HashData
 
 object HashFactory {

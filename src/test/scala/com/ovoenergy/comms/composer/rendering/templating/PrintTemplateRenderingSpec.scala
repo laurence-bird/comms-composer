@@ -15,24 +15,20 @@ import com.ovoenergy.comms.templates.util.Hash
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
 import shapeless.Coproduct
 
-class PrintTemplateRenderingSpec
-    extends FlatSpec
-    with Matchers
-    with EitherValues
-    with Arbitraries
-    with TestGenerators {
+class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues with Arbitraries with TestGenerators {
 
   behavior of "rendering an print"
 
   val profile = CustomerProfile("Joe", "Bloggs")
   val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
   val printTemplate = PrintTemplate[Id](HandlebarsTemplate("You paid", requiredFields))
-  val address = CustomerAddress(line1 = "10 Oxford Street",
-                                line2 = None,
-                                town = "London",
-                                country = Some("UK"),
-                                county = Some("London"),
-                                postcode = "W1 1AB")
+  val address = CustomerAddress(
+    line1 = "10 Oxford Street",
+    line2 = None,
+    town = "London",
+    country = Some("UK"),
+    county = Some("London"),
+    postcode = "W1 1AB")
 
   def metadataWithCommManifest(templateManifest: TemplateManifest) =
     generate[MetadataV3].copy(templateManifest = templateManifest)
@@ -45,10 +41,11 @@ class PrintTemplateRenderingSpec
     val printTemplateData =
       PrintTemplateData(customerAddress = address, customerProfile = Some(profile), templateData = data)
     val resultEither =
-      PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
-                                        manifest,
-                                        template,
-                                        Clock.systemDefaultZone())
+      PrintTemplateRendering.renderHtml(
+        printTemplateData.buildHandlebarsData,
+        manifest,
+        template,
+        Clock.systemDefaultZone())
     resultEither.right.value.htmlBody should be("You paid £1.23")
   }
 
@@ -56,18 +53,20 @@ class PrintTemplateRenderingSpec
     val manifest = TemplateManifest(Hash("simple"), "0.1")
     val template = PrintTemplate[Id](HandlebarsTemplate("You paid £{{amount}}", requiredFields))
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
-    val orchestratedPrintEvent = generate[OrchestratedPrintV2].copy(address = address,
-                                                                    customerProfile = None,
-                                                                    metadata = metadataWithCommManifest(manifest),
-                                                                    templateData = data)
+    val orchestratedPrintEvent = generate[OrchestratedPrintV2].copy(
+      address = address,
+      customerProfile = None,
+      metadata = metadataWithCommManifest(manifest),
+      templateData = data)
 
     val printTemplateData = PrintTemplateData(data, None, address)
 
     val resultEither =
-      PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
-                                        manifest,
-                                        template,
-                                        Clock.systemDefaultZone())
+      PrintTemplateRendering.renderHtml(
+        printTemplateData.buildHandlebarsData,
+        manifest,
+        template,
+        Clock.systemDefaultZone())
     resultEither.right.value.htmlBody should be("You paid £1.23")
   }
 
@@ -78,10 +77,11 @@ class PrintTemplateRenderingSpec
 
     val printTemplateData = PrintTemplateData(data, Some(profile), address)
 
-    val result = PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
-                                                   manifest,
-                                                   template,
-                                                   Clock.systemDefaultZone())
+    val result = PrintTemplateRendering.renderHtml(
+      printTemplateData.buildHandlebarsData,
+      manifest,
+      template,
+      Clock.systemDefaultZone())
     result shouldBe 'left
   }
 
@@ -93,10 +93,11 @@ class PrintTemplateRenderingSpec
     val printTemplateData = PrintTemplateData(data, Some(profile), address)
 
     val resultEither =
-      PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
-                                        manifest,
-                                        template,
-                                        Clock.systemDefaultZone())
+      PrintTemplateRendering.renderHtml(
+        printTemplateData.buildHandlebarsData,
+        manifest,
+        template,
+        Clock.systemDefaultZone())
 
     resultEither shouldBe Right(
       RenderedPrintHtml(
@@ -114,10 +115,11 @@ class PrintTemplateRenderingSpec
       PrintTemplateData(templateData = data, customerProfile = Some(profile), customerAddress = address)
 
     val resultEither =
-      PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
-                                        manifest,
-                                        template,
-                                        Clock.systemDefaultZone())
+      PrintTemplateRendering.renderHtml(
+        printTemplateData.buildHandlebarsData,
+        manifest,
+        template,
+        Clock.systemDefaultZone())
     resultEither.right.value.htmlBody should be("HTML BODY 10 Oxford Street")
   }
 
@@ -146,8 +148,7 @@ class PrintTemplateRenderingSpec
   it should "render a template that references fields in the system data" in {
     val manifest = TemplateManifest(Hash("system-data-fields"), "0.1")
     val template = PrintTemplate[Id](
-      HandlebarsTemplate("HTML BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
-                         requiredFields))
+      HandlebarsTemplate("HTML BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}", requiredFields))
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 
@@ -197,10 +198,11 @@ class PrintTemplateRenderingSpec
     val printTemplateData =
       PrintTemplateData(customerAddress = address, customerProfile = Some(profile), templateData = templateData)
 
-    val result = PrintTemplateRendering.renderHtml(printTemplateData.buildHandlebarsData,
-                                                   manifest,
-                                                   template,
-                                                   Clock.systemDefaultZone())
+    val result = PrintTemplateRendering.renderHtml(
+      printTemplateData.buildHandlebarsData,
+      manifest,
+      template,
+      Clock.systemDefaultZone())
 
     result.right.value.htmlBody should be(
       "Thanks for your payments of £1.23 (transactionId: 5453ffsdfsdf) £100.23  You paid")

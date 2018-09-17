@@ -23,11 +23,12 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 object PrintInterpreter extends Logging {
-  case class PrintContext(docRaptorConfig: DocRaptorConfig,
-                          s3Config: S3Config,
-                          retryConfig: RetryConfig,
-                          templateContext: TemplatesContext,
-                          httpClient: Request => Try[Response])
+  case class PrintContext(
+      docRaptorConfig: DocRaptorConfig,
+      s3Config: S3Config,
+      retryConfig: RetryConfig,
+      templateContext: TemplatesContext,
+      httpClient: Request => Try[Response])
 
   def apply(printContext: PrintContext): PrintComposerA ~> FailedOr = {
     new (PrintComposerA ~> FailedOr) {

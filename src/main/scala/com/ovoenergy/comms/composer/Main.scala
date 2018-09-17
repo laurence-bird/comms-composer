@@ -116,15 +116,15 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
 
   val smsInterpreter: ~>[SMSComposerA, FailedOr] = SMSInterpreter(templateContext)
-  val smsComposer = (orchestratedSMS: OrchestratedSMSV3) =>
-    SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
+  val smsComposer = (orchestratedSMS: OrchestratedSMSV3) => SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
 
   val printInterpreter: ~>[PrintComposerA, FailedOr] = PrintInterpreter(printContext)
   val printComposer = (orchestratedPrint: OrchestratedPrintV2) =>
     PrintComposer.program(orchestratedPrint).foldMap(printInterpreter)
 
-  def renderPrint(templateManifest: TemplateManifest,
-                  data: Map[String, TemplateData]): IO[FailedOr[RenderedPrintPdf]] = {
+  def renderPrint(
+      templateManifest: TemplateManifest,
+      data: Map[String, TemplateData]): IO[FailedOr[RenderedPrintPdf]] = {
     IO(PrintComposer.httpProgram(templateManifest, data).foldMap(printInterpreter))
   }
 
@@ -199,22 +199,25 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   }
 
   def emailProcessor =
-    EventProcessor[IO, OrchestratedEmailV4, ComposedEmailV4](composedEmailEventProducer,
-                                                             failedEventProducer,
-                                                             feedbackEventProducer,
-                                                             emailComposer).andThen(_.void)
+    EventProcessor[IO, OrchestratedEmailV4, ComposedEmailV4](
+      composedEmailEventProducer,
+      failedEventProducer,
+      feedbackEventProducer,
+      emailComposer).andThen(_.void)
 
   def smsProcessor =
-    EventProcessor[IO, OrchestratedSMSV3, ComposedSMSV4](composedSMSEventProducer,
-                                                         failedEventProducer,
-                                                         feedbackEventProducer,
-                                                         smsComposer).andThen(_.void)
+    EventProcessor[IO, OrchestratedSMSV3, ComposedSMSV4](
+      composedSMSEventProducer,
+      failedEventProducer,
+      feedbackEventProducer,
+      smsComposer).andThen(_.void)
 
   def printProcessor =
-    EventProcessor[IO, OrchestratedPrintV2, ComposedPrintV2](composedPrintEventProducer,
-                                                             failedEventProducer,
-                                                             feedbackEventProducer,
-                                                             printComposer).andThen(_.void)
+    EventProcessor[IO, OrchestratedPrintV2, ComposedPrintV2](
+      composedPrintEventProducer,
+      failedEventProducer,
+      feedbackEventProducer,
+      printComposer).andThen(_.void)
 
   override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] = {
 
@@ -225,9 +228,10 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
       processEvent[IO, OrchestratedSMSV3, Unit](smsProcessor, aivenCluster.orchestratedSMS.v3, consumerSettings)
 
     val printStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedPrintV2, Unit](printProcessor,
-                                                  aivenCluster.orchestratedPrint.v2,
-                                                  printConsumerSettings)
+      processEvent[IO, OrchestratedPrintV2, Unit](
+        printProcessor,
+        aivenCluster.orchestratedPrint.v2,
+        printConsumerSettings)
 
     val httpServerStream =
       Stream.bracket[IO, Server[IO], Server[IO]](httpServer)(server => Stream.emit(server), server => server.shutdown)
@@ -241,9 +245,10 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     }
   }
 
-  def publisherFor[E: Loggable](topic: Topic[E], key: E => String)(implicit schemaFor: SchemaFor[E],
-                                                                   toRecord: ToRecord[E],
-                                                                   classTag: ClassTag[E]): E => IO[RecordMetadata] = {
+  def publisherFor[E: Loggable](topic: Topic[E], key: E => String)(
+      implicit schemaFor: SchemaFor[E],
+      toRecord: ToRecord[E],
+      classTag: ClassTag[E]): E => IO[RecordMetadata] = {
     val producer = exitOnFailure(Producer[E](topic), topic.name)
     event: E =>
       val result = Producer.publisher[E, IO](key, producer, topic.name)(event)

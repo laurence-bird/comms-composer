@@ -15,11 +15,12 @@ import okhttp3._
 
 import scala.util.Try
 
-case class DocRaptorRequest(document_content: String,
-                            test: Boolean,
-                            `type`: String,
-                            prince_options: PrinceOptions,
-                            javascript: Boolean = true) // We want to run JS assets prior to PDF rendering
+case class DocRaptorRequest(
+    document_content: String,
+    test: Boolean,
+    `type`: String,
+    prince_options: PrinceOptions,
+    javascript: Boolean = true) // We want to run JS assets prior to PDF rendering
 
 case class PrinceOptions(profile: String)
 
@@ -56,8 +57,9 @@ case class UnprocessableEntity(errorDetails: String) extends DocRaptorError {
 
 object DocRaptorClient extends Logging {
 
-  def renderPdf(printContext: PrintContext,
-                renderedPrintHtml: RenderedPrintHtml): Either[DocRaptorError, RenderedPrintPdf] = {
+  def renderPdf(
+      printContext: PrintContext,
+      renderedPrintHtml: RenderedPrintHtml): Either[DocRaptorError, RenderedPrintPdf] = {
 
     val docRaptorConfig: DocRaptorConfig = printContext.docRaptorConfig
     val retryConfig: Retry.RetryConfig = printContext.retryConfig

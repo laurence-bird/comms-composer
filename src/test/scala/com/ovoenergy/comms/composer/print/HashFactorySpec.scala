@@ -32,10 +32,11 @@ class HashFactorySpec extends FlatSpec with Matchers {
     expireAt = None
   )
 
-  val hashData = PrintHashData(incomingEvent.customerProfile,
-                               incomingEvent.address,
-                               incomingEvent.templateData,
-                               incomingEvent.metadata.templateManifest)
+  val hashData = PrintHashData(
+    incomingEvent.customerProfile,
+    incomingEvent.address,
+    incomingEvent.templateData,
+    incomingEvent.metadata.templateManifest)
 
   it should "create the correct hashedComm" in {
 

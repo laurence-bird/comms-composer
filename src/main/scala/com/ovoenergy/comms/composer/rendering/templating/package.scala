@@ -14,9 +14,10 @@ package object templating extends Rendering {
     def buildHandlebarsData: HandlebarsData
   }
 
-  case class EmailTemplateData(templateData: Map[String, TemplateData],
-                               customerProfile: Option[CustomerProfile],
-                               recipientEmailAddress: String)
+  case class EmailTemplateData(
+      templateData: Map[String, TemplateData],
+      customerProfile: Option[CustomerProfile],
+      recipientEmailAddress: String)
       extends CommTemplateData {
     override def buildHandlebarsData: HandlebarsData = {
       val emailAddressMap: Map[String, Map[String, String]] = Map(
@@ -34,9 +35,10 @@ package object templating extends Rendering {
     }
   }
 
-  case class SMSTemplateData(templateData: Map[String, TemplateData],
-                             customerProfile: Option[CustomerProfile],
-                             recipientPhoneNumber: String)
+  case class SMSTemplateData(
+      templateData: Map[String, TemplateData],
+      customerProfile: Option[CustomerProfile],
+      recipientPhoneNumber: String)
       extends CommTemplateData {
     override def buildHandlebarsData: HandlebarsData = {
       val customerProfileMap = customerProfile
@@ -51,20 +53,21 @@ package object templating extends Rendering {
     }
   }
 
-  case class PrintTemplateData(templateData: Map[String, TemplateData],
-                               customerProfile: Option[CustomerProfile],
-                               customerAddress: CustomerAddress)
+  case class PrintTemplateData(
+      templateData: Map[String, TemplateData],
+      customerProfile: Option[CustomerProfile],
+      customerAddress: CustomerAddress)
       extends CommTemplateData {
     override def buildHandlebarsData: HandlebarsData = {
 
       val addressMap = Map(
-          "line1" -> Some(customerAddress.line1),
-          "town" -> Some(customerAddress.town),
-          "postcode" -> Some(customerAddress.postcode),
-          "line2" -> customerAddress.line2,
-          "county" -> customerAddress.county,
-          "country" -> customerAddress.country
-        ) collect { case (k, Some(v)) => (k, v) }
+        "line1" -> Some(customerAddress.line1),
+        "town" -> Some(customerAddress.town),
+        "postcode" -> Some(customerAddress.postcode),
+        "line2" -> customerAddress.line2,
+        "county" -> customerAddress.county,
+        "country" -> customerAddress.country
+      ) collect { case (k, Some(v)) => (k, v) }
 
       val customerAddressMap: Map[String, Map[String, String]] = Map("address" -> addressMap)
 

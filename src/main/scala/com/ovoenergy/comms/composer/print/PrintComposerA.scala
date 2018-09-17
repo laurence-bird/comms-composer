@@ -11,9 +11,10 @@ sealed trait PrintComposerA[T]
 
 case class RetrieveTemplate(templateManifest: TemplateManifest) extends PrintComposerA[PrintTemplate[Id]]
 
-case class RenderPrintHtml(handlebarsData: CommTemplateData,
-                           template: PrintTemplate[Id],
-                           templateManifest: TemplateManifest)
+case class RenderPrintHtml(
+    handlebarsData: CommTemplateData,
+    template: PrintTemplate[Id],
+    templateManifest: TemplateManifest)
     extends PrintComposerA[RenderedPrintHtml]
 
 case class RenderPrintPdf(renderedPrintHtml: RenderedPrintHtml, templateManifest: TemplateManifest)

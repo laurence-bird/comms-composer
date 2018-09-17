@@ -174,33 +174,35 @@ object Loggable {
 
   implicit def tuple1Loggable[A](implicit aLoggable: Loggable[A]): Loggable[Tuple1[A]] = aLoggable.contramap(_._1)
 
-  implicit def tuple2Loggable[A1, A2](implicit a1Loggable: Loggable[A1],
-                                      a2Loggable: Loggable[A2]): Loggable[(A1, A2)] =
+  implicit def tuple2Loggable[A1, A2](implicit a1Loggable: Loggable[A1], a2Loggable: Loggable[A2]): Loggable[(A1, A2)] =
     instance {
       case (a1, a2) =>
         a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2)
     }
 
-  implicit def tuple3Loggable[A1, A2, A3](implicit a1Loggable: Loggable[A1],
-                                          a2Loggable: Loggable[A2],
-                                          a3Loggable: Loggable[A3]): Loggable[(A1, A2, A3)] = instance {
+  implicit def tuple3Loggable[A1, A2, A3](
+      implicit a1Loggable: Loggable[A1],
+      a2Loggable: Loggable[A2],
+      a3Loggable: Loggable[A3]): Loggable[(A1, A2, A3)] = instance {
     case (a1, a2, a3) =>
       a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2) ++ a3Loggable.mdcMap(a3)
   }
 
-  implicit def tuple4Loggable[A1, A2, A3, A4](implicit a1Loggable: Loggable[A1],
-                                              a2Loggable: Loggable[A2],
-                                              a3Loggable: Loggable[A3],
-                                              a4Loggable: Loggable[A4]): Loggable[(A1, A2, A3, A4)] = instance {
+  implicit def tuple4Loggable[A1, A2, A3, A4](
+      implicit a1Loggable: Loggable[A1],
+      a2Loggable: Loggable[A2],
+      a3Loggable: Loggable[A3],
+      a4Loggable: Loggable[A4]): Loggable[(A1, A2, A3, A4)] = instance {
     case (a1, a2, a3, a4) =>
       a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2) ++ a3Loggable.mdcMap(a3) ++ a4Loggable.mdcMap(a4)
   }
 
-  implicit def tuple5Loggable[A1, A2, A3, A4, A5](implicit a1Loggable: Loggable[A1],
-                                                  a2Loggable: Loggable[A2],
-                                                  a3Loggable: Loggable[A3],
-                                                  a4Loggable: Loggable[A4],
-                                                  a5Loggable: Loggable[A5]): Loggable[(A1, A2, A3, A4, A5)] =
+  implicit def tuple5Loggable[A1, A2, A3, A4, A5](
+      implicit a1Loggable: Loggable[A1],
+      a2Loggable: Loggable[A2],
+      a3Loggable: Loggable[A3],
+      a4Loggable: Loggable[A4],
+      a5Loggable: Loggable[A5]): Loggable[(A1, A2, A3, A4, A5)] =
     instance {
       case (a1, a2, a3, a4, a5) =>
         a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2) ++ a3Loggable.mdcMap(a3) ++ a4Loggable.mdcMap(a4) ++ a5Loggable

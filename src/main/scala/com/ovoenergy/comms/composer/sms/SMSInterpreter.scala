@@ -48,8 +48,9 @@ object SMSInterpreter extends Logging {
                 .leftMap { templateErrors =>
                   failSMS(templateErrors.reason, templateErrors.errorCode)
                 }
-              result.fold(e => warn(event)(s"Failed to render SMS: ${e.reason}"),
-                          _ => info(event)("Rendered SMS successfully"))
+              result.fold(
+                e => warn(event)(s"Failed to render SMS: ${e.reason}"),
+                _ => info(event)("Rendered SMS successfully"))
 
               result
             } catch {

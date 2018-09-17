@@ -21,18 +21,22 @@ object PrintComposer {
     liftF(RetrieveTemplate(templateManifest))
   }
 
-  def renderPrintHtml(commTemplateData: CommTemplateData,
-                      template: PrintTemplate[Id],
-                      templateManifest: TemplateManifest): PrintComposer[RenderedPrintHtml] = {
+  def renderPrintHtml(
+      commTemplateData: CommTemplateData,
+      template: PrintTemplate[Id],
+      templateManifest: TemplateManifest): PrintComposer[RenderedPrintHtml] = {
     liftF(RenderPrintHtml(commTemplateData, template, templateManifest))
   }
 
-  def renderPrintPdf(renderedPrintHtml: RenderedPrintHtml,
-                     templateManifest: TemplateManifest): PrintComposer[RenderedPrintPdf] = {
+  def renderPrintPdf(
+      renderedPrintHtml: RenderedPrintHtml,
+      templateManifest: TemplateManifest): PrintComposer[RenderedPrintPdf] = {
     liftF(RenderPrintPdf(renderedPrintHtml, templateManifest))
   }
 
-  def persistRenderedPdf(event: OrchestratedPrintV2, renderedPrintPdf: RenderedPrintPdf): PrintComposer[PdfReference] = {
+  def persistRenderedPdf(
+      event: OrchestratedPrintV2,
+      renderedPrintPdf: RenderedPrintPdf): PrintComposer[PdfReference] = {
     liftF(PersistRenderedPdf(event, renderedPrintPdf))
   }
 
@@ -63,8 +67,9 @@ object PrintComposer {
     } yield buildEvent(event, pdfIdentifier, eventIdHash)
   }
 
-  def httpProgram(templateManifest: TemplateManifest,
-                  data: Map[String, TemplateData]): Free[PrintComposerA, RenderedPrintPdf] = {
+  def httpProgram(
+      templateManifest: TemplateManifest,
+      data: Map[String, TemplateData]): Free[PrintComposerA, RenderedPrintPdf] = {
     for {
       template <- retrieveTemplate(templateManifest)
       renderedPrintHtml <- renderPrintHtml(TemplateDataWrapper(data), template, templateManifest)

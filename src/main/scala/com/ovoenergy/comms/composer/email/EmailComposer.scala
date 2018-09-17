@@ -32,10 +32,11 @@ object EmailComposer {
     liftF(HashString(str))
   }
 
-  def buildEvent(incomingEvent: OrchestratedEmailV4,
-                 renderedEmail: RenderedEmail,
-                 sender: EmailSender,
-                 eventId: String): ComposedEmailV4 =
+  def buildEvent(
+      incomingEvent: OrchestratedEmailV4,
+      renderedEmail: RenderedEmail,
+      sender: EmailSender,
+      eventId: String): ComposedEmailV4 =
     ComposedEmailV4(
       metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata, eventId),
       internalMetadata = incomingEvent.internalMetadata,
