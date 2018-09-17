@@ -1,4 +1,5 @@
-package com.ovoenergy.comms.composer.email
+package com.ovoenergy.comms.composer
+package email
 
 import cats.Id
 import com.ovoenergy.comms.model.CommType._

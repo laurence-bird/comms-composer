@@ -10,7 +10,7 @@ import cats.instances.either._
 import cats.syntax.all._
 import com.amazonaws.regions.Regions
 import com.ovoenergy.comms.composer.aws.{AwsClientProvider, TemplateContextFactory}
-import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA, EmailInterpreter}
+import com.ovoenergy.comms.composer.email.{Composer, EmailComposerA, Interpreter}
 import com.ovoenergy.comms.composer.http.{AdminRestApi, HttpClient, HttpServerConfig, RenderRestApi}
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
 import com.ovoenergy.comms.composer.kafka.{EventProcessor, Producer}
@@ -113,7 +113,7 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
 
   val emailInterpreter: ~>[EmailComposerA, FailedOr] = EmailInterpreter(templateContext)
   val emailComposer = (orchestratedEmail: OrchestratedEmailV4) =>
-    EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
+    Composer.program(orchestratedEmail).foldMap(emailInterpreter)
 
   val smsInterpreter: ~>[SMSComposerA, FailedOr] = SMSInterpreter(templateContext)
   val smsComposer = (orchestratedSMS: OrchestratedSMSV3) =>

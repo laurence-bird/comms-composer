@@ -1,3 +1,6 @@
-package com.ovoenergy.comms.composer.email
+package com.ovoenergy.comms.composer
+package email
 
-case class RenderedEmail(subject: String, htmlBody: String, textBody: Option[String])
+import com.ovoenergy.comms.composer.v2.model.Fragment
+
+case class RenderedEmail(subject: Fragment, htmlBody: Fragment, textBody: Option[Fragment])

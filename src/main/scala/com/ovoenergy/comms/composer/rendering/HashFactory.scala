@@ -1,7 +1,6 @@
 package com.ovoenergy.comms.composer.rendering
 
-import java.security.MessageDigest
-
+import com.google.common.io.BaseEncoding
 import com.ovoenergy.comms.model._
 
 sealed trait HashData
@@ -19,14 +18,15 @@ case class PrintHashData(customerProfile: Option[CustomerProfile],
                          templateManifest: TemplateManifest)
     extends HashData
 
+case class EventId(value: String) extends HashData
+
 object HashFactory {
 
   def getHashedComm(hashData: HashData): String = {
-
-    val commHash = MessageDigest
-      .getInstance("MD5")
-      .digest(hashData.toString.getBytes)
-
-    new String(commHash)
+    BaseEncoding
+      .base32()
+      .omitPadding()
+      .encode(hashData.toString.getBytes())
+      .toLowerCase
   }
 }

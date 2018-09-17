@@ -12,7 +12,7 @@ scalacOptions := Seq(
   "-language:higherKinds",
   "-Ypartial-unification"
 )
-
+addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 // Make ScalaTest write test reports that CircleCI understands
 testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
 lazy val ServiceTest = config("servicetest") extend(Test)

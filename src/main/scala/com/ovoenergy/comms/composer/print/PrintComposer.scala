@@ -1,74 +1,56 @@
 package com.ovoenergy.comms.composer.print
 
-import cats.Id
-import cats.free.Free
-import cats.free.Free.liftF
+import cats.{FlatMap, Id}
 import com.ovoenergy.comms.composer.rendering.templating.{CommTemplateData, PrintTemplateData, TemplateDataWrapper}
-import com.ovoenergy.comms.composer.rendering.{HashFactory, PrintHashData}
-import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
+import com.ovoenergy.comms.model.{MetadataV3, TemplateData, TemplateManifest}
 import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
 
-object PrintComposer {
-  import scala.language.implicitConversions
-  implicit def printHashData(print: OrchestratedPrintV2) =
-    new PrintHashData(print.customerProfile, print.address, print.templateData, print.metadata.templateManifest)
-
-  type PrintComposer[A] = Free[PrintComposerA, A]
-  type PdfReference = String
-
-  def retrieveTemplate(templateManifest: TemplateManifest): PrintComposer[PrintTemplate[Id]] = {
-    liftF(RetrieveTemplate(templateManifest))
-  }
+trait PrintComposer[F[_]] {
+  def retrieveTemplate(templateManifest: TemplateManifest): F[PrintTemplate[Id]]
 
   def renderPrintHtml(commTemplateData: CommTemplateData,
                       template: PrintTemplate[Id],
-                      templateManifest: TemplateManifest): PrintComposer[RenderedPrintHtml] = {
-    liftF(RenderPrintHtml(commTemplateData, template, templateManifest))
-  }
+                      templateManifest: TemplateManifest): F[RenderedPrintHtml]
 
-  def renderPrintPdf(renderedPrintHtml: RenderedPrintHtml,
-                     templateManifest: TemplateManifest): PrintComposer[RenderedPrintPdf] = {
-    liftF(RenderPrintPdf(renderedPrintHtml, templateManifest))
-  }
+  def renderPrintPdf(renderedPrintHtml: RenderedPrintHtml, templateManifest: TemplateManifest): F[RenderedPrintPdf]
 
-  def persistRenderedPdf(event: OrchestratedPrintV2, renderedPrintPdf: RenderedPrintPdf): PrintComposer[PdfReference] = {
-    liftF(PersistRenderedPdf(event, renderedPrintPdf))
-  }
+  def persistRenderedPdf(event: OrchestratedPrintV2, renderedPrintPdf: RenderedPrintPdf)
 
-  def hashString(str: String): PrintComposer[String] = {
-    liftF(HashString(str))
-  }
+  def hashValue[A](a: A): F[String]
+}
 
-  def buildEvent(incomingEvent: OrchestratedPrintV2, pdfIdentifier: String, eventId: String): ComposedPrintV2 = {
-    ComposedPrintV2(
-      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata, eventId),
-      internalMetadata = incomingEvent.internalMetadata,
-      pdfIdentifier = pdfIdentifier,
-      hashedComm = HashFactory.getHashedComm(incomingEvent),
-      expireAt = incomingEvent.expireAt
-    )
-  }
+object PrintComposer {
 
   private def buildPrintTemplateData(event: OrchestratedPrintV2): PrintTemplateData =
     PrintTemplateData(event.templateData, event.customerProfile, event.address)
 
-  def program(event: OrchestratedPrintV2): Free[PrintComposerA, ComposedPrintV2] = {
+  def program[F[_]](event: OrchestratedPrintV2)(implicit composer: PrintComposer[F]): F[ComposedPrintV2] = {
     for {
-      template <- retrieveTemplate(event.metadata.templateManifest)
-      renderedPrintHtml <- renderPrintHtml(buildPrintTemplateData(event), template, event.metadata.templateManifest)
-      renderedPrintPdf <- renderPrintPdf(renderedPrintHtml, event.metadata.templateManifest)
-      pdfIdentifier <- persistRenderedPdf(event, renderedPrintPdf)
-      eventIdHash <- hashString(event.metadata.eventId)
-    } yield buildEvent(event, pdfIdentifier, eventIdHash)
+      template <- composer.retrieveTemplate(event.metadata.templateManifest)
+      renderedPrintHtml <- composer.renderPrintHtml(buildPrintTemplateData(event),
+                                                    template,
+                                                    event.metadata.templateManifest)
+      renderedPrintPdf <- composer.renderPrintPdf(renderedPrintHtml, event.metadata.templateManifest)
+      pdfIdentifier <- composer.persistRenderedPdf(event, renderedPrintPdf)
+      eventIdHash <- composer.hashValue(event.metadata.eventId)
+      hashedComm <- composer.hashValue(event)
+    } yield
+      ComposedPrintV2(
+        metadata = MetadataV3.fromSourceMetadata("comms-composer", event.metadata, eventIdHash),
+        internalMetadata = event.internalMetadata,
+        pdfIdentifier = pdfIdentifier,
+        hashedComm = hashedComm,
+        expireAt = event.expireAt
+      )
   }
 
-  def httpProgram(templateManifest: TemplateManifest,
-                  data: Map[String, TemplateData]): Free[PrintComposerA, RenderedPrintPdf] = {
+  def httpProgram[F[_]: FlatMap](templateManifest: TemplateManifest, data: Map[String, TemplateData])(
+      implicit composer: PrintComposer[F]): F[RenderedPrintPdf] = {
     for {
-      template <- retrieveTemplate(templateManifest)
-      renderedPrintHtml <- renderPrintHtml(TemplateDataWrapper(data), template, templateManifest)
-      renderedPrintPdf <- renderPrintPdf(renderedPrintHtml, templateManifest)
+      template <- composer.retrieveTemplate(templateManifest)
+      renderedPrintHtml <- composer.renderPrintHtml(TemplateDataWrapper(data), template, templateManifest)
+      renderedPrintPdf <- composer.renderPrintPdf(renderedPrintHtml, templateManifest)
     } yield renderedPrintPdf
   }
 }

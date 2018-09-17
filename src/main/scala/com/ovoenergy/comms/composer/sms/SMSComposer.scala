@@ -1,47 +1,33 @@
 package com.ovoenergy.comms.composer.sms
 
-import cats.Id
-import cats.free.Free
-import cats.free.Free.liftF
-import com.ovoenergy.comms.composer.sms.HashString
-import com.ovoenergy.comms.composer.rendering.{HashFactory, SmsHashData}
-import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.model.sms._
+import cats.syntax.flatMap._
+import cats.{FlatMap, Id}
+import com.ovoenergy.comms.model.MetadataV3
+import com.ovoenergy.comms.model.sms.{ComposedSMSV4, OrchestratedSMSV3}
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
+trait SMSComposer[F[_]] {
+  def retrieveTemplate(incomingEvent: OrchestratedSMSV3): F[SMSTemplate[Id]]
+
+  def render(incomingEvent: OrchestratedSMSV3, template: SMSTemplate[Id]): F[RenderedSMS]
+
+  def hashValue[A](a: A): F[String]
+}
 
 object SMSComposer {
-  import scala.language.implicitConversions
-  implicit def smsHashData(sms: OrchestratedSMSV3) =
-    new SmsHashData(sms.metadata.deliverTo, sms.templateData, sms.metadata.templateManifest)
-
-  type SMSComposer[A] = Free[SMSComposerA, A]
-
-  def retrieveTemplate(incomingEvent: OrchestratedSMSV3): SMSComposer[SMSTemplate[Id]] =
-    liftF(RetrieveTemplate(incomingEvent))
-
-  def render(incomingEvent: OrchestratedSMSV3, template: SMSTemplate[Id]): SMSComposer[RenderedSMS] =
-    liftF(Render(incomingEvent, template))
-
-  def hashString(str: String): SMSComposer[String] = {
-    liftF(HashString(str))
-  }
-
-  def buildEvent(incomingEvent: OrchestratedSMSV3, renderedSMS: RenderedSMS, eventId: String): ComposedSMSV4 =
-    ComposedSMSV4(
-      metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata, eventId),
-      internalMetadata = incomingEvent.internalMetadata,
-      recipient = incomingEvent.recipientPhoneNumber,
-      textBody = renderedSMS.textBody,
-      expireAt = incomingEvent.expireAt,
-      hashedComm = HashFactory.getHashedComm(incomingEvent)
-    )
-
-  def program(event: OrchestratedSMSV3) = {
+  def program[F[_]: FlatMap](event: OrchestratedSMSV3)(implicit composer: SMSComposer[F]): F[ComposedSMSV4] = {
     for {
-      template <- retrieveTemplate(event)
-      rendered <- render(event, template)
-      eventIdHash <- hashString(event.metadata.eventId)
-    } yield buildEvent(event, rendered, eventIdHash)
+      template <- composer.retrieveTemplate(event)
+      rendered <- composer.render(event, template)
+      eventIdHash <- composer.hashValue(event.metadata.eventId)
+      hashedComm <- composer.hashValue(event)
+    } yield
+      ComposedSMSV4(
+        metadata = MetadataV3.fromSourceMetadata("comms-composer", event.metadata, eventIdHash),
+        internalMetadata = event.internalMetadata,
+        recipient = event.recipientPhoneNumber,
+        textBody = rendered.textBody,
+        expireAt = event.expireAt,
+        hashedComm = hashedComm
+      )
   }
-
 }
