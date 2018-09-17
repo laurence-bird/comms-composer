@@ -47,7 +47,7 @@ trait Rendering {
   }
 
   private def systemVariables(clock: Clock): Map[String, Map[String, String]] = {
-    val now: ZonedDateTime = ZonedDateTime.now(clock)
+    val now = ZonedDateTime.now(clock)
     Map(
       "system" ->
         Map(

@@ -13,7 +13,8 @@ object Program {
   def apply[F[_] : FlatMap](event: OrchestratedSMSV3)(implicit rendering: Rendering[F], store: Store[F], templates: Templates[F, Templates.Sms], hash: Hash[F], time: Time[F]): F[ComposedSMSV4] = {
     for {
       template <- templates.get(event.metadata.templateManifest)
-      renderedSms <- rendering.renderSms(time, event.metadata.templateManifest, template, SMSTemplateData(event.templateData, event.customerProfile, event.recipientPhoneNumber))
+      now <- time.now
+      renderedSms <- rendering.renderSms(now, event.metadata.templateManifest, template, SMSTemplateData(event.templateData, event.customerProfile, event.recipientPhoneNumber))
       bodyUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedSms.textBody)
       eventId <- hash(EventId(event.metadata.eventId))
       hashedComm <- hash(event)

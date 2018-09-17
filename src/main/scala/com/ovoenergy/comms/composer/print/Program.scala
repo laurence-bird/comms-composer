@@ -16,8 +16,9 @@ object Program {
   def apply[F[_] : FlatMap](event: OrchestratedPrintV2)(implicit rendering: Rendering[F], store: Store[F], templates: Templates[F, Templates.Print], hash: Hash[F], time: Time[F]): F[ComposedPrintV2] = {
     for {
       template <- templates.get(event.metadata.templateManifest)
+      now <- time.now
       html <- rendering.renderPrintHtml(
-        time,
+        now,
         event.metadata.templateManifest,
         template,
         PrintTemplateData(event.templateData, event.customerProfile, event.address)
