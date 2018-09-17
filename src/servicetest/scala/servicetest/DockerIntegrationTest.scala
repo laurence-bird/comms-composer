@@ -1,170 +1,123 @@
 package servicetest
 
-import java.net.NetworkInterface
+import java.nio.file.{Files, Paths}
+import java.time.Instant
+import java.time.format.DateTimeFormatter
 import java.util.UUID
-import java.util.concurrent.Executors
 
 import cakesolutions.kafka.KafkaConsumer
-import com.github.dockerjava.core.DefaultDockerClientConfig
-import com.github.dockerjava.jaxrs.JerseyDockerCmdExecFactory
-import com.ovoenergy.comms.dockertestkit.DockerContainerExtensions
+import com.amazonaws.auth.{AWSStaticCredentialsProvider, BasicAWSCredentials}
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
+import com.github.tomakehurst.wiremock.client.WireMock
+import com.ovoenergy.comms.dockertestkit._
 import com.ovoenergy.comms.helpers.Kafka
-import com.typesafe.config.ConfigFactory
-import com.whisk.docker.impl.dockerjava.{Docker, DockerJavaExecutorFactory, DockerKitDockerJava}
-import com.whisk.docker.{ContainerLink, DockerContainer, DockerFactory, VolumeMapping}
+import com.ovoenergy.comms.model.print.OrchestratedPrintV2
+import com.ovoenergy.comms.model.{CommManifest, Customer, CustomerAddress, CustomerProfile, InternalMetadata, MetadataV3, TemplateData, TemplateManifest, Service => ServiceComm}
+import com.ovoenergy.comms.templates.util.Hash
+import com.typesafe.config.{Config, ConfigFactory}
+import com.whisk.docker.testkit.{ContainerGroup, ManagedContainers}
 import org.apache.kafka.clients.admin.{AdminClient, AdminClientConfig, NewTopic}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.StringDeserializer
-import org.mockserver.client.server.MockServerClient
 import org.scalatest._
 import org.scalatest.concurrent.{Eventually, PatienceConfiguration, ScalaFutures}
 import org.scalatest.time.{Seconds, Span}
+import servicetest.util.MockTemplates
 
-import scala.collection.JavaConverters._
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
 
 trait DockerIntegrationTest
-    extends DockerKitDockerJava
-    with ScalaFutures
+  extends ScalaFutures
     with TestSuite
     with BeforeAndAfterAll
-    with DockerContainerExtensions
-    with Eventually { self =>
+    with SchemaRegistryKit
+    with KafkaKit
+    with ZookeeperKit
+    with WiremockKit
+    with FakeS3Kit
+    with DynamoDbKit
+    with ComposerKit
+    with Eventually
+    with MockTemplates {
+  self =>
 
-  def kafkaEndpoint: String = s"$hostIp:$DefaultKafkaPort"
-  def legacyKafkaEndpoint: String = s"$hostIp:$DefaultLegacyKafkaPort"
-  def schemaRegistryEndpoint = s"http://$hostIp:$DefaultSchemaRegistryPort"
-  def composerHttpEndpoint: String = s"http://localhost:${unsafePort(ComposerHttpPort, composer)}"
 
-  implicit val config = ConfigFactory.load("servicetest.conf")
-  val TopicNames = Kafka.aiven.kafkaConfig.topics.toList.map(_._2)
+  implicit val config: Config = ConfigFactory.load("servicetest.conf")
+  val kafkaCluster = Kafka.aiven
+  val TopicNames: List[String] = kafkaCluster.kafkaConfig.topics.toList.map(_._2)
   val DynamoTableName = "comms-events"
-  val DefaultDynamoDbPort = 8000
-  val DefaultKafkaPort = 29093
-  val DefaultLegacyKafkaPort = 29094
-  val DefaultSchemaRegistryPort = 8081
-  val ComposerHttpPort = 8080
-  val mockServerClient = new MockServerClient("localhost", 1080)
 
-  override val StartContainersTimeout = 5.minutes
-  override val StopContainersTimeout = 1.minute
-
-  override implicit lazy val dockerExecutionContext: ExecutionContext = {
-    // using Math.max to prevent unexpected zero length of docker containers
-    ExecutionContext.fromExecutor(Executors.newFixedThreadPool(Math.max(1, dockerContainers.length * 4)))
-  }
-
-  override implicit val dockerFactory: DockerFactory = new DockerJavaExecutorFactory(
-    new Docker(
-      config = DefaultDockerClientConfig.createDefaultConfigBuilder().build(),
-      factory = new JerseyDockerCmdExecFactory()
-      // increase connection pool size so we can tail the logs of all containers
-        .withMaxTotalConnections(200)
-        .withMaxPerRouteConnections(40)
-    )
+  val validTemplateCommManifest: TemplateManifest = TemplateManifest(
+    Hash("composer-service-test"),
+    "0.1"
   )
 
-  lazy val hostIp = NetworkInterface.getNetworkInterfaces.asScala
-    .filter(x => x.isUp && !x.isLoopback)
-    .flatMap(_.getInterfaceAddresses.asScala)
-    .map(_.getAddress)
-    .find(_.isSiteLocalAddress)
-    .fold(throw new RuntimeException("Local ip address not found"))(_.getHostAddress)
+  val invalidTemplateCommManifest: TemplateManifest = TemplateManifest(
+    Hash("no-such-template"),
+    "9.9"
+  )
 
-  lazy val mockServers = {
-    DockerContainer("jamesdbloom/mockserver:mockserver-3.12", name = Some("mockservers"))
-      .withPorts(1080 -> Some(1080))
-      .withLogWritingAndReadyChecker("MockServer proxy started", "mockservers")
-  }
+  val pdfResponseByteArray: Array[Byte] = Files.readAllBytes(Paths.get("src/servicetest/resources/test.pdf"))
 
-  lazy val zookeeperContainer = DockerContainer("confluentinc/cp-zookeeper:3.3.1", name = Some("zookeeper"))
-    .withPorts(32182 -> Some(32182))
-    .withEnv(
-      "ZOOKEEPER_CLIENT_PORT=32182",
-      "ZOOKEEPER_TICK_TIME=2000",
-      "KAFKA_HEAP_OPTS=-Xmx256M -Xms128M"
-    )
-    .withLogWritingAndReadyChecker("binding to port", "zookeeper")
+  private final val templatesBucket = "ovo-comms-templates"
+  private final val pdfBucket = "dev-ovo-comms-pdfs"
 
-  lazy val kafkaContainer = {
-    // create each topic with 1 partition and replication factor 1
-    DockerContainer("confluentinc/cp-kafka:3.3.1", name = Some("kafka"))
-      .withPorts(DefaultKafkaPort -> Some(DefaultKafkaPort))
-      .withLinks(ContainerLink(zookeeperContainer, "zookeeper"))
-      .withEnv(
-        s"KAFKA_ZOOKEEPER_CONNECT=zookeeper:32182",
-        "KAFKA_BROKER_ID=1",
-        s"KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://$hostIp:$DefaultKafkaPort",
-        "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1"
+  val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+  val now: Instant = Instant.now()
+
+  val accountNumber: TemplateData = TemplateData.fromString("11112222")
+  val ovoId: TemplateData = TemplateData.fromString("myOvo999")
+
+
+  val orchestratedPrintEvent = OrchestratedPrintV2(
+    MetadataV3(
+      createdAt = now,
+      eventId = "event1234",
+      traceToken = "1234567890",
+      templateManifest = TemplateManifest(Hash("composer-service-test"), "0.1"),
+      commId = "1234",
+      friendlyDescription = "very friendly",
+      source = "origin",
+      canary = true,
+      sourceMetadata = None,
+      triggerSource = "marketing",
+      deliverTo = Customer("12341425")
+    ),
+    InternalMetadata("8989898989"),
+    Some(
+      CustomerProfile(
+        "Bob",
+        "Marley"
       )
-      .withLogWritingAndReadyChecker(s"""started (kafka.server.KafkaServer)""", "kafka")
-  }
+    ),
+    CustomerAddress(
+      "12 Heaven Street",
+      None,
+      "Kingstown",
+      None,
+      "12345",
+      Some("Jamaica")
+    ),
+    Map("accountNumber" -> accountNumber, "myOvoId" -> ovoId),
+    Some(now.plusSeconds(100))
+  )
 
-  lazy val schemaRegistryContainer =
-    DockerContainer("confluentinc/cp-schema-registry:3.3.1", name = Some("schema-registry"))
-      .withPorts(DefaultSchemaRegistryPort -> Some(DefaultSchemaRegistryPort))
-      .withLinks(
-        ContainerLink(zookeeperContainer, "zookeeper"),
-        ContainerLink(kafkaContainer, "kafka")
-      )
-      .withEnv(
-        "SCHEMA_REGISTRY_HOST_NAME=schema-registry",
-        "SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL=zookeeper:32182",
-        s"SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://$hostIp:$DefaultKafkaPort"
-      )
-      .withLogWritingAndReadyChecker("Server started, listening for requests", "schema-registry")
+  lazy val s3Client: AmazonS3 = AmazonS3Client.builder()
+    .withEndpointConfiguration(new EndpointConfiguration(fakeS3PublicEndpoint, "eu-west-1"))
+    .withPathStyleAccessEnabled(true)
+    .withChunkedEncodingDisabled(true)
+    .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("service-test", "dummy")))
+    .build()
 
-  lazy val composer = {
-    val envVars = List(
-      sys.env.get("AWS_ACCESS_KEY_ID").map(envVar => s"AWS_ACCESS_KEY_ID=$envVar"),
-      sys.env.get("AWS_ACCOUNT_ID").map(envVar => s"AWS_ACCOUNT_ID=$envVar"),
-      sys.env.get("AWS_SECRET_ACCESS_KEY").map(envVar => s"AWS_SECRET_ACCESS_KEY=$envVar"),
-      Some("ENV=LOCAL"),
-      Some("KAFKA_HOSTS_AIVEN=aivenKafka:29093"),
-      Some("DOCKER_COMPOSE=true"),
-      Some("SCHEMA_REGISTRY_URL=http://schema-registry:8081"),
-      Some("DOCRAPTOR_URL=http://docraptor:1080")
-    ).flatten
-
-    val awsAccountId = sys.env.getOrElse(
-      "AWS_ACCOUNT_ID",
-      sys.error("Environment variable AWS_ACCOUNT_ID must be set in order to run the integration tests"))
-    DockerContainer(s"$awsAccountId.dkr.ecr.eu-west-1.amazonaws.com/composer:0.1-SNAPSHOT", name = Some("composer"))
-      .withPorts(ComposerHttpPort -> None)
-      .withLinks(
-        ContainerLink(kafkaContainer, "aivenKafka"),
-        ContainerLink(zookeeperContainer, "aivenZookeeper"),
-        ContainerLink(schemaRegistryContainer, "schema-registry"),
-        ContainerLink(mockServers, "docraptor"),
-        ContainerLink(fakes3ssl, "ovo-comms-templates.s3.eu-west-1.amazonaws.com"),
-        ContainerLink(fakes3ssl, "dev-ovo-comms-pdfs.s3.eu-west-1.amazonaws.com")
-      )
-      .withEnv(envVars: _*)
-      .withVolumes(List(VolumeMapping(host = s"${sys.env("HOME")}/.aws", container = "/sbin/.aws"))) // share AWS creds so that credstash works
-      .withLogWritingAndReadyChecker("Composer now running", "composer") // TODO check topics/consumers in the app and output a log when properly ready
-  }
-
-  // TODO The fake s3 does not have a specific tag, so we have to go with latest
-  lazy val fakes3 = {
-    DockerContainer("lphoward/fake-s3:latest", name = Some("fakes3"))
-      .withPorts(4569 -> Some(4569))
-      .withLogWritingAndReadyChecker("WEBrick::HTTPServer#start", "fakes3")
-  }
-
-  lazy val fakes3ssl = {
-    DockerContainer("cbachich/ssl-proxy:latest", name = Some("fakes3ssl"))
-      .withPorts(443 -> Some(443))
-      .withLinks(ContainerLink(fakes3, "proxyapp"))
-      .withEnv(
-        "PORT=443",
-        "TARGET_PORT=4569"
-      )
-      .withLogWritingAndReadyChecker("Starting Proxy: 443", "fakes3ssl")
-  }
-
-  override def dockerContainers =
-    List(zookeeperContainer, kafkaContainer, schemaRegistryContainer, fakes3, fakes3ssl, mockServers, composer)
+  override val managedContainers: ManagedContainers = ContainerGroup.of(
+    zookeeperContainer,
+    kafkaContainer,
+    schemaRegistryContainer,
+    wiremockContainer,
+    fakeS3Container,
+    dynamoDbContainer,
+    composerContainer
+  )
 
   def checkCanConsumeFromKafkaTopic(topic: String, bootstrapServers: String, description: String) {
     println(s"Checking we can consume from topic $topic on $description Kafka")
@@ -173,8 +126,8 @@ trait DockerIntegrationTest
     import scala.collection.JavaConverters._
     val consumer = KafkaConsumer(
       Conf[String, String](Map("bootstrap.servers" -> bootstrapServers, "group.id" -> UUID.randomUUID().toString),
-                           new StringDeserializer,
-                           new StringDeserializer))
+        new StringDeserializer,
+        new StringDeserializer))
     consumer.assign(List(new TopicPartition(topic, 0)).asJava)
     eventually(PatienceConfiguration.Timeout(Span(20, Seconds))) {
       consumer.poll(200)
@@ -198,28 +151,49 @@ trait DockerIntegrationTest
     }
   }
 
-  abstract override def beforeAll(): Unit = {
-    super.beforeAll()
 
-    println(
-      "Starting a whole bunch of Docker containers. This could take a few minutes, but I promise it'll be worth the wait!")
-    startAllOrFail()
+  override def afterStart(): Unit = {
+    super.afterStart()
+
+    WireMock.configureFor(dockerHostIp, wiremockPublicHttpPort)
+
     createTopics(TopicNames, s"localhost:$DefaultKafkaPort")
     TopicNames.foreach(t => checkCanConsumeFromKafkaTopic(t, s"localhost:$DefaultKafkaPort", "Aiven"))
+
+    s3Client.createBucket(templatesBucket)
+    s3Client.createBucket(pdfBucket)
+    uploadTemplateToS3(validTemplateCommManifest, s3Client, templatesBucket)
+
+    uploadTemplateToS3(orchestratedPrintEvent.metadata.templateManifest, s3Client, templatesBucket)
+
+
+    createOKDocRaptorResponse()
   }
 
-  abstract override def afterAll(): Unit = {
-    stopAllQuietly()
-    super.afterAll()
+  import WireMock._
+
+  def createOKDocRaptorResponse() {
+
+    stubFor(
+      post(urlPathEqualTo("/docs"))
+        .willReturn(aResponse()
+          .withStatus(200)
+          .withBody(pdfResponseByteArray)
+        )
+    )
+
   }
 
-  def port(internalPort: Int, dockerContainer: DockerContainer): Option[Int] =
-    Await.result(dockerContainer
-                   .getPorts()
-                   .map(ports => ports.get(internalPort)),
-                 30.seconds)
+  def create400DocRaptorResponse() {
 
-  def unsafePort(internalPort: Int, dockerContainer: DockerContainer): Int =
-    port(internalPort, dockerContainer)
-      .getOrElse(throw new RuntimeException(s"The port $internalPort is not exposed"))
+    stubFor(
+      post(urlPathEqualTo("/docs"))
+        .willReturn(aResponse()
+          .withStatus(400)
+          .withBody("<error>Problemo</error>")
+        )
+    )
+
+  }
+
 }

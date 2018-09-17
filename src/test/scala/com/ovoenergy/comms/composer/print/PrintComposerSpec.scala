@@ -28,7 +28,7 @@ class PrintComposerSpec extends FlatSpec with Matchers {
           htmlBody = template.body.rawExpandedContent.replaceAllLiterally("{{amount}}", "1.23")
         )
 
-      case RenderPrintPdf(r, _) => RenderedPrintPdf("Hello".getBytes())
+      case RenderPrintPdf(r, _)                 => RenderedPrintPdf("Hello".getBytes())
       case PersistRenderedPdf(incomingEvent, r) => "PdfIdentifier"
 
       case HashString(_) => hashedString

@@ -1,18 +1,18 @@
 package servicetest.util
 
-import com.amazonaws.services.s3.AmazonS3Client
+import com.amazonaws.services.s3.{AmazonS3, AmazonS3Client}
 import com.amazonaws.services.s3.model.PutObjectResult
 import com.ovoenergy.comms.model.{CommManifest, TemplateManifest}
 import com.ovoenergy.comms.templates.extensions.CommManifestExtensions
 
 trait MockTemplates extends CommManifestExtensions {
 
-  def uploadTemplateToS3(commManifest: CommManifest, s3Client: AmazonS3Client, s3BucketName: String): PutObjectResult = {
+  def uploadTemplateToS3(commManifest: CommManifest, s3Client: AmazonS3, s3BucketName: String): PutObjectResult = {
     uploadTemplateToS3(commManifest.toTemplateManifest, s3Client, s3BucketName)
   }
 
   def uploadTemplateToS3(templateManifest: TemplateManifest,
-                         s3Client: AmazonS3Client,
+                         s3Client: AmazonS3,
                          s3BucketName: String): PutObjectResult = {
     // disable chunked encoding to work around https://github.com/jubos/fake-s3/issues/164
 

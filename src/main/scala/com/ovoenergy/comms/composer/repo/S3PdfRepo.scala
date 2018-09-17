@@ -29,7 +29,7 @@ object S3PdfRepo extends Logging {
     val result = Try(s3Client.putObject(bucketName, key, inputStream, metadata))
 
     result match {
-      case Success(_) => Right(key)
+      case Success(_)     => Right(key)
       case Failure(error) => Left(error.getMessage)
     }
 

@@ -57,7 +57,7 @@ object RenderRestApi {
   }
 
   implicit def templateDataCirceEncoder: Encoder[TemplateData] = Encoder.instance {
-    case TemplateData(Inl(value)) => Json.fromString(value)
+    case TemplateData(Inl(value))      => Json.fromString(value)
     case TemplateData(Inr(Inl(value))) => Json.fromValues(value.map(x => Json.fromString(x.value.toString)))
     case TemplateData(Inr(Inr(Inl(value: Map[String, TemplateData])))) => {
       Json.obj(value.mapValues(_.asJson).toSeq: _*)
@@ -168,15 +168,15 @@ trait RenderRestApi { logger: Logging =>
     def handleError(error: ComposerError): F[Response[F]] = {
       error.errorCode match {
         case TemplateDownloadFailed => NotFound(ErrorResponse(error.reason).asJson)
-        case MissingTemplateData => UnprocessableEntity(ErrorResponse(error.reason).asJson)
-        case _ => InternalServerError(ErrorResponse(error.reason).asJson)
+        case MissingTemplateData    => UnprocessableEntity(ErrorResponse(error.reason).asJson)
+        case _                      => InternalServerError(ErrorResponse(error.reason).asJson)
 
       }
     }
 
     renderResult match {
       case Left(err) => handleError(err)
-      case Right(r) => Ok(RenderResponse(r).asJson)
+      case Right(r)  => Ok(RenderResponse(r).asJson)
     }
   }
 }

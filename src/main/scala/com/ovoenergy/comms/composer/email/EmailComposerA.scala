@@ -9,8 +9,7 @@ sealed trait EmailComposerA[T]
 
 case class RetrieveTemplate(incomingEvent: OrchestratedEmailV4) extends EmailComposerA[EmailTemplate[Id]]
 
-case class Render(incomingEvent: OrchestratedEmailV4, template: EmailTemplate[Id])
-    extends EmailComposerA[RenderedEmail]
+case class Render(incomingEvent: OrchestratedEmailV4, template: EmailTemplate[Id]) extends EmailComposerA[RenderedEmail]
 
 case class LookupSender(template: EmailTemplate[Id]) extends EmailComposerA[EmailSender]
 

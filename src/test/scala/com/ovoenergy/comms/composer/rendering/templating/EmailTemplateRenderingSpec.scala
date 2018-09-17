@@ -197,8 +197,8 @@ class EmailTemplateRenderingSpec extends FlatSpec with Matchers with EitherValue
     val manifest = TemplateManifest(Hash("system-data-fields"), "0.1")
     val template = EmailTemplate[Id](
       sender = None,
-      subject = HandlebarsTemplate("SUBJECT {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
-                                   requiredFields),
+      subject =
+        HandlebarsTemplate("SUBJECT {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}", requiredFields),
       htmlBody = HandlebarsTemplate("HTML BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
                                     requiredFields),
       textBody = Some(

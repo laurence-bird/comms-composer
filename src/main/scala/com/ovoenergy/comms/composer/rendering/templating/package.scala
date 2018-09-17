@@ -58,13 +58,13 @@ package object templating extends Rendering {
     override def buildHandlebarsData: HandlebarsData = {
 
       val addressMap = Map(
-          "line1" -> Some(customerAddress.line1),
-          "town" -> Some(customerAddress.town),
-          "postcode" -> Some(customerAddress.postcode),
-          "line2" -> customerAddress.line2,
-          "county" -> customerAddress.county,
-          "country" -> customerAddress.country
-        ) collect { case (k, Some(v)) => (k, v) }
+        "line1" -> Some(customerAddress.line1),
+        "town" -> Some(customerAddress.town),
+        "postcode" -> Some(customerAddress.postcode),
+        "line2" -> customerAddress.line2,
+        "county" -> customerAddress.county,
+        "country" -> customerAddress.country
+      ) collect { case (k, Some(v)) => (k, v) }
 
       val customerAddressMap: Map[String, Map[String, String]] = Map("address" -> addressMap)
 

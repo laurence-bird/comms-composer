@@ -13,21 +13,23 @@ scalacOptions := Seq(
   "-Ypartial-unification"
 )
 
-// Make ScalaTest write test reports that CircleCI understands
+
 testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
-lazy val ServiceTest = config("servicetest") extend(Test)
-configs(ServiceTest)
+lazy val ServiceTest = config("servicetest") extend Test
+lazy val It = config("it") extend Test
+
+enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, DockerPlugin)
+configs(ServiceTest, It)
+inConfig(It)(Defaults.testSettings)
 inConfig(ServiceTest)(Defaults.testSettings)
 inConfig(ServiceTest)(parallelExecution in test := false)
 inConfig(ServiceTest)(parallelExecution in testOnly := false)
 (test in ServiceTest) := (test in ServiceTest).dependsOn(publishLocal in Docker).value
 
-resolvers := Resolver.withDefaultResolvers(
-  Seq(
-    Resolver.bintrayRepo("ovotech", "maven"),
-    "confluent-release" at "http://packages.confluent.io/maven/",
-    Resolver.bintrayRepo("cakesolutions", "maven")
-  )
+resolvers ++= Seq(
+  Resolver.bintrayRepo("ovotech", "maven"),
+  "confluent-release" at "http://packages.confluent.io/maven/",
+  Resolver.bintrayRepo("cakesolutions", "maven")
 )
 
 
@@ -56,6 +58,7 @@ libraryDependencies ++= Seq(
   ovoEnergy.commsTemplates,
 
   handlebars,
+  aws4s,
   s3Sdk,
   shapeless,
   okhttp,
@@ -69,24 +72,19 @@ libraryDependencies ++= Seq(
   scalacheck.toolboxDatetime    % Test,
   scalacheck.scalacheck         % Test,
   scalatest                     % Test,
-  mockserver                    % Test,
-  ovoEnergy.dockerKit           % Test,
+  wireMock                      % Test,
 
   whisk.scalaTest               % ServiceTest,
   whisk.dockerJava              % ServiceTest,
-  ovoEnergy.commsTestHelpers    % ServiceTest
+  ovoEnergy.commsTestHelpers    % ServiceTest,
+
+  commsDockerTestkit            % s"$ServiceTest,$It",
 )
 
-enablePlugins(JavaServerAppPackaging, DockerPlugin)
 commsPackagingMaxMetaspaceSize := 128
 dockerExposedPorts += 8080
 
-val scalafmtAll = taskKey[Unit]("Run scalafmt in non-interactive mode with no arguments")
-scalafmtAll := {
-  import org.scalafmt.bootstrap.ScalafmtBootstrap
-  streams.value.log.info("Running scalafmt ...")
-  ScalafmtBootstrap.main(Seq("--non-interactive"))
-  streams.value.log.info("Done")
-}
-(compile in Compile) := (compile in Compile).dependsOn(scalafmtAll).value
+scalafmtOnCompile := true
 
+buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoPackage := "com.ovoenergy.comms.composer"

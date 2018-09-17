@@ -15,12 +15,7 @@ import com.ovoenergy.comms.templates.util.Hash
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
 import shapeless.Coproduct
 
-class PrintTemplateRenderingSpec
-    extends FlatSpec
-    with Matchers
-    with EitherValues
-    with Arbitraries
-    with TestGenerators {
+class PrintTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues with Arbitraries with TestGenerators {
 
   behavior of "rendering an print"
 
@@ -146,8 +141,7 @@ class PrintTemplateRenderingSpec
   it should "render a template that references fields in the system data" in {
     val manifest = TemplateManifest(Hash("system-data-fields"), "0.1")
     val template = PrintTemplate[Id](
-      HandlebarsTemplate("HTML BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}",
-                         requiredFields))
+      HandlebarsTemplate("HTML BODY {{system.dayOfMonth}}/{{system.month}}/{{system.year}} {{amount}}", requiredFields))
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
     val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
 

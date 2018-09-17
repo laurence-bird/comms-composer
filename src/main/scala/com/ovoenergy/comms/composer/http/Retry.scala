@@ -11,7 +11,7 @@ object Retry {
     def flattenRetry: Either[A, B] = {
       retryResult match {
         case Left(Failed(attempts, finalFailure)) => Left(finalFailure)
-        case Right(Succeeded(result, attempts)) => Right(result)
+        case Right(Succeeded(result, attempts))   => Right(result)
       }
     }
   }

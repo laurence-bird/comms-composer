@@ -2,9 +2,12 @@ import sbt._
 
 object Dependencies {
 
+  lazy val aws4s = "org.aws4s" %% "aws4s" % "0.6.2"
+
+  lazy val commsDockerTestkit = "com.ovoenergy" %% "comms-docker-testkit" % "1.8.3"
   lazy val handlebars = "com.github.jknack" % "handlebars" % "4.0.6"
-  lazy val s3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57"
-  lazy val shapeless = "com.chuusai" %% "shapeless" % "2.3.2"
+  lazy val s3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % "1.11.409"
+  lazy val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
   lazy val okhttp = "com.squareup.okhttp3" % "okhttp" % "3.4.2"
 
   object scalacheck {
@@ -16,15 +19,18 @@ object Dependencies {
   lazy val scalatest = "org.scalatest" %% "scalatest" % "3.0.1"
   lazy val mockserver = "org.mock-server" % "mockserver-client-java" % "3.11"
 
+  lazy val wireMock = "com.github.tomakehurst" % "wiremock" % "2.18.0"
+
+
   object logging {
-    lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.1.7"
+    lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.2.3"
     lazy val logzIoLogbackAppender = "io.logz.logback" % "logzio-logback-appender" % "1.0.11"
     lazy val logbackGelf = "me.moocar" % "logback-gelf" % "0.2"
   }
 
   object fs2 {
-    private val fs2Version = "0.10.5"
-    private val fs2KafkaClientVersion = "0.1.9"
+    private val fs2Version = "0.10.6"
+    private val fs2KafkaClientVersion = "0.1.17"
 
     lazy val core = "co.fs2" %% "fs2-core" % fs2Version
     lazy val io = "co.fs2" %% "fs2-io" % fs2Version
@@ -33,7 +39,7 @@ object Dependencies {
   }
 
   object kafkaSerialization {
-    private val kafkaSerializationVersion = "0.3.6"
+    private val kafkaSerializationVersion = "0.3.11"
 
     lazy val core = "com.ovoenergy" %% "kafka-serialization-core" % kafkaSerializationVersion
     lazy val cats = "com.ovoenergy" %% "kafka-serialization-cats" % kafkaSerializationVersion
@@ -42,21 +48,20 @@ object Dependencies {
   }
 
   object ovoEnergy {
-    private val kafkaMessagesVersion = "1.75"
+    private val kafkaMessagesVersion = "1.76"
     private val kafkaSerialisationVersion = "3.18"
-    private val templateVersion = "0.25"
-    private val commsDockerTestkitVersion = "1.8"
+    private val templateVersion = "0.28"
+
     lazy val commsMessagesTests = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion classifier "tests"
     lazy val commsMessages = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion
     lazy val commsTemplates = "com.ovoenergy" %% "comms-templates" % templateVersion
     lazy val commsSerialisation = "com.ovoenergy" %% "comms-kafka-serialisation" % kafkaSerialisationVersion exclude ("com.typesafe.akka", "akka-stream-kafka_2.12")
     lazy val commsHelpers = "com.ovoenergy" %% "comms-kafka-helpers" % kafkaSerialisationVersion exclude ("com.typesafe.akka", "akka-stream-kafka_2.12")
     lazy val commsTestHelpers = "com.ovoenergy" %% "comms-kafka-test-helpers" % kafkaSerialisationVersion
-    lazy val dockerKit = "com.ovoenergy" %% "comms-docker-testkit" % commsDockerTestkitVersion
   }
 
   object circe {
-    private val version = "0.9.1"
+    private val version = "0.9.3"
 
     lazy val core = "io.circe" %% "circe-core" % version
     lazy val generic = "io.circe" %% "circe-generic" % version
@@ -73,7 +78,7 @@ object Dependencies {
 
   object http4s {
 
-    private val version = "0.18.0"
+    private val version = "0.18.17"
 
     lazy val core = "org.http4s" %% "http4s-core" % version
     lazy val client = "org.http4s" %% "http4s-client" % version
@@ -83,4 +88,6 @@ object Dependencies {
     lazy val circe = "org.http4s" %% "http4s-circe" % version
     lazy val dsl = "org.http4s" %% "http4s-dsl" % version
   }
+
+
 }

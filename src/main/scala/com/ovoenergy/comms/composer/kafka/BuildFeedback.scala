@@ -19,7 +19,7 @@ object BuildFeedback {
   private def extractCustomer(deliverTo: DeliverTo): Option[Customer] = {
     deliverTo match {
       case customer: Customer => Some(customer)
-      case _ => None
+      case _                  => None
     }
   }
 

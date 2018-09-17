@@ -89,8 +89,8 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
   it should "fail if the template references non-existent data" in {
     val manifest = TemplateManifest(Hash("missing-data"), "0.1")
     val template = SMSTemplate[Id](
-      textBody = HandlebarsTemplate("Hi {{profile.prefix}}. You bought a {{thing}}. The amount was £{{amount}}.",
-                                    requiredFields)
+      textBody =
+        HandlebarsTemplate("Hi {{profile.prefix}}. You bought a {{thing}}. The amount was £{{amount}}.", requiredFields)
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 

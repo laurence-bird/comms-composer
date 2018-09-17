@@ -32,7 +32,8 @@ object PrintComposer {
     liftF(RenderPrintPdf(renderedPrintHtml, templateManifest))
   }
 
-  def persistRenderedPdf(event: OrchestratedPrintV2, renderedPrintPdf: RenderedPrintPdf): PrintComposer[PdfReference] = {
+  def persistRenderedPdf(event: OrchestratedPrintV2,
+                         renderedPrintPdf: RenderedPrintPdf): PrintComposer[PdfReference] = {
     liftF(PersistRenderedPdf(event, renderedPrintPdf))
   }
 

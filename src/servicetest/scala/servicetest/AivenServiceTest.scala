@@ -24,31 +24,9 @@ class AivenServiceTest
     with Matchers
     with OptionValues
     with BeforeAndAfterAll
-    with DockerIntegrationTest
-    with MockTemplates {
+    with DockerIntegrationTest {
 
   behavior of "Composer service"
-
-  val s3Endpoint = "http://localhost:4569"
-
-  lazy val s3Client = {
-    val s3clientOptions = S3ClientOptions.builder().setPathStyleAccess(true).disableChunkedEncoding().build()
-    val s3: AmazonS3Client = new AmazonS3Client(new BasicAWSCredentials("service-test", "dummy"))
-      .withRegion(Regions.fromName(config.getString("aws.region")))
-    s3.setS3ClientOptions(s3clientOptions)
-    s3.setEndpoint(s3Endpoint)
-    s3
-  }
-
-  final private val validTemplateCommManifest = TemplateManifest(
-    Hash("composer-service-test"),
-    "0.1"
-  )
-
-  final private val invalidTemplateCommManifest = TemplateManifest(
-    Hash("no-such-template"),
-    "9.9"
-  )
 
   override def beforeAll(): Unit = {
     val templatesBucket = "ovo-comms-templates"

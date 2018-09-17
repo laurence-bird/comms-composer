@@ -116,8 +116,7 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
 
   val smsInterpreter: ~>[SMSComposerA, FailedOr] = SMSInterpreter(templateContext)
-  val smsComposer = (orchestratedSMS: OrchestratedSMSV3) =>
-    SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
+  val smsComposer = (orchestratedSMS: OrchestratedSMSV3) => SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
 
   val printInterpreter: ~>[PrintComposerA, FailedOr] = PrintInterpreter(printContext)
   val printComposer = (orchestratedPrint: OrchestratedPrintV2) =>

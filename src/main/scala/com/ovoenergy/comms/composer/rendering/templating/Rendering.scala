@@ -17,7 +17,7 @@ trait Rendering {
 
     def extractValueFromTemplateData(templateData: TemplateData): AnyRef = {
       templateData.value match {
-        case (Inl(stringValue)) => stringValue
+        case (Inl(stringValue))   => stringValue
         case (Inr(Inl(sequence))) => sequence.map(extractValueFromTemplateData).asJava
         case (Inr(Inr(Inl(map)))) =>
           map.map({ case (key, value) => key -> extractValueFromTemplateData(value) }).asJava
