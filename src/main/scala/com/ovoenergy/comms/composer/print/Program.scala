@@ -13,7 +13,7 @@ object Program {
   private def buildPrintTemplateData(event: OrchestratedPrintV2): PrintTemplateData =
     PrintTemplateData(event.templateData, event.customerProfile, event.address)
 
-  def apply[F[_] : FlatMap](event: OrchestratedPrintV2)(implicit rendering: Rendering[F], store: Store[F], templates: Templates[F, Templates.Print], hash: Hash[F], time: Time[F]) = {
+  def apply[F[_] : FlatMap](event: OrchestratedPrintV2)(implicit rendering: Rendering[F], store: Store[F], templates: Templates[F, Templates.Print], hash: Hash[F], time: Time[F]): F[ComposedPrintV2] = {
     for {
       template <- templates.get(event.metadata.templateManifest)
       html <- rendering.renderPrintHtml(
