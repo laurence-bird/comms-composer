@@ -10,27 +10,37 @@ import com.ovoenergy.comms.model.email.{ComposedEmailV4, OrchestratedEmailV4}
 import com.ovoenergy.comms.composer.rendering.templating.EmailTemplateData //TODO shorten this
 
 object Email {
-  def apply[F[_]: Monad](event: OrchestratedEmailV4)(implicit rendering: Rendering[F], store: Store[F], templates: Templates[F, Templates.Email], hash: Hash[F], time: Time[F]): F[ComposedEmailV4]= {
+  def apply[F[_]: Monad](event: OrchestratedEmailV4)(implicit rendering: Rendering[F],
+                                                     store: Store[F],
+                                                     templates: Templates[F, Templates.Email],
+                                                     hash: Hash[F],
+                                                     time: Time[F]): F[ComposedEmailV4] = {
     for {
       template <- templates.get(event.metadata.templateManifest)
-      now      <- time.now
-      renderedEmail <- rendering.renderEmail(now, event.metadata.templateManifest, template, EmailTemplateData(event.templateData, event.customerProfile, event.recipientEmailAddress))
+      now <- time.now
+      renderedEmail <- rendering.renderEmail(
+        now,
+        event.metadata.templateManifest,
+        template,
+        EmailTemplateData(event.templateData, event.customerProfile, event.recipientEmailAddress))
       bodyUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedEmail.htmlBody)
       subjectUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedEmail.subject)
-      textUri <- renderedEmail.textBody.traverse(x => store.upload(event.metadata.commId, event.metadata.traceToken, x))
+      textUri <- renderedEmail.textBody.traverse(x =>
+        store.upload(event.metadata.commId, event.metadata.traceToken, x))
       eventId <- hash(event.metadata.eventId)
       hashedComm <- hash(event)
-    } yield ComposedEmailV4(
-      metadata = MetadataV3.fromSourceMetadata("comms-composer", event.metadata, eventId),
-      internalMetadata = event.internalMetadata,
-      sender = model.Email.chooseSender(template).toString,
-      recipient = event.recipientEmailAddress,
-      subject = subjectUri.renderString,
-      htmlBody = bodyUri.renderString,
-      textBody = textUri.map(_.renderString),
-      expireAt = event.expireAt,
-      hashedComm = hashedComm
-    )
-  
+    } yield
+      ComposedEmailV4(
+        metadata = MetadataV3.fromSourceMetadata("comms-composer", event.metadata, eventId),
+        internalMetadata = event.internalMetadata,
+        sender = model.Email.chooseSender(template).toString,
+        recipient = event.recipientEmailAddress,
+        subject = subjectUri.renderString,
+        htmlBody = bodyUri.renderString,
+        textBody = textUri.map(_.renderString),
+        expireAt = event.expireAt,
+        hashedComm = hashedComm
+      )
+
   }
 }
