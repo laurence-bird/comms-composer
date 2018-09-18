@@ -10,5 +10,5 @@ package object composer {
 
   type FailedOr[A] = Either[ComposerError, A]
 
-  case class ComposerError(reason: String, errorCode: ErrorCode)
+  case class ComposerError(reason: String, errorCode: ErrorCode) extends Throwable
 }

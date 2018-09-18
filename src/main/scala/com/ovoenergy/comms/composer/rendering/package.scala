@@ -33,7 +33,7 @@ package object rendering {
     }
   }
 
-  private[rendering] object Errors {
+  object Errors {
     implicit val semigroup: Semigroup[Errors] = new Semigroup[Errors] {
       override def combine(x: Errors, y: Errors): Errors =
         Errors(x.missingKeys ++ y.missingKeys, x.exceptions ++ y.exceptions, x.errorCode)

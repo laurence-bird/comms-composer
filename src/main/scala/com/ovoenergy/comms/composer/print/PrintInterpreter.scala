@@ -5,17 +5,15 @@ import java.time.Clock
 import cats.syntax.either._
 import cats.~>
 import com.ovoenergy.comms.composer.email.HashString
-import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
-import com.ovoenergy.comms.composer.rendering.templating.{PrintTemplateData, PrintTemplateRendering}
-import com.ovoenergy.comms.composer.repo.{S3PdfRepo, S3TemplateRepo}
-import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.model.print.OrchestratedPrint
-import com.ovoenergy.comms.templates.TemplatesContext
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
 import com.ovoenergy.comms.composer.rendering.pdf.{DocRaptorClient, DocRaptorConfig, DocRaptorError}
 import com.ovoenergy.comms.composer.rendering.templating
+import com.ovoenergy.comms.composer.rendering.templating.PrintTemplateRendering
 import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
-import com.ovoenergy.comms.model
+import com.ovoenergy.comms.composer.repo.{S3PdfRepo, S3TemplateRepo}
+import com.ovoenergy.comms.composer.{ComposerError, FailedOr, Logging}
+import com.ovoenergy.comms.model._
+import com.ovoenergy.comms.templates.TemplatesContext
 import com.ovoenergy.comms.templates.util.Hash
 import okhttp3.{Request, Response}
 
