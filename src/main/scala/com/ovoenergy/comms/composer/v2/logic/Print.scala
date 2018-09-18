@@ -14,7 +14,11 @@ object Print {
   private def buildPrintTemplateData(event: OrchestratedPrintV2): PrintTemplateData =
     PrintTemplateData(event.templateData, event.customerProfile, event.address)
 
-  def apply[F[_] : FlatMap](event: OrchestratedPrintV2)(implicit rendering: Rendering[F], store: Store[F], templates: Templates[F, Templates.Print], hash: Hash[F], time: Time[F]): F[ComposedPrintV2] = {
+  def apply[F[_]: FlatMap](event: OrchestratedPrintV2)(implicit rendering: Rendering[F],
+                                                       store: Store[F],
+                                                       templates: Templates[F, Templates.Print],
+                                                       hash: Hash[F],
+                                                       time: Time[F]): F[ComposedPrintV2] = {
     for {
       template <- templates.get(event.metadata.templateManifest)
       now <- time.now
@@ -38,7 +42,12 @@ object Print {
       )
   }
 
-  def http[F[_]: FlatMap](templateManifest: TemplateManifest, data: Map[String, TemplateData])(implicit rendering: Rendering[F], store: Store[F], templates: Templates[F, Templates.Print], hash: Hash[F], time: Time[F]): F[model.Print.RenderedPdf] = {
+  def http[F[_]: FlatMap](templateManifest: TemplateManifest, data: Map[String, TemplateData])(
+      implicit rendering: Rendering[F],
+      store: Store[F],
+      templates: Templates[F, Templates.Print],
+      hash: Hash[F],
+      time: Time[F]): F[model.Print.RenderedPdf] = {
     for {
       template <- templates.get(templateManifest)
       now <- time.now
