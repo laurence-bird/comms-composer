@@ -1,20 +1,16 @@
 package com.ovoenergy.comms.composer
 package v2
 
+import fs2.{io => _, _}
+import io.circe.{Decoder, Encoder}, Decoder._
+import java.util.Base64
+import scala.util.Try
+import io.circe.Decoder._
+import org.http4s.MediaType
+
 import com.ovoenergy.comms.templates.model.EmailSender
 
 object model {
-
-  sealed trait Fragment
-  object Fragment {
-    case class EmailSubject(content: String) extends Fragment
-    case class EmailHtmBody(content: String) extends Fragment
-    case class EmailTextBody(content: String) extends Fragment
-    case class EmailSender(content: String) extends Fragment
-    case class SmsSender(content: String) extends Fragment
-    case class SmsBody(content: String) extends Fragment
-    case class PrintBody(content: Array[Byte]) extends Fragment
-  }
 
   object Email {
     def chooseSender(template: Templates.Email): EmailSender =
@@ -22,37 +18,51 @@ object model {
 
     val defaultSender = EmailSender("Ovo Energy", "no-reply@ovoenergy.com")
 
-    case class Rendered(subject: Fragment, htmlBody: Fragment, textBody: Option[Fragment])
+    case class Subject(content: String)
+    case class HtmlBody(content: String)
+    case class TextBody(content: String)
+    case class Sender(content: String)
+
+    case class Rendered(subject: Email.Subject, html: Email.HtmlBody, text: Option[Email.TextBody])
   }
 
   object Print {
-    import io.circe.{Decoder, Encoder}
-    import java.util.Base64
-    import io.circe.Decoder._
-
-    import scala.util.Try
+    case class Body(content: Array[Byte])
 
     case class RenderedHtml(htmlBody: String)
 
-    case class RenderedPdf(fragment: Fragment)
+    case class RenderedPdf(fragment: Body)
 
     object RenderedPdf {
       implicit def renderedPrintPdfCirceEncoder: Encoder[Print.RenderedPdf] =
         Encoder.encodeString.contramap[RenderedPdf] {
-          case Print.RenderedPdf(Fragment.PrintBody(body)) =>
-            Base64.getEncoder.encodeToString(body) // TODO: Sort me out, partial match
+          case pdf =>
+            Base64.getEncoder.encodeToString(pdf.fragment.content) // TODO: Sort me out, possible failure
         }
 
       implicit def renderedPrintPdfCirceDecoder: Decoder[Print.RenderedPdf] =
         decodeString
           .emapTry(base64 => Try(Base64.getDecoder.decode(base64)))
-          .map(x => Print.RenderedPdf(Fragment.PrintBody(x)))
+          .map(x => Print.RenderedPdf(Print.Body(x)))
 
     }
   }
 
   object SMS {
-    case class Rendered(textBody: Fragment)
+    case class Rendered(textBody: SMS.Body)
+    case class Sender(content: String)
+    case class Body(content: String)
   }
 
+  trait Fragment[A] {
+    def content(a: A): Stream[Pure, Byte]
+    def mediaType(a: A): MediaType
+  }
+  object Fragment {
+    // TODO proper implementations for valid fragments
+    implicit def instances[A]: Fragment[A] = new Fragment[A] {
+      def content(a: A): Stream[Pure, Byte] = ???
+      def mediaType(a: A): MediaType = ???
+    }
+  }
 }
