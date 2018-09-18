@@ -79,7 +79,7 @@ libraryDependencies ++= Seq(
 )
 
 enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, DockerPlugin)
-commsPackagingMaxMetaspaceSize := 128
+commsPackagingMaxMetaspaceSize := 256
 dockerExposedPorts += 8080
 
 scalafmtOnCompile := true
