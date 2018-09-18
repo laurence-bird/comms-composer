@@ -25,4 +25,30 @@ object model {
     case class Rendered(subject: Fragment, htmlBody: Fragment, textBody: Option[Fragment])
   }
 
+  object Print {
+    import io.circe.{Decoder, Encoder}
+    import java.util.Base64
+    import io.circe.Decoder._
+
+    import scala.util.Try
+
+    case class RenderedHtml(htmlBody: String)
+
+    case class RenderedPdf(fragment: Fragment)
+
+    object RenderedPdf {
+      implicit def renderedPrintPdfCirceEncoder: Encoder[Print.RenderedPdf] =
+        Encoder.encodeString.contramap[RenderedPdf] {
+          case Print.RenderedPdf(Fragment.PrintBody(body)) =>
+            Base64.getEncoder.encodeToString(body) // TODO: Sort me out, partial match
+        }
+
+      implicit def renderedPrintPdfCirceDecoder: Decoder[Print.RenderedPdf] =
+        decodeString
+          .emapTry(base64 => Try(Base64.getDecoder.decode(base64)))
+          .map(x => Print.RenderedPdf(Fragment.PrintBody(x)))
+
+    }
+  }
+
 }
