@@ -19,7 +19,7 @@ trait Rendering[F[_]] {
   def renderSms(time: ZonedDateTime,
                 manifest: TemplateManifest,
                 template: Templates.Sms,
-                smsTemplateData: CommTemplateData): F[RenderedSMS]
+                smsTemplateData: CommTemplateData): F[SMS.Rendered]
   def renderPrintHtml(time: ZonedDateTime,
                       manifest: TemplateManifest,
                       template: Templates.Print,

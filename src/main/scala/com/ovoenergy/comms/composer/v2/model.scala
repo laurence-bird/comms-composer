@@ -51,4 +51,8 @@ object model {
     }
   }
 
+  object SMS {
+    case class Rendered(textBody: Fragment)
+  }
+
 }
