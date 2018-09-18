@@ -2,9 +2,7 @@ package com.ovoenergy.comms.composer.rendering.templating
 
 import java.time.Clock
 
-import cats.data.Validated
 import cats.implicits._
-import cats.kernel.Monoid
 import cats.{Apply, Id}
 import com.ovoenergy.comms.composer.email.RenderedEmail
 import com.ovoenergy.comms.composer.rendering.{ErrorsOr, FailedToRender}

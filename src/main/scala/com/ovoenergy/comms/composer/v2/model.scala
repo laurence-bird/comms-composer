@@ -30,10 +30,10 @@ object model {
   }
 
   object Print {
-    case class Body(content: Array[Byte])
+    case class PdfBody(content: Array[Byte])
 
-    case class RenderedHtml(htmlBody: String)
-    case class RenderedPdf(fragment: Body)
+    case class HtmlBody(htmlBody: String)
+    case class RenderedPdf(fragment: PdfBody)
 
     object RenderedPdf {
       implicit def renderedPrintPdfCirceEncoder: Encoder[Print.RenderedPdf] =
@@ -45,7 +45,7 @@ object model {
       implicit def renderedPrintPdfCirceDecoder: Decoder[Print.RenderedPdf] =
         decodeString
           .emapTry(base64 => Try(Base64.getDecoder.decode(base64)))
-          .map(x => Print.RenderedPdf(Print.Body(x)))
+          .map(x => Print.RenderedPdf(Print.PdfBody(x)))
 
     }
   }
@@ -93,7 +93,7 @@ object model {
     implicit val emailHtmlBodyFragment: Fragment[Email.HtmlBody] =
       htmlStrings.contramap(_.content)
 
-    implicit val printBodyFragment: Fragment[Print.Body] =
+    implicit val printBodyFragment: Fragment[Print.PdfBody] =
       pdfBytes.contramap(_.content)
 
     implicit val smsSenderFragment: Fragment[SMS.Sender] =

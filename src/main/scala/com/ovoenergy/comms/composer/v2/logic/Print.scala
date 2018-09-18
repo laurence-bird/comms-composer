@@ -28,7 +28,7 @@ object Print {
         template,
         PrintTemplateData(event.templateData, event.customerProfile, event.address)
       )
-      renderedPdf <- rendering.renderPrintPdf(html, event.metadata.templateManifest)
+      renderedPdf <- rendering.renderPrintPdf(html)
       pdfUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedPdf.fragment)
       eventIdHash <- hash.apply(event.metadata.eventId)
       hashedComm <- hash.apply(event)
@@ -57,7 +57,7 @@ object Print {
         template,
         TemplateDataWrapper(data)
       )
-      renderedPdf <- rendering.renderPrintPdf(html, templateManifest)
+      renderedPdf <- rendering.renderPrintPdf(html)
     } yield renderedPdf
   }
 }
