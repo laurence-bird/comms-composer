@@ -11,7 +11,6 @@ import com.ovoenergy.comms.composer.print.{RenderedPrintHtml, RenderedPrintPdf}
 import com.ovoenergy.comms.composer.rendering.templating.CommTemplateData
 import com.ovoenergy.comms.composer.sms.RenderedSMS
 
-
 trait Rendering[F[_]] {
   def renderEmail(time: ZonedDateTime,
                   manifest: TemplateManifest,
@@ -24,6 +23,6 @@ trait Rendering[F[_]] {
   def renderPrintHtml(time: ZonedDateTime,
                       manifest: TemplateManifest,
                       template: Templates.Print,
-                      printTemplateData: CommTemplateData): F[RenderedPrintHtml]
-  def renderPrintPdf(html: RenderedPrintHtml, manifest: TemplateManifest): F[RenderedPrintPdf]
+                      printTemplateData: CommTemplateData): F[Print.RenderedHtml]
+  def renderPrintPdf(html: Print.RenderedHtml, manifest: TemplateManifest): F[Print.RenderedPdf]
 }
