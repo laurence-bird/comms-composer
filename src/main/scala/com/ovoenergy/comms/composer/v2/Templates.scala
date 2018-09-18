@@ -20,17 +20,17 @@ object Templates {
 
   def sms[F[_]](implicit F: Effect[F], templatesContext: TemplatesContext): Templates[F, Templates.Sms] =
     new Templates[F, Templates.Sms] {
-      override def get(manifest: TemplateManifest): F[Sms] = loadTemplate(manifest, _.sms)
+      def get(manifest: TemplateManifest): F[Sms] = loadTemplate(manifest, _.sms)
     }
 
   def email[F[_]](implicit F: Effect[F], templatesContext: TemplatesContext): Templates[F, Templates.Email] =
     new Templates[F, Templates.Email] {
-      override def get(manifest: TemplateManifest): F[Email] = loadTemplate(manifest, _.email)
+      def get(manifest: TemplateManifest): F[Email] = loadTemplate(manifest, _.email)
     }
 
   def print[F[_]](implicit F: Effect[F], templatesContext: TemplatesContext): Templates[F, Templates.Print] =
     new Templates[F, Templates.Print] {
-      override def get(manifest: TemplateManifest): F[Print] = loadTemplate(manifest, _.print)
+      def get(manifest: TemplateManifest): F[Print] = loadTemplate(manifest, _.print)
     }
 
   def loadTemplate[F[_], A](manifest: TemplateManifest, f: CommTemplate[Id] => Option[A])(
