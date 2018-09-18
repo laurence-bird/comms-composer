@@ -26,23 +26,28 @@ class TemplatesSpec extends FlatSpec with Matchers {
   implicit val templateContext: TemplatesContext = TemplatesContext(
     new TemplatesRetriever {
       override def getEmailTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[EmailTemplateFiles]] =
-        Some(Valid(EmailTemplateFiles(
-          TemplateFile(Email, FileFormat.Text, "Meter reading"),
-          TemplateFile(Email, FileFormat.Html, "Hello {{firstName}}!"),
-          None,
-          None
-        )))
+        Some(
+          Valid(
+            EmailTemplateFiles(
+              TemplateFile(Email, FileFormat.Text, "Meter reading"),
+              TemplateFile(Email, FileFormat.Html, "Hello {{firstName}}!"),
+              None,
+              None
+            )))
 
       override def getSMSTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[SMSTemplateFiles]] =
         Some(Valid(SMSTemplateFiles(TemplateFile(SMS, FileFormat.Text, "Hello {{firstName}}!"))))
 
       override def getPrintTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[PrintTemplateFiles]] =
-        Some(Valid(PrintTemplateFiles(
-          TemplateFile(Print, FileFormat.Html, "Hello {{firstName}}!")
-        )))
+        Some(
+          Valid(
+            PrintTemplateFiles(
+              TemplateFile(Print, FileFormat.Html, "Hello {{firstName}}!")
+            )))
     },
     new HandlebarsParsing(new PartialsRetriever {
-      override def getSharedPartial(referringFile: TemplateFile, partialName: String): Either[String, String] = Right("")
+      override def getSharedPartial(referringFile: TemplateFile, partialName: String): Either[String, String] =
+        Right("")
     }),
     CachingStrategy.noCache
   )
@@ -81,13 +86,14 @@ class TemplatesSpec extends FlatSpec with Matchers {
         None
     },
     new HandlebarsParsing(new PartialsRetriever {
-      override def getSharedPartial(referringFile: TemplateFile, partialName: String): Either[String, String] = Right("")
+      override def getSharedPartial(referringFile: TemplateFile, partialName: String): Either[String, String] =
+        Right("")
     }),
     CachingStrategy.noCache
   )
 
   it should "retrieve non existent sms template" in {
-    intercept[RuntimeException]{
+    intercept[RuntimeException] {
       Templates.sms[IO](Effect[IO], emptyTemplatesContext).get(manifest).unsafeRunSync()
     }.getMessage shouldBe "Template has no channels defined"
   }
@@ -116,7 +122,8 @@ class TemplatesSpec extends FlatSpec with Matchers {
         None
     },
     new HandlebarsParsing(new PartialsRetriever {
-      override def getSharedPartial(referringFile: TemplateFile, partialName: String): Either[String, String] = Right("")
+      override def getSharedPartial(referringFile: TemplateFile, partialName: String): Either[String, String] =
+        Right("")
     }),
     CachingStrategy.noCache
   )
