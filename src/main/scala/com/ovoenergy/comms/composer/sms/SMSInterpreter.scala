@@ -43,7 +43,10 @@ object SMSInterpreter extends Logging {
                   Clock.systemDefaultZone(),
                   event.metadata.templateManifest,
                   template,
-                  SMSTemplateData(event.templateData, event.customerProfile, event.recipientPhoneNumber)
+                  SMSTemplateData(
+                    event.templateData,
+                    event.customerProfile,
+                    event.recipientPhoneNumber)
                 )
                 .leftMap { templateErrors =>
                   failSMS(templateErrors.reason, templateErrors.errorCode)

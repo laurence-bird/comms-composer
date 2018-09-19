@@ -14,7 +14,12 @@ import com.ovoenergy.comms.composer.email.{EmailComposer, EmailComposerA, EmailI
 import com.ovoenergy.comms.composer.http.{AdminRestApi, HttpClient, HttpServerConfig, RenderRestApi}
 import com.ovoenergy.comms.composer.http.Retry.RetryConfig
 import com.ovoenergy.comms.composer.kafka.{EventProcessor, Producer}
-import com.ovoenergy.comms.composer.print.{PrintComposer, PrintComposerA, PrintInterpreter, RenderedPrintPdf}
+import com.ovoenergy.comms.composer.print.{
+  PrintComposer,
+  PrintComposerA,
+  PrintInterpreter,
+  RenderedPrintPdf
+}
 import com.ovoenergy.comms.composer.print.PrintInterpreter.PrintContext
 import com.ovoenergy.comms.composer.rendering.pdf.DocRaptorConfig
 import com.ovoenergy.comms.composer.repo.S3PdfRepo.S3Config
@@ -53,13 +58,14 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     System.setProperty("com.amazonaws.sdk.disableCertChecking", "true")
   }
 
-  implicit def consumerRecordLoggable[K, V]: Loggable[ConsumerRecord[K, V]] = new Loggable[ConsumerRecord[K, V]] {
-    override def mdcMap(a: ConsumerRecord[K, V]): Map[String, String] = Map(
-      "kafkaTopic" -> a.topic(),
-      "kafkaPartition" -> a.partition().toString,
-      "kafkaOffset" -> a.offset().toString
-    )
-  }
+  implicit def consumerRecordLoggable[K, V]: Loggable[ConsumerRecord[K, V]] =
+    new Loggable[ConsumerRecord[K, V]] {
+      override def mdcMap(a: ConsumerRecord[K, V]): Map[String, String] = Map(
+        "kafkaTopic" -> a.topic(),
+        "kafkaPartition" -> a.partition().toString,
+        "kafkaOffset" -> a.offset().toString
+      )
+    }
 
   implicit def recordLoggable = new Loggable[RecordMetadata] {
     override def mdcMap(rm: RecordMetadata): Map[String, String] = {
@@ -98,15 +104,20 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
 
   def exitOnFailure[T](either: Either[Retry.Failed, T], errorMessage: String): T = either match {
     case Left(l) => {
-      log.error(s"Failed to register $errorMessage schema. Made ${l.attemptsMade} attempts", l.finalException)
+      log.error(
+        s"Failed to register $errorMessage schema. Made ${l.attemptsMade} attempts",
+        l.finalException)
       sys.exit(1)
     }
     case Right(r) => r
   }
 
-  val composedEmailEventProducer = publisherFor[ComposedEmailV4](Kafka.aiven.composedEmail.v4, _.metadata.eventId)
-  val composedSMSEventProducer = publisherFor[ComposedSMSV4](Kafka.aiven.composedSms.v4, _.metadata.eventId)
-  val composedPrintEventProducer = publisherFor[ComposedPrintV2](Kafka.aiven.composedPrint.v2, _.metadata.eventId)
+  val composedEmailEventProducer =
+    publisherFor[ComposedEmailV4](Kafka.aiven.composedEmail.v4, _.metadata.eventId)
+  val composedSMSEventProducer =
+    publisherFor[ComposedSMSV4](Kafka.aiven.composedSms.v4, _.metadata.eventId)
+  val composedPrintEventProducer =
+    publisherFor[ComposedPrintV2](Kafka.aiven.composedPrint.v2, _.metadata.eventId)
 
   val failedEventProducer = publisherFor[FailedV3](Kafka.aiven.failed.v3, _.metadata.eventId)
   val feedbackEventProducer = publisherFor[Feedback](Kafka.aiven.feedback.v1, _.metadata.eventId)
@@ -116,7 +127,8 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
     EmailComposer.program(orchestratedEmail).foldMap(emailInterpreter)
 
   val smsInterpreter: ~>[SMSComposerA, FailedOr] = SMSInterpreter(templateContext)
-  val smsComposer = (orchestratedSMS: OrchestratedSMSV3) => SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
+  val smsComposer = (orchestratedSMS: OrchestratedSMSV3) =>
+    SMSComposer.program(orchestratedSMS).foldMap(smsInterpreter)
 
   val printInterpreter: ~>[PrintComposerA, FailedOr] = PrintInterpreter(printContext)
   val printComposer = (orchestratedPrint: OrchestratedPrintV2) =>
@@ -149,7 +161,10 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
       .map { ssl =>
         Map(
           CommonClientConfigs.SECURITY_PROTOCOL_CONFIG -> "SSL",
-          SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG -> Paths.get(ssl.keystore.location).toAbsolutePath.toString,
+          SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG -> Paths
+            .get(ssl.keystore.location)
+            .toAbsolutePath
+            .toString,
           SslConfigs.SSL_KEYSTORE_TYPE_CONFIG -> "PKCS12",
           SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG -> ssl.keystore.password,
           SslConfigs.SSL_KEY_PASSWORD_CONFIG -> ssl.keyPassword,
@@ -186,7 +201,10 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
   def processEvent[F[_], T: SchemaFor: ToRecord: FromRecord: ClassTag, A](
       f: Record[T] => F[A],
       topic: Topic[T],
-      settings: ConsumerSettings)(implicit F: Effect[F], config: Config, ec: ExecutionContext): fs2.Stream[F, A] = {
+      settings: ConsumerSettings)(
+      implicit F: Effect[F],
+      config: Config,
+      ec: ExecutionContext): fs2.Stream[F, A] = {
 
     val valueDeserializer = topic.deserializer.right.get
 
@@ -219,13 +237,21 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
       feedbackEventProducer,
       printComposer).andThen(_.void)
 
-  override def stream(args: List[String], requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] = {
+  override def stream(
+      args: List[String],
+      requestShutdown: IO[Unit]): Stream[IO, StreamApp.ExitCode] = {
 
     val emailStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedEmailV4, Unit](emailProcessor, aivenCluster.orchestratedEmail.v4, consumerSettings)
+      processEvent[IO, OrchestratedEmailV4, Unit](
+        emailProcessor,
+        aivenCluster.orchestratedEmail.v4,
+        consumerSettings)
 
     val smsStream: Stream[IO, Unit] =
-      processEvent[IO, OrchestratedSMSV3, Unit](smsProcessor, aivenCluster.orchestratedSMS.v3, consumerSettings)
+      processEvent[IO, OrchestratedSMSV3, Unit](
+        smsProcessor,
+        aivenCluster.orchestratedSMS.v3,
+        consumerSettings)
 
     val printStream: Stream[IO, Unit] =
       processEvent[IO, OrchestratedPrintV2, Unit](
@@ -234,7 +260,9 @@ object Main extends StreamApp[IO] with AdminRestApi with Logging with RenderRest
         printConsumerSettings)
 
     val httpServerStream =
-      Stream.bracket[IO, Server[IO], Server[IO]](httpServer)(server => Stream.emit(server), server => server.shutdown)
+      Stream.bracket[IO, Server[IO], Server[IO]](httpServer)(
+        server => Stream.emit(server),
+        server => server.shutdown)
 
     httpServerStream.flatMap { server =>
       emailStream

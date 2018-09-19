@@ -58,7 +58,8 @@ object RenderRestApi {
 
   implicit def templateDataCirceEncoder: Encoder[TemplateData] = Encoder.instance {
     case TemplateData(Inl(value)) => Json.fromString(value)
-    case TemplateData(Inr(Inl(value))) => Json.fromValues(value.map(x => Json.fromString(x.value.toString)))
+    case TemplateData(Inr(Inl(value))) =>
+      Json.fromValues(value.map(x => Json.fromString(x.value.toString)))
     case TemplateData(Inr(Inr(Inl(value: Map[String, TemplateData])))) => {
       Json.obj(value.mapValues(_.asJson).toSeq: _*)
     }
@@ -75,7 +76,8 @@ object RenderRestApi {
   implicit def renderResponseDecoder: Decoder[RenderResponse] = deriveDecoder[RenderResponse]
 
   implicit def renderedPrintPdfCirceEncoder: Encoder[RenderedPrintPdf] =
-    Encoder.encodeString.contramap[RenderedPrintPdf](x => Base64.getEncoder.encodeToString(x.pdfBody))
+    Encoder.encodeString.contramap[RenderedPrintPdf](x =>
+      Base64.getEncoder.encodeToString(x.pdfBody))
 
   object CommNamePath {
     def unapply(str: String): Option[CommName] = {
@@ -117,7 +119,8 @@ object RenderRestApi {
 trait RenderRestApi { logger: Logging =>
 
   def renderService[F[_]: Effect](
-      renderPrint: (TemplateManifest, Map[String, TemplateData]) => F[FailedOr[RenderedPrintPdf]]): HttpService[F] = {
+      renderPrint: (TemplateManifest, Map[String, TemplateData]) => F[FailedOr[RenderedPrintPdf]])
+    : HttpService[F] = {
 
     val dsl = Http4sDsl[F]
     import dsl._
@@ -138,7 +141,8 @@ trait RenderRestApi { logger: Logging =>
             handleRenderRequest(r, TemplateManifest(Hash(commName.value), commVersion.value))
         }
       }
-      case req @ POST -> Root / "render" / TemplateIdPath(templateId) / TemplateVersionPath(templateVersion) / "print" => {
+      case req @ POST -> Root / "render" / TemplateIdPath(templateId) / TemplateVersionPath(
+            templateVersion) / "print" => {
 
         deserialiseRequest[F](req).flatMap {
           case Left(err) => BadRequest(err)
@@ -160,7 +164,8 @@ trait RenderRestApi { logger: Logging =>
         }
       }
 
-  private def buildApiResponse[F[_]: Effect](renderResult: FailedOr[RenderedPrintPdf]): F[Response[F]] = {
+  private def buildApiResponse[F[_]: Effect](
+      renderResult: FailedOr[RenderedPrintPdf]): F[Response[F]] = {
 
     val dsl = Http4sDsl[F]
     import dsl._

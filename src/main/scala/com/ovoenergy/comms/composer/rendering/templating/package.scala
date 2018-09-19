@@ -29,7 +29,8 @@ package object templating extends Rendering {
         }
         .getOrElse(Map.empty[String, Map[String, String]])
 
-      val customerData: Map[String, Map[String, String]] = Monoid.combine(emailAddressMap, customerProfileMap)
+      val customerData: Map[String, Map[String, String]] =
+        Monoid.combine(emailAddressMap, customerProfileMap)
 
       HandlebarsData(templateData, customerData)
     }
@@ -77,7 +78,8 @@ package object templating extends Rendering {
         }
         .getOrElse(Map.empty[String, Map[String, String]])
 
-      val customerData: Map[String, Map[String, String]] = Monoid.combine(customerAddressMap, customerProfileMap)
+      val customerData: Map[String, Map[String, String]] =
+        Monoid.combine(customerAddressMap, customerProfileMap)
 
       HandlebarsData(templateData, customerData)
     }

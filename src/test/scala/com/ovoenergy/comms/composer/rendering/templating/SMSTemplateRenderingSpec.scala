@@ -35,7 +35,8 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
 
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderSMS(manifest, template, SMSTemplateData(data, Some(profile), phoneNumber)).right.value
+    val result =
+      renderSMS(manifest, template, SMSTemplateData(data, Some(profile), phoneNumber)).right.value
     result.textBody should be("You paid £1.23")
   }
 
@@ -61,7 +62,8 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderSMS(manifest, template, SMSTemplateData(data, Some(profile), phoneNumber)).right.value
+    val result =
+      renderSMS(manifest, template, SMSTemplateData(data, Some(profile), phoneNumber)).right.value
     result.textBody should be("TEXT BODY Joe 1.23")
   }
 
@@ -72,7 +74,8 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val renderingErrors = renderSMS(manifest, template, SMSTemplateData(data, None, phoneNumber)).left.value
+    val renderingErrors =
+      renderSMS(manifest, template, SMSTemplateData(data, None, phoneNumber)).left.value
     renderingErrors.reason should include("profile.firstName")
   }
 
@@ -83,19 +86,22 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val result = renderSMS(manifest, template, SMSTemplateData(data, Some(profile), phoneNumber)).right.value
+    val result =
+      renderSMS(manifest, template, SMSTemplateData(data, Some(profile), phoneNumber)).right.value
     result.textBody should be("TEXT BODY +447123123456")
   }
 
   it should "fail if the template references non-existent data" in {
     val manifest = TemplateManifest(Hash("missing-data"), "0.1")
     val template = SMSTemplate[Id](
-      textBody =
-        HandlebarsTemplate("Hi {{profile.prefix}}. You bought a {{thing}}. The amount was £{{amount}}.", requiredFields)
+      textBody = HandlebarsTemplate(
+        "Hi {{profile.prefix}}. You bought a {{thing}}. The amount was £{{amount}}.",
+        requiredFields)
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
 
-    val renderingErrors = renderSMS(manifest, template, SMSTemplateData(data, Some(profile), phoneNumber)).left.value
+    val renderingErrors =
+      renderSMS(manifest, template, SMSTemplateData(data, Some(profile), phoneNumber)).left.value
     renderingErrors.reason should include("profile.prefix")
     renderingErrors.reason should include("thing")
   }
@@ -108,7 +114,9 @@ class SMSTemplateRenderingSpec extends FlatSpec with Matchers with EitherValues 
         requiredFields)
     )
     val data = Map("amount" -> TemplateData(Coproduct[TemplateData.TD]("1.23")))
-    val clock = Clock.fixed(OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant, ZoneId.of("Europe/London"))
+    val clock = Clock.fixed(
+      OffsetDateTime.parse("2015-12-31T01:23:00Z").toInstant,
+      ZoneId.of("Europe/London"))
 
     val result =
       renderSMS(manifest, template, SMSTemplateData(data, Some(profile), phoneNumber), clock).right.value

@@ -67,6 +67,12 @@ class HttpServiceTest
     createOKDocRaptorResponse()
   }
 
+  override def afterAll(): Unit = {
+    mockServerClient.close()
+    s3Client.shutdown()
+    super.afterAll()
+  }
+
   behavior of "Composer HTTP service"
 
   it should "respond OK to /admin/health" in newHttpClient { client =>

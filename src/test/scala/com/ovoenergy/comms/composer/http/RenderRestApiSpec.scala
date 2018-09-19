@@ -97,8 +97,12 @@ class RenderRestApiSpec extends FlatSpec with Matchers {
 
     val errorsAndExpectedResponses = List(
       (ComposerError("Template download failed", TemplateDownloadFailed), Status.NotFound),
-      (ComposerError("Missing fields from template data: yo, lo", MissingTemplateData), Status.UnprocessableEntity),
-      (ComposerError("Missing fields from template data: yo, lo", CompositionError), Status.InternalServerError)
+      (
+        ComposerError("Missing fields from template data: yo, lo", MissingTemplateData),
+        Status.UnprocessableEntity),
+      (
+        ComposerError("Missing fields from template data: yo, lo", CompositionError),
+        Status.InternalServerError)
     )
 
     val renderRequest = RenderRequest(

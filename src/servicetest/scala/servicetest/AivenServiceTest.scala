@@ -58,6 +58,12 @@ class AivenServiceTest
     uploadTemplateToS3(validTemplateCommManifest, s3Client, templatesBucket)
   }
 
+  override def afterAll(): Unit = {
+    mockServerClient.close()
+    s3Client.shutdown()
+    super.afterAll()
+  }
+
   it should "compose an email" in {
     withThrowawayConsumerFor(Kafka.aiven.composedEmail.v4, Kafka.aiven.failed.v3) {
       (composedConsumer, failedConsumer) =>

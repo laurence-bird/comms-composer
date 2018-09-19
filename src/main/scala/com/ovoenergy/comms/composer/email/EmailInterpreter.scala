@@ -41,9 +41,13 @@ object EmailInterpreter extends Logging {
                   Clock.systemDefaultZone(),
                   event.metadata.templateManifest,
                   template,
-                  EmailTemplateData(event.templateData, event.customerProfile, event.recipientEmailAddress)
+                  EmailTemplateData(
+                    event.templateData,
+                    event.customerProfile,
+                    event.recipientEmailAddress)
                 )
-                .leftMap(templateErrors => failEmail(templateErrors.reason, templateErrors.errorCode))
+                .leftMap(templateErrors =>
+                  failEmail(templateErrors.reason, templateErrors.errorCode))
               result.fold(
                 e => warn(event)(s"Failed to render Email: ${e.reason}"),
                 _ => info(event)("Rendered Email successfully"))

@@ -25,7 +25,8 @@ class HashFactorySpec extends FlatSpec with Matchers {
       sourceMetadata = None,
       triggerSource = "Laurence"
     ),
-    address = CustomerAddress("line1", Some("line2"), "London", Some("Middlesex"), "HA9 8PH", Some("UK")),
+    address =
+      CustomerAddress("line1", Some("line2"), "London", Some("Middlesex"), "HA9 8PH", Some("UK")),
     customerProfile = Some(CustomerProfile("Joe", "Bloggs")),
     templateData = Map.empty,
     internalMetadata = InternalMetadata("HI"),

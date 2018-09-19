@@ -15,7 +15,11 @@ class AdminRestApiSpec extends FlatSpec with Matchers with AdminRestApi {
 
   "admin/health" should "return HTTP 200 when the service is healthy" in {
     val response =
-      adminService[IO].run(Request(GET, Uri.unsafeFromString("/admin/health"))).value.unsafeRunSync().orNull
+      adminService[IO]
+        .run(Request(GET, Uri.unsafeFromString("/admin/health")))
+        .value
+        .unsafeRunSync()
+        .orNull
     response.status shouldBe Ok
   }
 

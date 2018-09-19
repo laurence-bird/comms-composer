@@ -24,12 +24,14 @@ class EmailComposerSpec extends FlatSpec with Matchers {
         EmailTemplate[Id](
           sender = None,
           subject = HandlebarsTemplate("Hello {{firstName}}", requiredFields),
-          htmlBody = HandlebarsTemplate("<h2>Thanks for your payment of £{{amount}}</h2>", requiredFields),
+          htmlBody =
+            HandlebarsTemplate("<h2>Thanks for your payment of £{{amount}}</h2>", requiredFields),
           textBody = None
         )
       case Render(_, template) =>
         RenderedEmail(
-          subject = template.subject.rawExpandedContent.replaceAllLiterally("{{firstName}}", "Chris"),
+          subject =
+            template.subject.rawExpandedContent.replaceAllLiterally("{{firstName}}", "Chris"),
           htmlBody = template.htmlBody.rawExpandedContent.replaceAllLiterally("{{amount}}", "1.23"),
           textBody = None
         )

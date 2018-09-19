@@ -3,7 +3,11 @@ package com.ovoenergy.comms.composer.print
 import cats.Id
 import cats.free.Free
 import cats.free.Free.liftF
-import com.ovoenergy.comms.composer.rendering.templating.{CommTemplateData, PrintTemplateData, TemplateDataWrapper}
+import com.ovoenergy.comms.composer.rendering.templating.{
+  CommTemplateData,
+  PrintTemplateData,
+  TemplateDataWrapper
+}
 import com.ovoenergy.comms.composer.rendering.{HashFactory, PrintHashData}
 import com.ovoenergy.comms.model._
 import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
@@ -12,7 +16,11 @@ import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplat
 object PrintComposer {
   import scala.language.implicitConversions
   implicit def printHashData(print: OrchestratedPrintV2) =
-    new PrintHashData(print.customerProfile, print.address, print.templateData, print.metadata.templateManifest)
+    new PrintHashData(
+      print.customerProfile,
+      print.address,
+      print.templateData,
+      print.metadata.templateManifest)
 
   type PrintComposer[A] = Free[PrintComposerA, A]
   type PdfReference = String
@@ -44,7 +52,10 @@ object PrintComposer {
     liftF(HashString(str))
   }
 
-  def buildEvent(incomingEvent: OrchestratedPrintV2, pdfIdentifier: String, eventId: String): ComposedPrintV2 = {
+  def buildEvent(
+      incomingEvent: OrchestratedPrintV2,
+      pdfIdentifier: String,
+      eventId: String): ComposedPrintV2 = {
     ComposedPrintV2(
       metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata, eventId),
       internalMetadata = incomingEvent.internalMetadata,
@@ -60,7 +71,10 @@ object PrintComposer {
   def program(event: OrchestratedPrintV2): Free[PrintComposerA, ComposedPrintV2] = {
     for {
       template <- retrieveTemplate(event.metadata.templateManifest)
-      renderedPrintHtml <- renderPrintHtml(buildPrintTemplateData(event), template, event.metadata.templateManifest)
+      renderedPrintHtml <- renderPrintHtml(
+        buildPrintTemplateData(event),
+        template,
+        event.metadata.templateManifest)
       renderedPrintPdf <- renderPrintPdf(renderedPrintHtml, event.metadata.templateManifest)
       pdfIdentifier <- persistRenderedPdf(event, renderedPrintPdf)
       eventIdHash <- hashString(event.metadata.eventId)

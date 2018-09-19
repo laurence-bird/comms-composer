@@ -43,7 +43,8 @@ object S3PdfRepo extends Logging {
     val itt = incomingEvent.internalMetadata.internalTraceToken
 
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val dateOfCreation = LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault()).format(dateFormatter)
+    val dateOfCreation =
+      LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault()).format(dateFormatter)
 
     s"$templateId/$dateOfCreation/${createdAt.toEpochMilli}-$tt-$itt.pdf"
   }

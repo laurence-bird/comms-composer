@@ -107,11 +107,13 @@ object DocRaptorClient extends Logging {
     val onFailure = (error: DocRaptorError) =>
       log.warn(s"Request to docraptor failed with response: ${error.errorDetails}")
 
-    val result = Retry.retry[DocRaptorError, RenderedPrintPdf](retryConfig, onFailure, _.shouldRetry) {
-      makeRequest.toEither
-        .leftMap((e: Throwable) => UnknownError(s"Call to Docraptor failed with error: ${e.getMessage}"))
-        .flatMap(handleApiResponse)
-    }
+    val result =
+      Retry.retry[DocRaptorError, RenderedPrintPdf](retryConfig, onFailure, _.shouldRetry) {
+        makeRequest.toEither
+          .leftMap((e: Throwable) =>
+            UnknownError(s"Call to Docraptor failed with error: ${e.getMessage}"))
+          .flatMap(handleApiResponse)
+      }
 
     result.flattenRetry
   }

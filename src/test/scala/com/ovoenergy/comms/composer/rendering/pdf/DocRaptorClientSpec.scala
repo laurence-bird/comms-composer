@@ -15,9 +15,14 @@ import scala.util.{Success, Try}
 class DocRaptorClientSpec extends FlatSpec with Matchers with EitherValues with AppendedClues {
 
   val docRaptorConfig =
-    DocRaptorConfig("yolo", "http://www.laurencelikestesting.com", true, Retry.RetryConfig(1, Retry.retryImmediately))
+    DocRaptorConfig(
+      "yolo",
+      "http://www.laurencelikestesting.com",
+      true,
+      Retry.RetryConfig(1, Retry.retryImmediately))
   val retryConfig = RetryConfig(1, Retry.retryImmediately)
-  val renderedPrintHtml = RenderedPrintHtml("<html><h>Here is a template</h><body>Laurence says Hi</body></html>")
+  val renderedPrintHtml = RenderedPrintHtml(
+    "<html><h>Here is a template</h><body>Laurence says Hi</body></html>")
 
   it should "Return a RenderedPrintHtml for a successful response from DocRaptor" in {
     val response = "My cool pdf body".getBytes("UTF-8")
@@ -109,11 +114,14 @@ class DocRaptorClientSpec extends FlatSpec with Matchers with EitherValues with 
 
       Success(response)
     }
-    val printContext = PrintContext(docRaptorConfig, null, retryConfig, null, httpClientWithJsonAssertion)
+    val printContext =
+      PrintContext(docRaptorConfig, null, retryConfig, null, httpClientWithJsonAssertion)
     DocRaptorClient.renderPdf(printContext, renderedPrintHtml)
   }
 
-  def httpClientWithResponse(statusCode: Int, bodyContent: Array[Byte]): (Request) => Try[Response] =
+  def httpClientWithResponse(
+      statusCode: Int,
+      bodyContent: Array[Byte]): (Request) => Try[Response] =
     (req: Request) => {
       val response = new Response.Builder()
         .protocol(Protocol.HTTP_1_1)

@@ -74,7 +74,8 @@ class EventProcessorSpec extends FlatSpec with Matchers with Arbitraries with Te
     val successfulFailedProducer = successfulProducer[FailedV3]
     val successfulFeedbackProducer = successfulProducer[Feedback]
 
-    val failingProcessEvent = (input: InputEvent) => Left(ComposerError(generate[String], generate[ErrorCode]))
+    val failingProcessEvent =
+      (input: InputEvent) => Left(ComposerError(generate[String], generate[ErrorCode]))
     val eventProcessor: Record[InputEvent] => IO[Seq[RecordMetadata]] =
       EventProcessor[IO, InputEvent, OutputEvent](
         successfulOutputProducer.function,
