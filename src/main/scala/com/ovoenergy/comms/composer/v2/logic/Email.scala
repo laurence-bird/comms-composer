@@ -23,10 +23,9 @@ object Email {
         event.metadata.templateManifest,
         template,
         EmailTemplateData(event.templateData, event.customerProfile, event.recipientEmailAddress))
-      bodyUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedEmail.htmlBody)
+      bodyUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedEmail.html)
       subjectUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedEmail.subject)
-      textUri <- renderedEmail.textBody.traverse(x =>
-        store.upload(event.metadata.commId, event.metadata.traceToken, x))
+      textUri <- renderedEmail.text.traverse(x => store.upload(event.metadata.commId, event.metadata.traceToken, x))
       eventId <- hash(event.metadata.eventId)
       hashedComm <- hash(event)
     } yield
