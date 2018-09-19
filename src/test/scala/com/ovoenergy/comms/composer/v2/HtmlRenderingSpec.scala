@@ -5,57 +5,101 @@ import java.time.ZonedDateTime
 
 import cats.data.Validated
 import cats.data.Validated.Valid
-import com.ovoenergy.comms.composer.rendering
 import com.ovoenergy.comms.composer.rendering.templating.EmailTemplateData
 import com.ovoenergy.comms.model.{Arbitraries, CustomerProfile, TemplateData}
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{EitherValues, FlatSpec, Matchers}
+import org.scalatest.{FlatSpec, Matchers, OptionValues}
 
-class HtmlRenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGenerators with EitherValues{
+class HtmlRenderingSpec extends FlatSpec with Matchers with Arbitraries with OptionValues {
 
   behavior of "HtmlRendering"
 
   val requiredTemplateData = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
-  implicit val arbEmailTemplateData = Arbitrary{
+  implicit val arbEmailTemplateData = Arbitrary {
     for {
       td <- Arbitrary.arbitrary[Map[String, TemplateData]]
       pf <- Gen.option(Arbitrary.arbitrary[CustomerProfile])
-      r  <- Gen.alphaNumStr
+      r <- Gen.alphaNumStr
     } yield EmailTemplateData(td, pf, r)
   }
 
-  it should "generate the correct handlebarsContext for a given template" in {
+  it should "generate the correct handlebarsContext for a given email template" in {
     var contextInput: Map[String, AnyRef] = Map.empty
     var contentInput: String = ""
     var fileNameInput: String = ""
 
-    val td = generate[EmailTemplateData]
-    val fileName = generate[String]
+    val balanceMap = Map("total" -> "50", "currency" -> "GBP")
+    val td = Map("balance" -> TemplateData.fromMap(balanceMap.mapValues(TemplateData.fromString)))
+    val emailTemplateData = EmailTemplateData(td, Some(CustomerProfile("Mr", "T")), "treatyomotherright@gmail.com")
+    val fileName = "some-file"
 
     val handlebars = new HandlebarsWrapped {
-      override def compile(fileName: String, templateRawContent: String, context: Map[String, AnyRef]): Validated[rendering.Errors, String] = {
-        contextInput  = context
-        contentInput  = templateRawContent
+      override def compile(fileName: String,
+                           templateRawContent: String,
+                           context: Map[String, AnyRef]): Validated[rendering.Errors, String] = {
+        contextInput = context
+        contentInput = templateRawContent
         fileNameInput = fileName
 
         Valid("hi")
       }
     }
-
-    val htmlRendering = HtmlRendering.apply(handlebars)
+    val htmlRendering = HandlebarsRendering.apply(handlebars)
 
     val now = ZonedDateTime.now()
     val ht = HandlebarsTemplate("hi", requiredTemplateData)
 
-    val result = htmlRendering.render(ht, now, td, fileName).toEither.right.value
-
-    contentInput  shouldBe ht.rawExpandedContent
+    val result = htmlRendering.render(ht, now, emailTemplateData, fileName)
+    result shouldBe 'valid
+    contentInput shouldBe ht.rawExpandedContent
     fileNameInput shouldBe fileName
-    td.templateData.toList.foreach{ td: (String, TemplateData) =>
-      contextInput.get(td._1) shouldBe 'defined
-    }
+    contextInput.get("balance").value.asInstanceOf[Map[String, String]] shouldBe balanceMap
+    contextInput.get("system").value.asInstanceOf[Map[String, String]] shouldBe Map(
+      "year" -> now.getYear.toString,
+      "month" -> now.getMonth.getValue.toString,
+      "dayOfMonth" -> now.getDayOfMonth.toString)
+    contextInput.get("profile").value.asInstanceOf[Map[String, String]] shouldBe Map(
+      "firstName" -> emailTemplateData.customerProfile.value.firstName,
+      "lastName" -> emailTemplateData.customerProfile.value.lastName)
   }
 
+  it should "Ensure if template field name clashes occur, templateData takes precedence over system, and profile variables" in {
+    var contextInput: Map[String, AnyRef] = Map.empty
+    var contentInput: String = ""
+    var fileNameInput: String = ""
+    val now = ZonedDateTime.now()
+
+    val profileTdMap = Map("firstName" -> "Mr", "lastName" -> "T")
+    val systemTdMap = Map("year" -> "1990", "month" -> "9", "dayOfMonth" -> "08")
+    val td = Map(
+      "profile" -> TemplateData.fromMap(profileTdMap.mapValues(TemplateData.fromString)),
+      "system" -> TemplateData.fromMap(systemTdMap.mapValues(TemplateData.fromString))
+    )
+    val emailTemplateData = EmailTemplateData(td, Some(CustomerProfile("Mr", "T")), "treatyomotherright@gmail.com")
+    val fileName = "some-file"
+
+    val handlebars = new HandlebarsWrapped {
+      override def compile(fileName: String,
+                           templateRawContent: String,
+                           context: Map[String, AnyRef]): Validated[rendering.Errors, String] = {
+        contextInput = context
+        contentInput = templateRawContent
+        fileNameInput = fileName
+
+        Valid("hi")
+      }
+    }
+    val htmlRendering = HandlebarsRendering.apply(handlebars)
+
+    val ht = HandlebarsTemplate("hi", requiredTemplateData)
+
+    val result = htmlRendering.render(ht, now, emailTemplateData, fileName)
+    result shouldBe 'valid
+    contentInput shouldBe ht.rawExpandedContent
+    fileNameInput shouldBe fileName
+    contextInput.get("system").value.asInstanceOf[Map[String, String]] shouldBe systemTdMap
+    contextInput.get("profile").value.asInstanceOf[Map[String, String]] shouldBe profileTdMap
+  }
 }

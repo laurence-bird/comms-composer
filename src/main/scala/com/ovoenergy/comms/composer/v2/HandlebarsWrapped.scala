@@ -17,10 +17,12 @@ trait HandlebarsWrapped {
   def compile(fileName: String, templateRawContent: String, context: Map[String, AnyRef]): Validated[Errors, String]
 }
 
-object HandlebarsWrapped{
+object HandlebarsWrapped {
 
-  def apply: HandlebarsWrapped = new HandlebarsWrapped{
-    override def compile(fileName: String, templateRawContent: String, context: Map[String, AnyRef]): Validated[Errors, String] = {
+  def apply: HandlebarsWrapped = new HandlebarsWrapped {
+    override def compile(fileName: String,
+                         templateRawContent: String,
+                         context: Map[String, AnyRef]): Validated[Errors, String] = {
       val missingKeys = mutable.Set.empty[String]
 
       val helperRegistry = {
