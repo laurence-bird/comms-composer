@@ -38,7 +38,7 @@ trait DockerIntegrationTest
   def composerHttpEndpoint: String = s"http://localhost:${unsafePort(ComposerHttpPort, composer)}"
 
   implicit val config = ConfigFactory.load("servicetest.conf")
-  val TopicNames = Kafka.aiven.kafkaConfig.topics.toList.map(_._2)
+  val TopicNames = List(Kafka.aiven.composedEmail.v4, Kafka.aiven.composedSms.v4, Kafka.aiven.failed.v3, Kafka.aiven.composedPrint.v2).map(_.name)
   val DynamoTableName = "comms-events"
   val DefaultDynamoDbPort = 8000
   val DefaultKafkaPort = 29093
@@ -166,22 +166,6 @@ trait DockerIntegrationTest
   override def dockerContainers =
     List(zookeeperContainer, kafkaContainer, schemaRegistryContainer, fakes3, fakes3ssl, mockServers, composer)
 
-  def checkCanConsumeFromKafkaTopic(topic: String, bootstrapServers: String, description: String) {
-    println(s"Checking we can consume from topic $topic on $description Kafka")
-    import cakesolutions.kafka.KafkaConsumer._
-
-    import scala.collection.JavaConverters._
-    val consumer = KafkaConsumer(
-      Conf[String, String](Map("bootstrap.servers" -> bootstrapServers, "group.id" -> UUID.randomUUID().toString),
-                           new StringDeserializer,
-                           new StringDeserializer))
-    consumer.assign(List(new TopicPartition(topic, 0)).asJava)
-    eventually(PatienceConfiguration.Timeout(Span(20, Seconds))) {
-      consumer.poll(200)
-    }
-    println("Yes we can!")
-  }
-
   def createTopics(topics: Iterable[String], bootstrapServers: String) {
     println(s"Creating kafka topics")
     import scala.collection.JavaConverters._
@@ -205,7 +189,6 @@ trait DockerIntegrationTest
       "Starting a whole bunch of Docker containers. This could take a few minutes, but I promise it'll be worth the wait!")
     startAllOrFail()
     createTopics(TopicNames, s"localhost:$DefaultKafkaPort")
-    TopicNames.foreach(t => checkCanConsumeFromKafkaTopic(t, s"localhost:$DefaultKafkaPort", "Aiven"))
   }
 
   abstract override def afterAll(): Unit = {
