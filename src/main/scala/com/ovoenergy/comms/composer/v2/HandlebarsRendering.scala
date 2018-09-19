@@ -10,17 +10,15 @@ import com.ovoenergy.comms.model.TemplateData
 import com.ovoenergy.comms.templates.model.HandlebarsTemplate
 import shapeless.{Inl, Inr}
 
-import scala.collection.JavaConverters._
-
-trait HtmlRendering {
+trait HandlebarsRendering {
   def render(template: HandlebarsTemplate,
              time: ZonedDateTime,
              templateData: CommTemplateData,
              fileName: String): Validated[Errors, String]
 }
 
-object HtmlRendering {
-  def apply(handlebars: HandlebarsWrapped): HtmlRendering = new HtmlRendering {
+object HandlebarsRendering {
+  def apply(handlebars: HandlebarsWrapped): HandlebarsRendering = new HandlebarsRendering {
     override def render(template: HandlebarsTemplate,
                         time: ZonedDateTime,
                         commTemplateData: CommTemplateData,
@@ -37,16 +35,13 @@ object HtmlRendering {
     def extractValueFromTemplateData(templateData: TemplateData): AnyRef = {
       templateData.value match {
         case (Inl(stringValue)) => stringValue
-        case (Inr(Inl(sequence))) => sequence.map(extractValueFromTemplateData).asJava
+        case (Inr(Inl(sequence))) => sequence.map(extractValueFromTemplateData)
         case (Inr(Inr(Inl(map)))) =>
-          map.map({ case (key, value) => key -> extractValueFromTemplateData(value) }).asJava
+          map.map({ case (key, value) => key -> extractValueFromTemplateData(value) })
         case (Inr(Inr(Inr(_)))) => throw new Exception("Unable to extract value from template data") // TODO: Naughty
       }
     }
 
-    val mapA = Map("a" -> "hi")
-    val mapB = Map("a" -> "yo")
-    mapA ++ mapB
     val dataAsStrings: Map[String, AnyRef] = handlebarsData.templateData map {
       case (key, templateData) => key -> extractValueFromTemplateData(templateData)
     }
