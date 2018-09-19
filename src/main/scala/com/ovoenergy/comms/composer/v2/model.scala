@@ -6,7 +6,10 @@ import io.circe.{Decoder, Encoder}, Decoder._
 import java.util.Base64
 import scala.util.Try
 import io.circe.Decoder._
-import org.http4s.MediaType
+import org.http4s._, headers.{`Content-Type` => ContentType}
+import org.http4s.MediaType.{`application/pdf` => pdf, `text/html` => html, `text/plain` => text}
+import org.http4s.Charset.{`UTF-8` => utf8}
+import java.nio.charset.StandardCharsets.{UTF_8 => nioUtf8}
 
 import com.ovoenergy.comms.templates.model.EmailSender
 
@@ -30,7 +33,6 @@ object model {
     case class Body(content: Array[Byte])
 
     case class RenderedHtml(htmlBody: String)
-
     case class RenderedPdf(fragment: Body)
 
     object RenderedPdf {
@@ -49,20 +51,55 @@ object model {
   }
 
   object SMS {
-    case class Rendered(textBody: SMS.Body)
     case class Sender(content: String)
     case class Body(content: String)
+
+    case class Rendered(textBody: SMS.Body)
   }
 
-  trait Fragment[A] {
+  trait Fragment[A] { self =>
     def content(a: A): Stream[Pure, Byte]
-    def mediaType(a: A): MediaType
-  }
-  object Fragment {
-    // TODO proper implementations for valid fragments
-    implicit def instances[A]: Fragment[A] = new Fragment[A] {
-      def content(a: A): Stream[Pure, Byte] = ???
-      def mediaType(a: A): MediaType = ???
+    def contentType: ContentType
+
+    def contramap[B](f: B => A): Fragment[B] = new Fragment[B] {
+      def content(b: B): Stream[Pure, Byte] = self.content(f(b))
+      def contentType: ContentType = self.contentType
     }
+  }
+
+  object Fragment {
+    def strings: Fragment[String] = new Fragment[String] {
+      // can't reuse the nio charset in `http4s.Charset`, it's private
+      def content(s: String): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(s.getBytes(nioUtf8)))
+      def contentType: ContentType = ContentType(text).withCharset(utf8)
+    }
+
+    def htmlStrings: Fragment[String] = new Fragment[String] {
+      def content(s: String): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(s.getBytes(nioUtf8)))
+      def contentType: ContentType = ContentType(html).withCharset(utf8)
+    }
+
+    def pdfBytes: Fragment[Array[Byte]] = new Fragment[Array[Byte]] {
+      def content(b: Array[Byte]): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(b))
+      def contentType: ContentType = ContentType(pdf).withCharset(utf8)
+    }
+
+    implicit val emailSubjectFragment: Fragment[Email.Subject] =
+      strings.contramap(_.content)
+
+    implicit val emailTextBodyFragment: Fragment[Email.TextBody] =
+      strings.contramap(_.content)
+
+    implicit val emailHtmlBodyFragment: Fragment[Email.HtmlBody] =
+      htmlStrings.contramap(_.content)
+
+    implicit val printBodyFragment: Fragment[Print.Body] =
+      pdfBytes.contramap(_.content)
+
+    implicit val smsSenderFragment: Fragment[SMS.Sender] =
+      strings.contramap(_.content)
+
+    implicit val smsBodyFragment: Fragment[SMS.Body] =
+      strings.contramap(_.content)
   }
 }
