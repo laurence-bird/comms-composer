@@ -10,16 +10,12 @@ import com.ovoenergy.comms.model.sms.OrchestratedSMSV3
 import org.scalatest.prop.GeneratorDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 
-class HashSpec
-  extends FlatSpec
-    with Matchers
-    with GeneratorDrivenPropertyChecks
-    with Arbitraries {
+class HashSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks with Arbitraries {
 
   val algorithm = "MD5"
   val hash: Hash[IO] = Hash[IO]
 
-  it should "hash OrchestratedSMSV3" in forAll {sms: OrchestratedSMSV3 =>
+  it should "hash OrchestratedSMSV3" in forAll { sms: OrchestratedSMSV3 =>
     hash(sms).unsafeRunSync() shouldBe new String(
       MessageDigest
         .getInstance(algorithm)
@@ -37,7 +33,9 @@ class HashSpec
     hash(print).unsafeRunSync() shouldBe new String(
       MessageDigest
         .getInstance(algorithm)
-        .digest((print.customerProfile, print.address, print.templateData, print.metadata.templateManifest).toString().getBytes))
+        .digest((print.customerProfile, print.address, print.templateData, print.metadata.templateManifest)
+          .toString()
+          .getBytes))
   }
 
   it should "hash String" in forAll { str: String =>
