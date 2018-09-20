@@ -1,5 +1,6 @@
 package com.ovoenergy.comms.composer
 package v2
+package rendering
 
 import java.time.ZonedDateTime
 
@@ -18,7 +19,7 @@ trait HandlebarsRendering {
 }
 
 object HandlebarsRendering {
-  def apply(handlebars: HandlebarsWrapped): HandlebarsRendering = new HandlebarsRendering {
+  def apply(handlebars: HandlebarsWrapper): HandlebarsRendering = new HandlebarsRendering {
     override def render(template: HandlebarsTemplate,
                         time: ZonedDateTime,
                         commTemplateData: CommTemplateData,
