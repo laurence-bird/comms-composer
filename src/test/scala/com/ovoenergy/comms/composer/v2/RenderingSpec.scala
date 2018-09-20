@@ -4,8 +4,6 @@ package v2
 import java.time.ZonedDateTime
 
 import cats.Id
-import cats.data.Validated
-import cats.data.Validated.{Invalid, Valid}
 import cats.effect.IO
 import com.ovoenergy.comms.composer.rendering.templating.{
   CommTemplateData,
@@ -65,11 +63,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
       override def render(template: HandlebarsTemplate,
                           time: ZonedDateTime,
                           templateData: templating.CommTemplateData,
-                          fileName: String): Validated[Errors, String] = {
+                          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
-        Valid(s"Result ${timesCalled}")
+        Right(s"Result ${timesCalled}")
       }
     }
     val rendering = Rendering[IO](happyHtmlRendering)
@@ -105,11 +103,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
       override def render(template: HandlebarsTemplate,
                           time: ZonedDateTime,
                           templateData: templating.CommTemplateData,
-                          fileName: String): Validated[Errors, String] = {
+                          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
-        Invalid(Errors(Set(s"error $timesCalled"), Seq.empty[Throwable], MissingTemplateData))
+        Left(Errors(Set(s"error $timesCalled"), Seq.empty[Throwable], MissingTemplateData))
       }
     }
     val rendering = Rendering[IO](unhappyHtmlRendering)
@@ -148,11 +146,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
       override def render(template: HandlebarsTemplate,
                           time: ZonedDateTime,
                           templateData: CommTemplateData,
-                          fileName: String): Validated[Errors, String] = {
+                          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
-        Valid(s"Result $timesCalled")
+        Right(s"Result $timesCalled")
       }
     }
     val rendering = Rendering[IO](happyRendering)
@@ -179,11 +177,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
       override def render(template: HandlebarsTemplate,
                           time: ZonedDateTime,
                           templateData: CommTemplateData,
-                          fileName: String): Validated[Errors, String] = {
+                          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
-        Invalid(errors)
+        Left(errors)
       }
     }
     val rendering = Rendering[IO](unhappyRendering)
@@ -225,11 +223,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
       override def render(template: HandlebarsTemplate,
                           time: ZonedDateTime,
                           templateData: CommTemplateData,
-                          fileName: String): Validated[Errors, String] = {
+                          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
-        Valid(s"Result $timesCalled")
+        Right(s"Result $timesCalled")
       }
     }
     val rendering = Rendering[IO](happyRendering)
@@ -261,11 +259,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
       override def render(template: HandlebarsTemplate,
                           time: ZonedDateTime,
                           templateData: CommTemplateData,
-                          fileName: String): Validated[Errors, String] = {
+                          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
-        Invalid(errors)
+        Left(errors)
       }
     }
     val rendering = Rendering[IO](unhappyRendering)

@@ -26,6 +26,9 @@ package object rendering {
 
       (missingKeysMsg ++ exceptionsMsg).mkString(". ")
     }
+    def toComposerError: Throwable = {
+      ComposerError(toErrorMessage, errorCode)
+    }
   }
 
   object Errors {

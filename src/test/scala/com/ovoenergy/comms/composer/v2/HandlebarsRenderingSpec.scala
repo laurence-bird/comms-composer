@@ -2,9 +2,6 @@ package com.ovoenergy.comms.composer
 package v2
 
 import java.time.ZonedDateTime
-
-import cats.data.Validated
-import cats.data.Validated.Valid
 import com.ovoenergy.comms.composer.rendering.templating.EmailTemplateData
 import com.ovoenergy.comms.composer.v2.rendering.{HandlebarsRendering, HandlebarsWrapper}
 import com.ovoenergy.comms.model.{Arbitraries, CustomerProfile, TemplateData}
@@ -40,12 +37,12 @@ class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries wi
     val handlebars = new HandlebarsWrapper {
       override def compile(fileName: String,
                            templateRawContent: String,
-                           context: Map[String, AnyRef]): Validated[Errors, String] = {
+                           context: Map[String, AnyRef]): Either[Errors, String] = {
         contextInput = context
         contentInput = templateRawContent
         fileNameInput = fileName
 
-        Valid("hi")
+        Right("hi")
       }
     }
     val htmlRendering = HandlebarsRendering.apply(handlebars)
@@ -54,7 +51,7 @@ class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries wi
     val ht = HandlebarsTemplate("hi", requiredTemplateData)
 
     val result = htmlRendering.render(ht, now, emailTemplateData, fileName)
-    result shouldBe 'valid
+    result shouldBe 'right
     contentInput shouldBe ht.rawExpandedContent
     fileNameInput shouldBe fileName
     contextInput.get("balance").value.asInstanceOf[Map[String, String]] shouldBe balanceMap
@@ -85,12 +82,12 @@ class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries wi
     val handlebars = new HandlebarsWrapper {
       override def compile(fileName: String,
                            templateRawContent: String,
-                           context: Map[String, AnyRef]): Validated[Errors, String] = {
+                           context: Map[String, AnyRef]): Either[Errors, String] = {
         contextInput = context
         contentInput = templateRawContent
         fileNameInput = fileName
 
-        Valid("hi")
+        Right("hi")
       }
     }
     val htmlRendering = HandlebarsRendering.apply(handlebars)
@@ -98,7 +95,7 @@ class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries wi
     val ht = HandlebarsTemplate("hi", requiredTemplateData)
 
     val result = htmlRendering.render(ht, now, emailTemplateData, fileName)
-    result shouldBe 'valid
+    result shouldBe 'right
     contentInput shouldBe ht.rawExpandedContent
     fileNameInput shouldBe fileName
     contextInput.get("system").value.asInstanceOf[Map[String, String]] shouldBe systemTdMap
