@@ -4,8 +4,7 @@ package rendering
 
 import java.time.ZonedDateTime
 
-import cats.data.Validated
-import cats.data.Validated.{Invalid, Valid}
+import cats.data.{EitherT, Nested, Validated}
 import cats.effect.Sync
 import cats.implicits._
 import com.ovoenergy.comms.composer.rendering.Errors
@@ -44,55 +43,49 @@ object Rendering {
                                emailTemplateData: CommTemplateData): F[Email.Rendered] = {
         val channel = EmailChan
 
-        val subject: F[Validated[Errors, String]] =
+        val subject: F[Either[Errors, String]] =
           F.delay(handlebars.render(template.subject, time, emailTemplateData, fileName(channel, manifest, "subject")))
 
-        val htmlBody: F[Validated[Errors, String]] =
+        val htmlBody: F[Either[Errors, String]] =
           F.delay(
             handlebars.render(template.htmlBody, time, emailTemplateData, fileName(channel, manifest, "htmlBody")))
 
-        val textBody: F[Option[Validated[Errors, String]]] =
-          F.delay(
-            template.textBody.map(
-              handlebars.render(_, time, emailTemplateData, fileName(channel, manifest, "textBody"))))
+        val textBody: F[Either[Errors, Option[String]]] =
+          F.delay {
+            template.textBody.traverse(
+              handlebars.render(_, time, emailTemplateData, fileName(channel, manifest, "textBody")))
+          }
 
-        val errorsOrResult: F[Validated[Errors, Email.Rendered]] = for {
-          a <- subject
-          b <- htmlBody
-          c <- textBody
-        } yield {
-          (a, b, c.sequence).mapN { (s, h, t) =>
+        (EitherT(subject), EitherT(htmlBody), EitherT(textBody))
+          .parMapN { (s, h, t) =>
             Email.Rendered(Email.Subject(s), Email.HtmlBody(h), t.map(Email.TextBody))
           }
-        }
-        errorsOrResult.flatMap {
-          case Valid(r) => F.delay(r)
-          case Invalid(err) => F.raiseError(ComposerError(err.toErrorMessage, err.errorCode))
-        }
+          .value
+          .map(_.leftMap(_.toComposerError))
+          .rethrow
       }
 
       override def renderSms(time: ZonedDateTime,
                              manifest: TemplateManifest,
                              template: Sms,
-                             smsTemplateData: CommTemplateData): F[SMS.Rendered] = {
-
-        F.delay(handlebars.render(template.textBody, time, smsTemplateData, fileName(SmsChan, manifest, "textBody")))
-          .flatMap {
-            case Valid(body) => F.delay(SMS.Rendered(SMS.Body(body)))
-            case Invalid(err) => F.raiseError(ComposerError(err.toErrorMessage, err.errorCode))
-          }
-      }
+                             smsTemplateData: CommTemplateData): F[SMS.Rendered] =
+        F.delay {
+          handlebars
+            .render(template.textBody, time, smsTemplateData, fileName(SmsChan, manifest, "textBody"))
+            .leftMap(_.toComposerError)
+            .map(body => SMS.Rendered(SMS.Body(body)))
+        }.rethrow
 
       override def renderPrintHtml(time: ZonedDateTime,
                                    manifest: TemplateManifest,
                                    template: Print,
-                                   printTemplateData: CommTemplateData): F[Print.HtmlBody] = {
-        F.delay(handlebars.render(template.body, time, printTemplateData, fileName(PrintChan, manifest, "htmlBody")))
-          .flatMap {
-            case Valid(body) => F.delay(Print.HtmlBody(body))
-            case Invalid(errors) => F.raiseError(ComposerError(errors.toErrorMessage, errors.errorCode))
-          }
-      }
+                                   printTemplateData: CommTemplateData): F[Print.HtmlBody] =
+        F.delay {
+          handlebars
+            .render(template.body, time, printTemplateData, fileName(PrintChan, manifest, "htmlBody"))
+            .leftMap(_.toComposerError)
+            .map(body => Print.HtmlBody(body))
+        }.rethrow
 
       override def renderPrintPdf(html: Print.HtmlBody): F[Print.RenderedPdf] = ???
 
