@@ -6,12 +6,14 @@ import java.time.ZonedDateTime
 import cats.data.Validated
 import cats.data.Validated.Valid
 import com.ovoenergy.comms.composer.rendering.templating.EmailTemplateData
+import com.ovoenergy.comms.composer.v2.rendering.{HandlebarsRendering, HandlebarsWrapper}
 import com.ovoenergy.comms.model.{Arbitraries, CustomerProfile, TemplateData}
 import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
+import com.ovoenergy.comms.composer.rendering.Errors
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.{FlatSpec, Matchers, OptionValues}
 
-class HtmlRenderingSpec extends FlatSpec with Matchers with Arbitraries with OptionValues {
+class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries with OptionValues {
 
   behavior of "HtmlRendering"
 
@@ -35,10 +37,10 @@ class HtmlRenderingSpec extends FlatSpec with Matchers with Arbitraries with Opt
     val emailTemplateData = EmailTemplateData(td, Some(CustomerProfile("Mr", "T")), "treatyomotherright@gmail.com")
     val fileName = "some-file"
 
-    val handlebars = new HandlebarsWrapped {
+    val handlebars = new HandlebarsWrapper {
       override def compile(fileName: String,
                            templateRawContent: String,
-                           context: Map[String, AnyRef]): Validated[rendering.Errors, String] = {
+                           context: Map[String, AnyRef]): Validated[Errors, String] = {
         contextInput = context
         contentInput = templateRawContent
         fileNameInput = fileName
@@ -80,10 +82,10 @@ class HtmlRenderingSpec extends FlatSpec with Matchers with Arbitraries with Opt
     val emailTemplateData = EmailTemplateData(td, Some(CustomerProfile("Mr", "T")), "treatyomotherright@gmail.com")
     val fileName = "some-file"
 
-    val handlebars = new HandlebarsWrapped {
+    val handlebars = new HandlebarsWrapper {
       override def compile(fileName: String,
                            templateRawContent: String,
-                           context: Map[String, AnyRef]): Validated[rendering.Errors, String] = {
+                           context: Map[String, AnyRef]): Validated[Errors, String] = {
         contextInput = context
         contentInput = templateRawContent
         fileNameInput = fileName
