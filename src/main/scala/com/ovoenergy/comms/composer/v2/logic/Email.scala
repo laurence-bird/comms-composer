@@ -7,7 +7,7 @@ import cats.implicits._
 import com.ovoenergy.comms.model.MetadataV3
 import com.ovoenergy.comms.model.email.{ComposedEmailV4, OrchestratedEmailV4}
 import com.ovoenergy.comms.composer.rendering.templating.EmailTemplateData
-import com.ovoenergy.comms.composer.v2.rendering.Rendering //TODO shorten this
+import rendering.Rendering
 
 object Email {
   def apply[F[_]: Monad](event: OrchestratedEmailV4)(implicit rendering: Rendering[F],
