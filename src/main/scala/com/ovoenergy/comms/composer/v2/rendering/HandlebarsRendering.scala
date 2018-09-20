@@ -15,7 +15,7 @@ trait HandlebarsRendering {
   def render(template: HandlebarsTemplate,
              time: ZonedDateTime,
              templateData: CommTemplateData,
-             fileName: String): Validated[Errors, String]
+             fileName: String): Either[Errors, String]
 }
 
 object HandlebarsRendering {
@@ -23,7 +23,7 @@ object HandlebarsRendering {
     override def render(template: HandlebarsTemplate,
                         time: ZonedDateTime,
                         commTemplateData: CommTemplateData,
-                        fileName: String): Validated[Errors, String] = {
+                        fileName: String): Either[Errors, String] = {
 
       val context = buildHandlebarsContext(commTemplateData.buildHandlebarsData, time)
 

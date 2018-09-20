@@ -17,7 +17,7 @@ import scala.util.{Failure, Success, Try}
 
 trait HandlebarsWrapper {
 
-  def compile(fileName: String, templateRawContent: String, context: Map[String, AnyRef]): Validated[Errors, String]
+  def compile(fileName: String, templateRawContent: String, context: Map[String, AnyRef]): Either[Errors, String]
 }
 
 object HandlebarsWrapper {
@@ -26,7 +26,7 @@ object HandlebarsWrapper {
   def apply: HandlebarsWrapper = new HandlebarsWrapper {
     override def compile(fileName: String,
                          templateRawContent: String,
-                         context: Map[String, AnyRef]): Validated[Errors, String] = {
+                         context: Map[String, AnyRef]): Either[Errors, String] = {
       val missingKeys = mutable.Set.empty[String]
 
       val helperRegistry = {
@@ -48,11 +48,11 @@ object HandlebarsWrapper {
       } match { // note: Try has a `fold` function in Scala 2.12 :)
         case Success(result) =>
           if (missingKeys.isEmpty)
-            Valid(result)
+            Right(result)
           else
-            Invalid(Errors(missingKeys = missingKeys.toSet, exceptions = Nil, MissingTemplateData))
+            Left(Errors(missingKeys = missingKeys.toSet, exceptions = Nil, MissingTemplateData))
         case Failure(e) =>
-          Invalid(Errors(missingKeys = Set.empty, exceptions = List(e), InvalidTemplate))
+          Left(Errors(missingKeys = Set.empty, exceptions = List(e), InvalidTemplate))
       }
     }
   }
