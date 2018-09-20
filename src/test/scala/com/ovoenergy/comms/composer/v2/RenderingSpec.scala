@@ -1,4 +1,5 @@
-package com.ovoenergy.comms.composer.v2
+package com.ovoenergy.comms.composer
+package v2
 
 import java.time.ZonedDateTime
 
@@ -6,7 +7,6 @@ import cats.Id
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect.IO
-import com.ovoenergy.comms.composer.{ComposerError, TestGenerators}
 import com.ovoenergy.comms.composer.rendering.templating.{
   CommTemplateData,
   EmailTemplateData,
@@ -14,13 +14,13 @@ import com.ovoenergy.comms.composer.rendering.templating.{
   SMSTemplateData
 }
 import com.ovoenergy.comms.composer.rendering.{Errors, templating}
-import com.ovoenergy.comms.composer.v2.model.{Email, SMS}
-import com.ovoenergy.comms.composer.v2.model.Fragment._
-import com.ovoenergy.comms.model.{Arbitraries, ErrorCode, MissingTemplateData, TemplateManifest}
-import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
+import rendering.{HandlebarsRendering, Rendering}
+import model.{Email, SMS}
+import com.ovoenergy.comms.model.{Arbitraries, MissingTemplateData, TemplateManifest}
 import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
 import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
 import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
+import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
 import org.scalacheck.{Arbitrary, Gen}
 import org.scalatest.{EitherValues, FlatSpec, Matchers}
 

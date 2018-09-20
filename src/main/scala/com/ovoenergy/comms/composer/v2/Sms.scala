@@ -2,9 +2,11 @@ package com.ovoenergy.comms.composer
 package v2
 package logic
 
-import cats.FlatMap, cats.implicits._
+import cats.FlatMap
+import cats.implicits._
 import com.ovoenergy.comms.composer.rendering.templating.SMSTemplateData
 import com.ovoenergy.comms.composer.v2._
+import com.ovoenergy.comms.composer.v2.rendering.Rendering
 import com.ovoenergy.comms.model.MetadataV3
 import com.ovoenergy.comms.model.sms.{ComposedSMSV4, OrchestratedSMSV3}
 

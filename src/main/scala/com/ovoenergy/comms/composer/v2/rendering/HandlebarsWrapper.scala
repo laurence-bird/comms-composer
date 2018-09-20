@@ -1,6 +1,9 @@
-package com.ovoenergy.comms.composer.v2
+package com.ovoenergy.comms.composer
+package v2
+package rendering
 
 import java.util.{Map => JMap}
+
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import com.github.jknack.handlebars.helper.DefaultHelperRegistry
@@ -12,14 +15,15 @@ import com.ovoenergy.comms.model.{InvalidTemplate, MissingTemplateData}
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
-trait HandlebarsWrapped {
+trait HandlebarsWrapper {
 
   def compile(fileName: String, templateRawContent: String, context: Map[String, AnyRef]): Validated[Errors, String]
 }
 
-object HandlebarsWrapped {
+object HandlebarsWrapper {
 
-  def apply: HandlebarsWrapped = new HandlebarsWrapped {
+  // TODO: Lift to F
+  def apply: HandlebarsWrapper = new HandlebarsWrapper {
     override def compile(fileName: String,
                          templateRawContent: String,
                          context: Map[String, AnyRef]): Validated[Errors, String] = {
