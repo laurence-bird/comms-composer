@@ -7,7 +7,7 @@ import cats.implicits._
 import com.ovoenergy.comms.model.{MetadataV3, TemplateData, TemplateManifest}
 import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
 import com.ovoenergy.comms.composer.rendering.templating.{PrintTemplateData, TemplateDataWrapper}
-import com.ovoenergy.comms.composer.v2.rendering.Rendering
+import rendering.Rendering
 
 object Print {
 
