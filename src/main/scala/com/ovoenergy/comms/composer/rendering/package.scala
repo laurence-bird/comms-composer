@@ -8,9 +8,7 @@ package object rendering {
 
   case class FailedToRender(reason: String, errorCode: ErrorCode)
 
-  private[rendering] final case class Errors(missingKeys: Set[String],
-                                             exceptions: Seq[Throwable],
-                                             errorCode: ErrorCode) {
+  final case class Errors(missingKeys: Set[String], exceptions: Seq[Throwable], errorCode: ErrorCode) {
     def toErrorMessage: String = {
       val missingKeysMsg = {
         if (missingKeys.nonEmpty)
@@ -28,12 +26,15 @@ package object rendering {
 
       (missingKeysMsg ++ exceptionsMsg).mkString(". ")
     }
+    def toComposerError: Throwable = {
+      ComposerError(toErrorMessage, errorCode)
+    }
   }
 
-  private[rendering] object Errors {
+  object Errors {
     implicit val semigroup: Semigroup[Errors] = new Semigroup[Errors] {
       override def combine(x: Errors, y: Errors): Errors =
-        Errors(x.missingKeys ++ y.missingKeys, x.exceptions ++ y.exceptions, x.errorCode)
+        Errors(x.missingKeys ++ y.missingKeys, x.exceptions ++ y.exceptions, x.errorCode) // TODO: We shouldn't discard the errorCode here, should be a Nel[ErrorCode] ?
     }
   }
 

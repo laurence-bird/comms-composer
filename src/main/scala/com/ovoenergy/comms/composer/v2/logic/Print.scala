@@ -2,12 +2,12 @@ package com.ovoenergy.comms.composer
 package v2
 package logic
 
-import cats.FlatMap, cats.implicits._
-
+import cats.FlatMap
+import cats.implicits._
 import com.ovoenergy.comms.model.{MetadataV3, TemplateData, TemplateManifest}
 import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
-
 import com.ovoenergy.comms.composer.rendering.templating.{PrintTemplateData, TemplateDataWrapper}
+import rendering.Rendering
 
 object Print {
 
@@ -28,7 +28,7 @@ object Print {
         template,
         PrintTemplateData(event.templateData, event.customerProfile, event.address)
       )
-      renderedPdf <- rendering.renderPrintPdf(html, event.metadata.templateManifest)
+      renderedPdf <- rendering.renderPrintPdf(html)
       pdfUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedPdf.fragment)
       eventIdHash <- hash.apply(event.metadata.eventId)
       hashedComm <- hash.apply(event)
@@ -57,7 +57,7 @@ object Print {
         template,
         TemplateDataWrapper(data)
       )
-      renderedPdf <- rendering.renderPrintPdf(html, templateManifest)
+      renderedPdf <- rendering.renderPrintPdf(html)
     } yield renderedPdf
   }
 }
