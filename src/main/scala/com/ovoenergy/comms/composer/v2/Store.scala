@@ -20,11 +20,9 @@ trait Store[F[_]] {
   def upload[A: Fragment](commId: CommId, traceToken: TraceToken, fragment: A): F[Uri]
 }
 
-
 object Store {
 
-  case class Config(bucketName: Bucket,
-                    region: Region = Region.`eu-west-1`)
+  case class Config(bucketName: Bucket, region: Region = Region.`eu-west-1`)
 
   trait Keys[F[_]] {
     def get(commId: CommId, traceToken: TraceToken): F[Key]
@@ -38,18 +36,20 @@ object Store {
 
   def stream[F[_]: Effect](config: Config): Stream[F, Store[F]] = {
     Http1Client.stream[F]().map { client =>
-      apply(new S3[F](client, CredentialsProvider.default[F], config.region), config, new RandomSuffixKeys[F])
+      apply(
+        new S3[F](client, CredentialsProvider.default[F], config.region),
+        config,
+        new RandomSuffixKeys[F])
     }
   }
-
 
   def apply[F[_]: Sync](s3: S3[F], config: Config, keys: Keys[F]): Store[F] = new Store[F] {
 
     private val region = config.region
     private val bucketName = config.bucketName
 
-    override def upload[A](commId: CommId, traceToken: TraceToken, fragment: A)(implicit fragA: Fragment[A]): F[Uri] = {
-
+    override def upload[A](commId: CommId, traceToken: TraceToken, fragment: A)(
+        implicit fragA: Fragment[A]): F[Uri] = {
 
       val content = new ObjectContent[F](
         fragA.content(fragment).covary[F],
@@ -59,7 +59,7 @@ object Store {
         fragA.contentType.charset
       )
 
-      val s3Domain = if(config.region == Region.`us-east-1`) {
+      val s3Domain = if (config.region == Region.`us-east-1`) {
         "s3.amazonaws.com"
       } else {
         s"s3-${region.value}.amazonaws.com"
@@ -67,10 +67,17 @@ object Store {
 
       for {
         key <- keys.get(commId, traceToken)
-        result <- s3.putObject(config.bucketName, key, content, Map("comm-id"->commId, "trace-token"->traceToken))
+        result <- s3
+          .putObject(
+            config.bucketName,
+            key,
+            content,
+            Map("comm-id" -> commId, "trace-token" -> traceToken))
           .map { resultOrError =>
-            resultOrError.leftWiden[Throwable] *> Uri.fromString(s"https://${bucketName.name}.${s3Domain}/${key.value}")
-          }.rethrow
+            resultOrError.leftWiden[Throwable] *> Uri.fromString(
+              s"https://${bucketName.name}.${s3Domain}/${key.value}")
+          }
+          .rethrow
       } yield result
 
     }
