@@ -39,7 +39,9 @@ trait DockerIntegrationTest
   def composerHttpEndpoint: String = s"http://localhost:${unsafePort(ComposerHttpPort, composer)}"
 
   implicit val config = ConfigFactory.load("servicetest.conf")
-  val TopicNames = List(Kafka.aiven.composedEmail.v4, Kafka.aiven.composedSms.v4, Kafka.aiven.failed.v3, Kafka.aiven.composedPrint.v2).map(_.name)
+
+  val kafkaConfig = Kafka.aiven
+  val TopicNames = List(kafkaConfig.composedEmail.v4, kafkaConfig.composedSms.v4, kafkaConfig.failed.v3, kafkaConfig.composedPrint.v2).map(_.name)
   val DynamoTableName = "comms-events"
   val DefaultDynamoDbPort = 8000
   val DefaultKafkaPort = 29093
