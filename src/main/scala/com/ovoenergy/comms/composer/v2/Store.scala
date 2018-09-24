@@ -69,12 +69,7 @@ object Store {
         key <- keys.get(commId, traceToken)
         result <- s3.putObject(config.bucketName, key, content, Map("comm-id"->commId, "trace-token"->traceToken))
           .map { resultOrError =>
-            resultOrError
-              .leftMap(identity[Throwable])
-              // TODO Should be able to use *> ?
-              .flatMap { _ =>
-              Uri.fromString(s"https://${bucketName.name}.${s3Domain}/${key.value}")
-            }
+            resultOrError.leftWiden[Throwable] *> Uri.fromString(s"https://${bucketName.name}.${s3Domain}/${key.value}")
           }.rethrow
       } yield result
 
