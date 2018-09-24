@@ -4,21 +4,22 @@ import java.net.NetworkInterface
 import java.util.UUID
 import java.util.concurrent.Executors
 
+import buildinfo.BuildInfo
 import cakesolutions.kafka.KafkaConsumer
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.jaxrs.JerseyDockerCmdExecFactory
 import com.ovoenergy.comms.dockertestkit.DockerContainerExtensions
 import com.ovoenergy.comms.helpers.Kafka
 import com.typesafe.config.ConfigFactory
-import com.whisk.docker.impl.dockerjava.{Docker, DockerJavaExecutorFactory, DockerKitDockerJava}
-import com.whisk.docker.{ContainerLink, DockerContainer, DockerFactory, VolumeMapping}
-import org.apache.kafka.clients.admin.{AdminClient, AdminClientConfig, NewTopic}
+import com.whisk.docker.impl.dockerjava.{Docker, DockerKitDockerJava, DockerJavaExecutorFactory}
+import com.whisk.docker.{VolumeMapping, ContainerLink, DockerContainer, DockerFactory}
+import org.apache.kafka.clients.admin.{AdminClient, NewTopic, AdminClientConfig}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.mockserver.client.server.MockServerClient
 import org.scalatest._
-import org.scalatest.concurrent.{Eventually, PatienceConfiguration, ScalaFutures}
-import org.scalatest.time.{Seconds, Span}
+import org.scalatest.concurrent.{PatienceConfiguration, Eventually, ScalaFutures}
+import org.scalatest.time.{Span, Seconds}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
@@ -64,6 +65,11 @@ trait DockerIntegrationTest
         .withMaxPerRouteConnections(40)
     )
   )
+
+  lazy val awsAccountId = sys.env.getOrElse(
+    "AWS_ACCOUNT_ID",
+    sys.error("Environment variable AWS_ACCOUNT_ID must be set in order to run the integration tests"))
+
 
   lazy val hostIp = NetworkInterface.getNetworkInterfaces.asScala
     .filter(x => x.isUp && !x.isLoopback)
@@ -127,10 +133,7 @@ trait DockerIntegrationTest
       Some("DOCRAPTOR_URL=http://docraptor:1080")
     ).flatten
 
-    val awsAccountId = sys.env.getOrElse(
-      "AWS_ACCOUNT_ID",
-      sys.error("Environment variable AWS_ACCOUNT_ID must be set in order to run the integration tests"))
-    DockerContainer(s"$awsAccountId.dkr.ecr.eu-west-1.amazonaws.com/composer:0.1-SNAPSHOT", name = Some("composer"))
+    DockerContainer(s"$awsAccountId.dkr.ecr.eu-west-1.amazonaws.com/composer:${BuildInfo.version}", name = Some("composer"))
       .withPorts(ComposerHttpPort -> None)
       .withLinks(
         ContainerLink(kafkaContainer, "aivenKafka"),
