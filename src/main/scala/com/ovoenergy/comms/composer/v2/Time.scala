@@ -1,4 +1,5 @@
-package com.ovoenergy.comms.composer.v2
+package com.ovoenergy.comms.composer
+package v2
 
 import java.time.ZonedDateTime
 
