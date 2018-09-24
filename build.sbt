@@ -79,7 +79,7 @@ libraryDependencies ++= Seq(
 )
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
-enablePlugins(JavaServerAppPackaging, DockerPlugin)
+enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, DockerPlugin)
 commsPackagingMaxMetaspaceSize := 128
 dockerExposedPorts += 8080
 

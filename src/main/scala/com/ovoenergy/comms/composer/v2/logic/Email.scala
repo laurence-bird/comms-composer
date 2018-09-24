@@ -10,11 +10,12 @@ import com.ovoenergy.comms.composer.rendering.templating.EmailTemplateData
 import rendering.Rendering
 
 object Email {
-  def apply[F[_]: Monad](event: OrchestratedEmailV4)(implicit rendering: Rendering[F],
-                                                     store: Store[F],
-                                                     templates: Templates[F, Templates.Email],
-                                                     hash: Hash[F],
-                                                     time: Time[F]): F[ComposedEmailV4] = {
+  def apply[F[_]: Monad](event: OrchestratedEmailV4)(
+      implicit rendering: Rendering[F],
+      store: Store[F],
+      templates: Templates[F, Templates.Email],
+      hash: Hash[F],
+      time: Time[F]): F[ComposedEmailV4] = {
     for {
       template <- templates.get(event.metadata.templateManifest)
       now <- time.now
@@ -24,8 +25,12 @@ object Email {
         template,
         EmailTemplateData(event.templateData, event.customerProfile, event.recipientEmailAddress))
       bodyUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedEmail.html)
-      subjectUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedEmail.subject)
-      textUri <- renderedEmail.text.traverse(x => store.upload(event.metadata.commId, event.metadata.traceToken, x))
+      subjectUri <- store.upload(
+        event.metadata.commId,
+        event.metadata.traceToken,
+        renderedEmail.subject)
+      textUri <- renderedEmail.text.traverse(x =>
+        store.upload(event.metadata.commId, event.metadata.traceToken, x))
       eventId <- hash(event.metadata.eventId)
       hashedComm <- hash(event)
     } yield

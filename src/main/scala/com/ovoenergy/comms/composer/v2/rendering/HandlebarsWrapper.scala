@@ -17,16 +17,20 @@ import scala.util.{Failure, Success, Try}
 
 trait HandlebarsWrapper {
 
-  def compile(fileName: String, templateRawContent: String, context: Map[String, AnyRef]): Either[Errors, String]
+  def compile(
+      fileName: String,
+      templateRawContent: String,
+      context: Map[String, AnyRef]): Either[Errors, String]
 }
 
 object HandlebarsWrapper {
 
   // TODO: Lift to F
   def apply: HandlebarsWrapper = new HandlebarsWrapper {
-    override def compile(fileName: String,
-                         templateRawContent: String,
-                         context: Map[String, AnyRef]): Either[Errors, String] = {
+    override def compile(
+        fileName: String,
+        templateRawContent: String,
+        context: Map[String, AnyRef]): Either[Errors, String] = {
       val missingKeys = mutable.Set.empty[String]
 
       val helperRegistry = {
@@ -43,7 +47,8 @@ object HandlebarsWrapper {
       val handlebars = new Handlebars().`with`(helperRegistry)
 
       Try {
-        val compiledTemplate = handlebars.compile(new StringTemplateSource(fileName, templateRawContent))
+        val compiledTemplate =
+          handlebars.compile(new StringTemplateSource(fileName, templateRawContent))
         compiledTemplate.apply(context)
       } match { // note: Try has a `fold` function in Scala 2.12 :)
         case Success(result) =>

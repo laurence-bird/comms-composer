@@ -21,11 +21,13 @@ import org.scalatest.{FlatSpec, Matchers}
 
 class TemplatesSpec extends FlatSpec with Matchers {
 
-  val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]("firstName" -> string))
+  val requiredFields =
+    RequiredTemplateData.obj(Map[String, RequiredTemplateData]("firstName" -> string))
 
   implicit val templateContext: TemplatesContext = TemplatesContext(
     new TemplatesRetriever {
-      override def getEmailTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[EmailTemplateFiles]] =
+      override def getEmailTemplate(
+          templateManifest: TemplateManifest): Option[ErrorsOr[EmailTemplateFiles]] =
         Some(
           Valid(
             EmailTemplateFiles(
@@ -35,10 +37,12 @@ class TemplatesSpec extends FlatSpec with Matchers {
               None
             )))
 
-      override def getSMSTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[SMSTemplateFiles]] =
+      override def getSMSTemplate(
+          templateManifest: TemplateManifest): Option[ErrorsOr[SMSTemplateFiles]] =
         Some(Valid(SMSTemplateFiles(TemplateFile(SMS, FileFormat.Text, "Hello {{firstName}}!"))))
 
-      override def getPrintTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[PrintTemplateFiles]] =
+      override def getPrintTemplate(
+          templateManifest: TemplateManifest): Option[ErrorsOr[PrintTemplateFiles]] =
         Some(
           Valid(
             PrintTemplateFiles(
@@ -46,7 +50,9 @@ class TemplatesSpec extends FlatSpec with Matchers {
             )))
     },
     new HandlebarsParsing(new PartialsRetriever {
-      override def getSharedPartial(referringFile: TemplateFile, partialName: String): Either[String, String] =
+      override def getSharedPartial(
+          referringFile: TemplateFile,
+          partialName: String): Either[String, String] =
         Right("")
     }),
     CachingStrategy.noCache
@@ -61,7 +67,9 @@ class TemplatesSpec extends FlatSpec with Matchers {
 
   it should "retrieve email template" in {
     val expected = EmailTemplate[Id](
-      HandlebarsTemplate("Meter reading", RequiredTemplateData.obj(Map[String, RequiredTemplateData]())),
+      HandlebarsTemplate(
+        "Meter reading",
+        RequiredTemplateData.obj(Map[String, RequiredTemplateData]())),
       HandlebarsTemplate("Hello {{firstName}}!", requiredFields),
       None,
       None
@@ -76,17 +84,22 @@ class TemplatesSpec extends FlatSpec with Matchers {
 
   val emptyTemplatesContext: TemplatesContext = TemplatesContext(
     new TemplatesRetriever {
-      override def getEmailTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[EmailTemplateFiles]] =
+      override def getEmailTemplate(
+          templateManifest: TemplateManifest): Option[ErrorsOr[EmailTemplateFiles]] =
         None
 
-      override def getSMSTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[SMSTemplateFiles]] =
+      override def getSMSTemplate(
+          templateManifest: TemplateManifest): Option[ErrorsOr[SMSTemplateFiles]] =
         None
 
-      override def getPrintTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[PrintTemplateFiles]] =
+      override def getPrintTemplate(
+          templateManifest: TemplateManifest): Option[ErrorsOr[PrintTemplateFiles]] =
         None
     },
     new HandlebarsParsing(new PartialsRetriever {
-      override def getSharedPartial(referringFile: TemplateFile, partialName: String): Either[String, String] =
+      override def getSharedPartial(
+          referringFile: TemplateFile,
+          partialName: String): Either[String, String] =
         Right("")
     }),
     CachingStrategy.noCache
@@ -112,17 +125,22 @@ class TemplatesSpec extends FlatSpec with Matchers {
 
   val partialTemplatesContext: TemplatesContext = TemplatesContext(
     new TemplatesRetriever {
-      override def getEmailTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[EmailTemplateFiles]] =
+      override def getEmailTemplate(
+          templateManifest: TemplateManifest): Option[ErrorsOr[EmailTemplateFiles]] =
         None
 
-      override def getSMSTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[SMSTemplateFiles]] =
+      override def getSMSTemplate(
+          templateManifest: TemplateManifest): Option[ErrorsOr[SMSTemplateFiles]] =
         Some(Valid(SMSTemplateFiles(TemplateFile(SMS, FileFormat.Text, "Hello {{firstName}}!"))))
 
-      override def getPrintTemplate(templateManifest: TemplateManifest): Option[ErrorsOr[PrintTemplateFiles]] =
+      override def getPrintTemplate(
+          templateManifest: TemplateManifest): Option[ErrorsOr[PrintTemplateFiles]] =
         None
     },
     new HandlebarsParsing(new PartialsRetriever {
-      override def getSharedPartial(referringFile: TemplateFile, partialName: String): Either[String, String] =
+      override def getSharedPartial(
+          referringFile: TemplateFile,
+          partialName: String): Either[String, String] =
         Right("")
     }),
     CachingStrategy.noCache

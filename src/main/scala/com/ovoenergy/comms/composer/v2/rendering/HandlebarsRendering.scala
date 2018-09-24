@@ -12,18 +12,20 @@ import com.ovoenergy.comms.templates.model.HandlebarsTemplate
 import shapeless.{Inl, Inr}
 
 trait HandlebarsRendering {
-  def render(template: HandlebarsTemplate,
-             time: ZonedDateTime,
-             templateData: CommTemplateData,
-             fileName: String): Either[Errors, String]
+  def render(
+      template: HandlebarsTemplate,
+      time: ZonedDateTime,
+      templateData: CommTemplateData,
+      fileName: String): Either[Errors, String]
 }
 
 object HandlebarsRendering {
   def apply(handlebars: HandlebarsWrapper): HandlebarsRendering = new HandlebarsRendering {
-    override def render(template: HandlebarsTemplate,
-                        time: ZonedDateTime,
-                        commTemplateData: CommTemplateData,
-                        fileName: String): Either[Errors, String] = {
+    override def render(
+        template: HandlebarsTemplate,
+        time: ZonedDateTime,
+        commTemplateData: CommTemplateData,
+        fileName: String): Either[Errors, String] = {
 
       val context = buildHandlebarsContext(commTemplateData.buildHandlebarsData, time)
 
@@ -31,7 +33,9 @@ object HandlebarsRendering {
     }
   }
 
-  def buildHandlebarsContext(handlebarsData: HandlebarsData, time: ZonedDateTime): Map[String, AnyRef] = {
+  def buildHandlebarsContext(
+      handlebarsData: HandlebarsData,
+      time: ZonedDateTime): Map[String, AnyRef] = {
 
     def extractValueFromTemplateData(templateData: TemplateData): AnyRef = {
       templateData.value match {
@@ -39,7 +43,8 @@ object HandlebarsRendering {
         case (Inr(Inl(sequence))) => sequence.map(extractValueFromTemplateData)
         case (Inr(Inr(Inl(map)))) =>
           map.map({ case (key, value) => key -> extractValueFromTemplateData(value) })
-        case (Inr(Inr(Inr(_)))) => throw new Exception("Unable to extract value from template data") // TODO: Naughty
+        case (Inr(Inr(Inr(_)))) =>
+          throw new Exception("Unable to extract value from template data") // TODO: Naughty
       }
     }
 
