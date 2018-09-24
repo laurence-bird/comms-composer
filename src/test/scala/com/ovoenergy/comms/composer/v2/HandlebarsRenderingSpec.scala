@@ -31,13 +31,15 @@ class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries wi
 
     val balanceMap = Map("total" -> "50", "currency" -> "GBP")
     val td = Map("balance" -> TemplateData.fromMap(balanceMap.mapValues(TemplateData.fromString)))
-    val emailTemplateData = EmailTemplateData(td, Some(CustomerProfile("Mr", "T")), "treatyomotherright@gmail.com")
+    val emailTemplateData =
+      EmailTemplateData(td, Some(CustomerProfile("Mr", "T")), "treatyomotherright@gmail.com")
     val fileName = "some-file"
 
     val handlebars = new HandlebarsWrapper {
-      override def compile(fileName: String,
-                           templateRawContent: String,
-                           context: Map[String, AnyRef]): Either[Errors, String] = {
+      override def compile(
+          fileName: String,
+          templateRawContent: String,
+          context: Map[String, AnyRef]): Either[Errors, String] = {
         contextInput = context
         contentInput = templateRawContent
         fileNameInput = fileName
@@ -76,13 +78,15 @@ class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries wi
       "profile" -> TemplateData.fromMap(profileTdMap.mapValues(TemplateData.fromString)),
       "system" -> TemplateData.fromMap(systemTdMap.mapValues(TemplateData.fromString))
     )
-    val emailTemplateData = EmailTemplateData(td, Some(CustomerProfile("Mr", "T")), "treatyomotherright@gmail.com")
+    val emailTemplateData =
+      EmailTemplateData(td, Some(CustomerProfile("Mr", "T")), "treatyomotherright@gmail.com")
     val fileName = "some-file"
 
     val handlebars = new HandlebarsWrapper {
-      override def compile(fileName: String,
-                           templateRawContent: String,
-                           context: Map[String, AnyRef]): Either[Errors, String] = {
+      override def compile(
+          fileName: String,
+          templateRawContent: String,
+          context: Map[String, AnyRef]): Either[Errors, String] = {
         contextInput = context
         contentInput = templateRawContent
         fileNameInput = fileName

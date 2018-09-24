@@ -24,7 +24,12 @@ import org.scalatest.{EitherValues, FlatSpec, Matchers}
 
 import scala.collection.mutable
 
-class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGenerators with EitherValues {
+class RenderingSpec
+    extends FlatSpec
+    with Matchers
+    with Arbitraries
+    with TestGenerators
+    with EitherValues {
 
   behavior of "renderEmail"
 
@@ -60,10 +65,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     var timesCalled = 0
 
     val happyHtmlRendering = new HandlebarsRendering {
-      override def render(template: HandlebarsTemplate,
-                          time: ZonedDateTime,
-                          templateData: templating.CommTemplateData,
-                          fileName: String): Either[Errors, String] = {
+      override def render(
+          template: HandlebarsTemplate,
+          time: ZonedDateTime,
+          templateData: templating.CommTemplateData,
+          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
@@ -72,7 +78,8 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     }
     val rendering = Rendering[IO](happyHtmlRendering)
     val now = ZonedDateTime.now()
-    val result = rendering.renderEmail(now, templateManifest, emailTemplate, emailTemplateData).unsafeRunSync()
+    val result =
+      rendering.renderEmail(now, templateManifest, emailTemplate, emailTemplateData).unsafeRunSync()
 
     passedTime.distinct.size shouldBe 1
     passedTime.head shouldBe now
@@ -100,10 +107,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     var timesCalled = 0
 
     val unhappyHtmlRendering = new HandlebarsRendering {
-      override def render(template: HandlebarsTemplate,
-                          time: ZonedDateTime,
-                          templateData: templating.CommTemplateData,
-                          fileName: String): Either[Errors, String] = {
+      override def render(
+          template: HandlebarsTemplate,
+          time: ZonedDateTime,
+          templateData: templating.CommTemplateData,
+          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
@@ -112,7 +120,10 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     }
     val rendering = Rendering[IO](unhappyHtmlRendering)
     val resultEither =
-      rendering.renderEmail(now, templateManifest, emailTemplate, emailTemplateData).attempt.unsafeRunSync()
+      rendering
+        .renderEmail(now, templateManifest, emailTemplate, emailTemplateData)
+        .attempt
+        .unsafeRunSync()
 
     timesCalled shouldBe 3
     val result = resultEither.left.value
@@ -125,7 +136,8 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
   behavior of "renderSms"
 
   val smsTemplate =
-    SMSTemplate[Id](textBody = HandlebarsTemplate("{{firstName}} you paid £{{amount}}", requiredFields))
+    SMSTemplate[Id](
+      textBody = HandlebarsTemplate("{{firstName}} you paid £{{amount}}", requiredFields))
 
   implicit val arbSmsTemplateData: Arbitrary[SMSTemplateData] = Arbitrary(for {
     td <- genMapTemplateData(3)
@@ -143,10 +155,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     var timesCalled = 0
 
     val happyRendering = new HandlebarsRendering {
-      override def render(template: HandlebarsTemplate,
-                          time: ZonedDateTime,
-                          templateData: CommTemplateData,
-                          fileName: String): Either[Errors, String] = {
+      override def render(
+          template: HandlebarsTemplate,
+          time: ZonedDateTime,
+          templateData: CommTemplateData,
+          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
@@ -156,7 +169,12 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     val rendering = Rendering[IO](happyRendering)
 
     val result: SMS.Rendered =
-      rendering.renderSms(now, templateManifest, smsTemplate, smsTemplateData).attempt.unsafeRunSync().right.value
+      rendering
+        .renderSms(now, templateManifest, smsTemplate, smsTemplateData)
+        .attempt
+        .unsafeRunSync()
+        .right
+        .value
 
     result.textBody shouldBe SMS.Body("Result 1")
     passedTime.head shouldBe now
@@ -174,10 +192,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
 
     val errors = Errors(Set("oh no"), Seq.empty, MissingTemplateData)
     val unhappyRendering = new HandlebarsRendering {
-      override def render(template: HandlebarsTemplate,
-                          time: ZonedDateTime,
-                          templateData: CommTemplateData,
-                          fileName: String): Either[Errors, String] = {
+      override def render(
+          template: HandlebarsTemplate,
+          time: ZonedDateTime,
+          templateData: CommTemplateData,
+          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
@@ -187,7 +206,12 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     val rendering = Rendering[IO](unhappyRendering)
 
     val result =
-      rendering.renderSms(now, templateManifest, smsTemplate, smsTemplateData).attempt.unsafeRunSync().left.value
+      rendering
+        .renderSms(now, templateManifest, smsTemplate, smsTemplateData)
+        .attempt
+        .unsafeRunSync()
+        .left
+        .value
 
     passedTime.size shouldBe 1
     passedTime.head shouldBe now
@@ -196,7 +220,8 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     result shouldBe a[ComposerError]
     val err = result.asInstanceOf[ComposerError]
 
-    err.reason shouldBe s"The template referenced the following non-existent keys: [${errors.missingKeys.mkString(",")}]"
+    err.reason shouldBe s"The template referenced the following non-existent keys: [${errors.missingKeys
+      .mkString(",")}]"
     err.errorCode shouldBe errors.errorCode
   }
 
@@ -220,10 +245,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     var timesCalled = 0
 
     val happyRendering = new HandlebarsRendering {
-      override def render(template: HandlebarsTemplate,
-                          time: ZonedDateTime,
-                          templateData: CommTemplateData,
-                          fileName: String): Either[Errors, String] = {
+      override def render(
+          template: HandlebarsTemplate,
+          time: ZonedDateTime,
+          templateData: CommTemplateData,
+          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
@@ -256,10 +282,11 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
 
     val errors = Errors(Set("oh no"), Seq.empty, MissingTemplateData)
     val unhappyRendering = new HandlebarsRendering {
-      override def render(template: HandlebarsTemplate,
-                          time: ZonedDateTime,
-                          templateData: CommTemplateData,
-                          fileName: String): Either[Errors, String] = {
+      override def render(
+          template: HandlebarsTemplate,
+          time: ZonedDateTime,
+          templateData: CommTemplateData,
+          fileName: String): Either[Errors, String] = {
         passedTime += time
         passedTd += templateData
         timesCalled += 1
@@ -282,7 +309,8 @@ class RenderingSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     result shouldBe a[ComposerError]
     val err = result.asInstanceOf[ComposerError]
 
-    err.reason shouldBe s"The template referenced the following non-existent keys: [${errors.missingKeys.mkString(",")}]"
+    err.reason shouldBe s"The template referenced the following non-existent keys: [${errors.missingKeys
+      .mkString(",")}]"
     err.errorCode shouldBe errors.errorCode
   }
 }

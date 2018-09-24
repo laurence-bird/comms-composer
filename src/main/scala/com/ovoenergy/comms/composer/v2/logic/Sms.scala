@@ -11,11 +11,12 @@ import com.ovoenergy.comms.model.sms.{ComposedSMSV4, OrchestratedSMSV3}
 
 object Program {
 
-  def apply[F[_]: FlatMap](event: OrchestratedSMSV3)(implicit rendering: Rendering[F],
-                                                     store: Store[F],
-                                                     templates: Templates[F, Templates.Sms],
-                                                     hash: Hash[F],
-                                                     time: Time[F]): F[ComposedSMSV4] = {
+  def apply[F[_]: FlatMap](event: OrchestratedSMSV3)(
+      implicit rendering: Rendering[F],
+      store: Store[F],
+      templates: Templates[F, Templates.Sms],
+      hash: Hash[F],
+      time: Time[F]): F[ComposedSMSV4] = {
     for {
       template <- templates.get(event.metadata.templateManifest)
       now <- time.now
@@ -24,7 +25,10 @@ object Program {
         event.metadata.templateManifest,
         template,
         SMSTemplateData(event.templateData, event.customerProfile, event.recipientPhoneNumber))
-      bodyUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedSms.textBody)
+      bodyUri <- store.upload(
+        event.metadata.commId,
+        event.metadata.traceToken,
+        renderedSms.textBody)
       eventId <- hash(event.metadata.eventId)
       hashedComm <- hash(event)
     } yield

@@ -19,21 +19,25 @@ class HashSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks
     hash(sms).unsafeRunSync() shouldBe new String(
       MessageDigest
         .getInstance(algorithm)
-        .digest((sms.metadata.deliverTo, sms.templateData, sms.metadata.templateManifest).toString().getBytes))
+        .digest((sms.metadata.deliverTo, sms.templateData, sms.metadata.templateManifest)
+          .toString()
+          .getBytes))
   }
 
   it should "hash OrchestratedEmailV4" in forAll { email: OrchestratedEmailV4 =>
     hash(email).unsafeRunSync() shouldBe new String(
       MessageDigest
         .getInstance(algorithm)
-        .digest((email.metadata.deliverTo, email.templateData, email.metadata.templateManifest).toString().getBytes))
+        .digest((email.metadata.deliverTo, email.templateData, email.metadata.templateManifest)
+          .toString()
+          .getBytes))
   }
 
   it should "hash OrchestratedPrintV2" in forAll { print: OrchestratedPrintV2 =>
-    hash(print).unsafeRunSync() shouldBe new String(
-      MessageDigest
-        .getInstance(algorithm)
-        .digest((print.customerProfile, print.address, print.templateData, print.metadata.templateManifest)
+    hash(print).unsafeRunSync() shouldBe new String(MessageDigest
+      .getInstance(algorithm)
+      .digest(
+        (print.customerProfile, print.address, print.templateData, print.metadata.templateManifest)
           .toString()
           .getBytes))
   }
