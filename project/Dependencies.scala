@@ -73,7 +73,7 @@ object Dependencies {
 
   object http4s {
 
-    private val version = "0.18.0"
+    private val version = "0.18.18"
 
     lazy val core = "org.http4s" %% "http4s-core" % version
     lazy val client = "org.http4s" %% "http4s-client" % version

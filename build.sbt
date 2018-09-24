@@ -47,6 +47,8 @@ libraryDependencies ++= Seq(
   http4s.dsl,
   http4s.server,
   http4s.blazeServer,
+  http4s.client,
+  http4s.blazeClient,
 
   kafkaSerialization.cats,
 
