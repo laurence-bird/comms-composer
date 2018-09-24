@@ -79,8 +79,6 @@ object Store {
           }
           .rethrow
       } yield result
-
     }
   }
-
 }
