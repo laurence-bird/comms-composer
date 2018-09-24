@@ -30,9 +30,9 @@ object Store {
     def get(commId: CommId, traceToken: TraceToken): F[Key]
   }
 
-  class RandomSuffixKeys[F[_]: Applicative] extends Keys[F] {
+  class RandomSuffixKeys[F[_]: Sync] extends Keys[F] {
     override def get(commId: CommId, traceToken: TraceToken): F[Key] = {
-      Key(s"${commId}-${UUID.randomUUID()}").pure[F]
+      Sync[F].delay(Key(s"${commId}-${UUID.randomUUID()}"))
     }
   }
 
