@@ -67,7 +67,7 @@ object Store {
 
       for {
         key <- keys.get(commId, traceToken)
-        result <- s3.putObject(config.bucketName, key, content, Map("commid"->commId, "tracetoken"->traceToken))
+        result <- s3.putObject(config.bucketName, key, content, Map("comm-id"->commId, "trace-token"->traceToken))
           .map { resultOrError =>
             resultOrError
               .leftMap(identity[Throwable])
