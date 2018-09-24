@@ -71,7 +71,7 @@ class StoreIntSpec extends IntegrationSpec {
           _ <- store.upload(commId, traceToken, fragment)
           retrieved <- s3.headObject(existingBucket, key).map(_.leftWiden[Throwable]).rethrow
         } yield retrieved
-      }.futureValue.metadata shouldBe Map("commid" -> commId, "tracetoken" -> traceToken)
+      }.futureValue.metadata shouldBe Map("comm-id" -> commId, "trace-token" -> traceToken)
     }
 
     "store fragment that can be retrieved" in {
