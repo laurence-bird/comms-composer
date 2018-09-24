@@ -25,11 +25,9 @@ trait Hashable[A] {
 
 object Hashable {
 
-  // TODO: remove side effectful operation
-  val messageDigest = MessageDigest.getInstance("MD5")
-
   implicit val hashableSms: Hashable[OrchestratedSMSV3] = new Hashable[OrchestratedSMSV3]() {
     def hash(a: OrchestratedSMSV3): String = {
+      val messageDigest = MessageDigest.getInstance("MD5")
       val commHash = messageDigest.digest(
         (
           a.metadata.deliverTo,
@@ -43,6 +41,7 @@ object Hashable {
 
   implicit val hashableEmail: Hashable[OrchestratedEmailV4] = new Hashable[OrchestratedEmailV4] {
     def hash(a: OrchestratedEmailV4): String = {
+      val messageDigest = MessageDigest.getInstance("MD5")
       val commHash = messageDigest.digest(
         (
           a.metadata.deliverTo,
@@ -56,6 +55,7 @@ object Hashable {
 
   implicit val hashablePrint: Hashable[OrchestratedPrintV2] = new Hashable[OrchestratedPrintV2] {
     def hash(a: OrchestratedPrintV2): String = {
+      val messageDigest = MessageDigest.getInstance("MD5")
       val commHash = messageDigest.digest(
         (
           a.customerProfile,
@@ -70,6 +70,7 @@ object Hashable {
 
   implicit val hashableString: Hashable[String] = new Hashable[String] {
     def hash(a: String): String = {
+      val messageDigest = MessageDigest.getInstance("MD5")
       val strHash = messageDigest.digest(a.getBytes)
       new String(strHash)
     }
