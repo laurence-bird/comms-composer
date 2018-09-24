@@ -57,6 +57,7 @@ libraryDependencies ++= Seq(
   ovoEnergy.commsHelpers,
   ovoEnergy.commsSerialisation,
   ovoEnergy.commsTemplates,
+  ovoEnergy.commsAwsS3,
 
   handlebars,
   s3Sdk,

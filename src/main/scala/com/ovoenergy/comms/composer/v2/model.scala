@@ -1,12 +1,17 @@
 package com.ovoenergy.comms.composer
 package v2
 
+import java.nio.charset.StandardCharsets
+
 import fs2.{io => _, _}
-import io.circe.{Decoder, Encoder}, Decoder._
+import io.circe.{Encoder, Decoder}
+import Decoder._
 import java.util.Base64
+
 import scala.util.Try
 import io.circe.Decoder._
-import org.http4s._, headers.{`Content-Type` => ContentType}
+import org.http4s._
+import headers.{`Content-Type` => ContentType}
 import org.http4s.MediaType.{`application/pdf` => pdf, `text/html` => html, `text/plain` => text}
 import org.http4s.Charset.{`UTF-8` => utf8}
 import java.nio.charset.StandardCharsets.{UTF_8 => nioUtf8}
@@ -60,9 +65,11 @@ object model {
   trait Fragment[A] { self =>
     def content(a: A): Stream[Pure, Byte]
     def contentType: ContentType
+    def contentLength(a: A): Long
 
     def contramap[B](f: B => A): Fragment[B] = new Fragment[B] {
       def content(b: B): Stream[Pure, Byte] = self.content(f(b))
+      def contentLength(b: B): Long = self.contentLength(f(b))
       def contentType: ContentType = self.contentType
     }
   }
@@ -72,16 +79,19 @@ object model {
       // can't reuse the nio charset in `http4s.Charset`, it's private
       def content(s: String): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(s.getBytes(nioUtf8)))
       def contentType: ContentType = ContentType(text).withCharset(utf8)
+      def contentLength(s: String): Long = s.getBytes(utf8.nioCharset).length
     }
 
     def htmlStrings: Fragment[String] = new Fragment[String] {
       def content(s: String): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(s.getBytes(nioUtf8)))
       def contentType: ContentType = ContentType(html).withCharset(utf8)
+      def contentLength(s: String): Long = s.getBytes(utf8.nioCharset).length
     }
 
     def pdfBytes: Fragment[Array[Byte]] = new Fragment[Array[Byte]] {
       def content(b: Array[Byte]): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(b))
       def contentType: ContentType = ContentType(pdf).withCharset(utf8)
+      def contentLength(b: Array[Byte]): Long = b.length
     }
 
     implicit val emailSubjectFragment: Fragment[Email.Subject] =
