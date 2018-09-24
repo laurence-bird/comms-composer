@@ -46,6 +46,7 @@ object Dependencies {
     private val kafkaSerialisationVersion = "3.18"
     private val templateVersion = "0.25"
     private val commsDockerTestkitVersion = "1.8"
+    private val commsAwsVersion = "0.1.6"
     lazy val commsMessagesTests = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion classifier "tests"
     lazy val commsMessages = "com.ovoenergy" %% "comms-kafka-messages" % kafkaMessagesVersion
     lazy val commsTemplates = "com.ovoenergy" %% "comms-templates" % templateVersion
@@ -53,6 +54,7 @@ object Dependencies {
     lazy val commsHelpers = "com.ovoenergy" %% "comms-kafka-helpers" % kafkaSerialisationVersion exclude ("com.typesafe.akka", "akka-stream-kafka_2.12")
     lazy val commsTestHelpers = "com.ovoenergy" %% "comms-kafka-test-helpers" % kafkaSerialisationVersion
     lazy val dockerKit = "com.ovoenergy" %% "comms-docker-testkit" % commsDockerTestkitVersion
+    lazy val commsAwsS3 = "com.ovoenergy.comms" %% "comms-aws-s3" % commsAwsVersion
   }
 
   object circe {
