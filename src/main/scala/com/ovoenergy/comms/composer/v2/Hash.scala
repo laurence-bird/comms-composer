@@ -1,11 +1,14 @@
-package com.ovoenergy.comms.composer.v2
+package com.ovoenergy.comms.composer
+package v2
+
+import com.ovoenergy.comms.model._
+import email.OrchestratedEmailV4
+import print.OrchestratedPrintV2
+import sms.OrchestratedSMSV3
 
 import java.security.MessageDigest
 
 import cats.Applicative
-import com.ovoenergy.comms.model.email.OrchestratedEmailV4
-import com.ovoenergy.comms.model.print.OrchestratedPrintV2
-import com.ovoenergy.comms.model.sms.OrchestratedSMSV3
 import cats.implicits._
 
 trait Hash[F[_]] {

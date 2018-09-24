@@ -1,7 +1,7 @@
-package com.ovoenergy.comms.composer.v2
+package com.ovoenergy.comms.composer
+package v2
 
 import cats.Id
-import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect.Effect
 import com.ovoenergy.comms.model.TemplateManifest
