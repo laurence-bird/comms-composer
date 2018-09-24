@@ -31,8 +31,8 @@ object model {
 
   object Print {
     case class PdfBody(content: Array[Byte])
-
     case class HtmlBody(htmlBody: String)
+
     case class RenderedPdf(fragment: PdfBody)
 
     object RenderedPdf {
