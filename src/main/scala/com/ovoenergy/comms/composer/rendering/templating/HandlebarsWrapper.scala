@@ -18,7 +18,8 @@ import scala.util.{Failure, Success, Try}
  */
 private[rendering] object HandlebarsWrapper {
 
-  def render(filename: String, template: HandlebarsTemplate)(context: JMap[String, AnyRef]): ErrorsOr[String] = {
+  def render(filename: String, template: HandlebarsTemplate)(
+      context: JMap[String, AnyRef]): ErrorsOr[String] = {
     val missingKeys = mutable.Set.empty[String]
 
     val helperRegistry = {
@@ -35,7 +36,8 @@ private[rendering] object HandlebarsWrapper {
     val handlebars = new Handlebars().`with`(helperRegistry)
 
     Try {
-      val compiledTemplate = handlebars.compile(new StringTemplateSource(filename, template.rawExpandedContent))
+      val compiledTemplate =
+        handlebars.compile(new StringTemplateSource(filename, template.rawExpandedContent))
       compiledTemplate.apply(context)
     } match { // note: Try has a `fold` function in Scala 2.12 :)
       case Success(result) =>

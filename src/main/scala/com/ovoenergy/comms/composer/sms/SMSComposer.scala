@@ -19,14 +19,19 @@ object SMSComposer {
   def retrieveTemplate(incomingEvent: OrchestratedSMSV3): SMSComposer[SMSTemplate[Id]] =
     liftF(RetrieveTemplate(incomingEvent))
 
-  def render(incomingEvent: OrchestratedSMSV3, template: SMSTemplate[Id]): SMSComposer[RenderedSMS] =
+  def render(
+      incomingEvent: OrchestratedSMSV3,
+      template: SMSTemplate[Id]): SMSComposer[RenderedSMS] =
     liftF(Render(incomingEvent, template))
 
   def hashString(str: String): SMSComposer[String] = {
     liftF(HashString(str))
   }
 
-  def buildEvent(incomingEvent: OrchestratedSMSV3, renderedSMS: RenderedSMS, eventId: String): ComposedSMSV4 =
+  def buildEvent(
+      incomingEvent: OrchestratedSMSV3,
+      renderedSMS: RenderedSMS,
+      eventId: String): ComposedSMSV4 =
     ComposedSMSV4(
       metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata, eventId),
       internalMetadata = incomingEvent.internalMetadata,

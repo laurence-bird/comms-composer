@@ -31,7 +31,10 @@ class SMSComposerSpec extends FlatSpec with Matchers {
     }
   }
 
-  case class CustomerTransaction(bankCardNumber: Long, transactionTotal: Int, transactionDate: String)
+  case class CustomerTransaction(
+      bankCardNumber: Long,
+      transactionTotal: Int,
+      transactionDate: String)
 
   val hashedStr = "testing"
 

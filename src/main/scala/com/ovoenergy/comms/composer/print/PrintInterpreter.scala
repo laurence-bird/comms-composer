@@ -23,11 +23,12 @@ import scala.util.Try
 import scala.util.control.NonFatal
 
 object PrintInterpreter extends Logging {
-  case class PrintContext(docRaptorConfig: DocRaptorConfig,
-                          s3Config: S3Config,
-                          retryConfig: RetryConfig,
-                          templateContext: TemplatesContext,
-                          httpClient: Request => Try[Response])
+  case class PrintContext(
+      docRaptorConfig: DocRaptorConfig,
+      s3Config: S3Config,
+      retryConfig: RetryConfig,
+      templateContext: TemplatesContext,
+      httpClient: Request => Try[Response])
 
   def apply(printContext: PrintContext): PrintComposerA ~> FailedOr = {
     new (PrintComposerA ~> FailedOr) {
@@ -48,10 +49,17 @@ object PrintInterpreter extends Logging {
                 Left(failPrintWithException(e))
               }
             }
-          case RenderPrintHtml(handlebarsData: templating.CommTemplateData, template, commManifest) =>
+          case RenderPrintHtml(
+              handlebarsData: templating.CommTemplateData,
+              template,
+              commManifest) =>
             try {
               PrintTemplateRendering
-                .renderHtml(handlebarsData.buildHandlebarsData, commManifest, template, Clock.systemDefaultZone())
+                .renderHtml(
+                  handlebarsData.buildHandlebarsData,
+                  commManifest,
+                  template,
+                  Clock.systemDefaultZone())
                 .leftMap { templateErrors =>
                   warn(commManifest)(s"Failed to render print HTML ${templateErrors.reason}")
                   failPrint(templateErrors.reason, templateErrors.errorCode)
@@ -68,12 +76,15 @@ object PrintInterpreter extends Logging {
               .leftMap((error: DocRaptorError) => {
                 failPrint(s"Failed to render pdf: ${error.httpError}", CompositionError)
               })
-            result.fold(e => warn(commManifest)(e.reason), _ => info(commManifest)("Persisted PDF successfully"))
+            result.fold(
+              e => warn(commManifest)(e.reason),
+              _ => info(commManifest)("Persisted PDF successfully"))
             result
           case PersistRenderedPdf(event, renderedPrintPdf) =>
             val result = S3PdfRepo
               .saveRenderedPdf(renderedPrintPdf, event, printContext.s3Config)
-              .leftMap(error => failPrint(s"Failed to persist rendered pdf: $error", CompositionError))
+              .leftMap(error =>
+                failPrint(s"Failed to persist rendered pdf: $error", CompositionError))
 
             result.fold(e => warn(event)(e.reason), _ => info(event)("Persisted PDF successfully"))
 

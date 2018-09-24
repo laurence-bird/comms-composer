@@ -1,7 +1,7 @@
 import Dependencies._
 
 name := "composer"
-organization := "com.ovoenergy"
+organization := "com.ovoenergy.comms"
 
 scalaVersion := "2.12.6"
 scalacOptions := Seq(
@@ -10,26 +10,27 @@ scalacOptions := Seq(
   "-feature",
   "-encoding", "utf8",
   "-language:higherKinds",
-  "-Ypartial-unification"
+  "-Ypartial-unification",
 )
 
 // Make ScalaTest write test reports that CircleCI understands
 testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
 lazy val ServiceTest = config("servicetest") extend(Test)
-configs(ServiceTest)
+lazy val It = config("it") extend Test
+
+configs(ServiceTest, It)
+inConfig(It)(Defaults.testSettings)
 inConfig(ServiceTest)(Defaults.testSettings)
+
 inConfig(ServiceTest)(parallelExecution in test := false)
 inConfig(ServiceTest)(parallelExecution in testOnly := false)
 (test in ServiceTest) := (test in ServiceTest).dependsOn(publishLocal in Docker).value
 
-resolvers := Resolver.withDefaultResolvers(
-  Seq(
-    Resolver.bintrayRepo("ovotech", "maven"),
-    "confluent-release" at "http://packages.confluent.io/maven/",
-    Resolver.bintrayRepo("cakesolutions", "maven")
-  )
+resolvers ++= Seq(
+  Resolver.bintrayRepo("ovotech", "maven"),
+  "confluent-release" at "http://packages.confluent.io/maven/",
+  Resolver.bintrayRepo("cakesolutions", "maven")
 )
-
 
 libraryDependencies ++= Seq(
 
@@ -74,19 +75,15 @@ libraryDependencies ++= Seq(
 
   whisk.scalaTest               % ServiceTest,
   whisk.dockerJava              % ServiceTest,
-  ovoEnergy.commsTestHelpers    % ServiceTest
+  ovoEnergy.commsTestHelpers    % ServiceTest,
 )
 
-enablePlugins(JavaServerAppPackaging, DockerPlugin)
+enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, DockerPlugin)
 commsPackagingMaxMetaspaceSize := 128
 dockerExposedPorts += 8080
 
-val scalafmtAll = taskKey[Unit]("Run scalafmt in non-interactive mode with no arguments")
-scalafmtAll := {
-  import org.scalafmt.bootstrap.ScalafmtBootstrap
-  streams.value.log.info("Running scalafmt ...")
-  ScalafmtBootstrap.main(Seq("--non-interactive"))
-  streams.value.log.info("Done")
-}
-(compile in Compile) := (compile in Compile).dependsOn(scalafmtAll).value
+scalafmtOnCompile := true
+
+version ~= (_.replace('+', '-'))
+dynver ~= (_.replace('+', '-'))
 

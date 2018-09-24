@@ -37,13 +37,14 @@ class EventProcessorSpec extends FlatSpec with Matchers with Arbitraries with Te
   case class TestProducer[Output](result: RecordMetadata, function: Output => IO[RecordMetadata])
 
   def successfulProducer[Output] = {
-    val result = new RecordMetadata(new TopicPartition(generate[String], generate[Int]),
-                                    generate[Long],
-                                    generate[Long],
-                                    generate[Long],
-                                    generate[Long],
-                                    generate[Int],
-                                    generate[Int])
+    val result = new RecordMetadata(
+      new TopicPartition(generate[String], generate[Int]),
+      generate[Long],
+      generate[Long],
+      generate[Long],
+      generate[Long],
+      generate[Int],
+      generate[Int])
     val func = (output: Output) => IO(result)
     TestProducer(result, func)
   }
@@ -56,10 +57,11 @@ class EventProcessorSpec extends FlatSpec with Matchers with Arbitraries with Te
 
     val successfulProcessEvent = (input: InputEvent) => Right(OutputEvent(generate[String]))
     val eventProcessor: Record[InputEvent] => IO[Seq[RecordMetadata]] =
-      EventProcessor[IO, InputEvent, OutputEvent](successfulOutputProducer.function,
-                                                  successfulFailedProducer.function,
-                                                  successfulFeedbackProducer.function,
-                                                  successfulProcessEvent)
+      EventProcessor[IO, InputEvent, OutputEvent](
+        successfulOutputProducer.function,
+        successfulFailedProducer.function,
+        successfulFeedbackProducer.function,
+        successfulProcessEvent)
 
     val record = new ConsumerRecord[Unit, Option[InputEvent]]("input", 1, 1, (), Some(inputEvent))
 
@@ -72,17 +74,20 @@ class EventProcessorSpec extends FlatSpec with Matchers with Arbitraries with Te
     val successfulFailedProducer = successfulProducer[FailedV3]
     val successfulFeedbackProducer = successfulProducer[Feedback]
 
-    val failingProcessEvent = (input: InputEvent) => Left(ComposerError(generate[String], generate[ErrorCode]))
+    val failingProcessEvent =
+      (input: InputEvent) => Left(ComposerError(generate[String], generate[ErrorCode]))
     val eventProcessor: Record[InputEvent] => IO[Seq[RecordMetadata]] =
-      EventProcessor[IO, InputEvent, OutputEvent](successfulOutputProducer.function,
-                                                  successfulFailedProducer.function,
-                                                  successfulFeedbackProducer.function,
-                                                  failingProcessEvent)
+      EventProcessor[IO, InputEvent, OutputEvent](
+        successfulOutputProducer.function,
+        successfulFailedProducer.function,
+        successfulFeedbackProducer.function,
+        failingProcessEvent)
 
     val record = new ConsumerRecord[Unit, Option[InputEvent]]("input", 1, 1, (), Some(inputEvent))
 
-    eventProcessor(record).unsafeRunSync() should contain theSameElementsAs Seq(successfulFailedProducer.result,
-                                                                                successfulFeedbackProducer.result)
+    eventProcessor(record).unsafeRunSync() should contain theSameElementsAs Seq(
+      successfulFailedProducer.result,
+      successfulFeedbackProducer.result)
   }
 
   it should "Skip an event in the case it is unable to deserialise" in {
@@ -93,10 +98,11 @@ class EventProcessorSpec extends FlatSpec with Matchers with Arbitraries with Te
 
     val successfulProcessEvent = (input: InputEvent) => Right(OutputEvent(generate[String]))
     val eventProcessor: Record[InputEvent] => IO[Seq[RecordMetadata]] =
-      EventProcessor[IO, InputEvent, OutputEvent](successfulOutputProducer.function,
-                                                  successfulFailedProducer.function,
-                                                  successfulFeedbackProducer.function,
-                                                  successfulProcessEvent)
+      EventProcessor[IO, InputEvent, OutputEvent](
+        successfulOutputProducer.function,
+        successfulFailedProducer.function,
+        successfulFeedbackProducer.function,
+        successfulProcessEvent)
 
     val record = new ConsumerRecord[Unit, Option[InputEvent]]("input", 1, 1, (), None)
 

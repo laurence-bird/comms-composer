@@ -14,10 +14,11 @@ import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplat
 
 object EmailTemplateRendering extends Rendering {
 
-  def renderEmail(clock: Clock,
-                  templateManifest: TemplateManifest,
-                  template: EmailTemplate[Id],
-                  emailTemplateData: CommTemplateData): Either[FailedToRender, RenderedEmail] = {
+  def renderEmail(
+      clock: Clock,
+      templateManifest: TemplateManifest,
+      template: EmailTemplate[Id],
+      emailTemplateData: CommTemplateData): Either[FailedToRender, RenderedEmail] = {
     val context = buildHandlebarsContext(
       emailTemplateData.buildHandlebarsData,
       clock

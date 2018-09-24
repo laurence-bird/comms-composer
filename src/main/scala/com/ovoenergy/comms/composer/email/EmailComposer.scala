@@ -22,7 +22,9 @@ object EmailComposer {
   def retrieveTemplate(incomingEvent: OrchestratedEmailV4): EmailComposer[EmailTemplate[Id]] =
     liftF(RetrieveTemplate(incomingEvent))
 
-  def render(incomingEvent: OrchestratedEmailV4, template: EmailTemplate[Id]): EmailComposer[RenderedEmail] =
+  def render(
+      incomingEvent: OrchestratedEmailV4,
+      template: EmailTemplate[Id]): EmailComposer[RenderedEmail] =
     liftF(Render(incomingEvent, template))
 
   def lookupSender(template: EmailTemplate[Id]): EmailComposer[EmailSender] =
@@ -32,10 +34,11 @@ object EmailComposer {
     liftF(HashString(str))
   }
 
-  def buildEvent(incomingEvent: OrchestratedEmailV4,
-                 renderedEmail: RenderedEmail,
-                 sender: EmailSender,
-                 eventId: String): ComposedEmailV4 =
+  def buildEvent(
+      incomingEvent: OrchestratedEmailV4,
+      renderedEmail: RenderedEmail,
+      sender: EmailSender,
+      eventId: String): ComposedEmailV4 =
     ComposedEmailV4(
       metadata = MetadataV3.fromSourceMetadata("comms-composer", incomingEvent.metadata, eventId),
       internalMetadata = incomingEvent.internalMetadata,

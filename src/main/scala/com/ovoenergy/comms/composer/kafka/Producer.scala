@@ -9,7 +9,13 @@ import com.ovoenergy.comms.helpers.Topic
 import com.ovoenergy.comms.serialisation.Retry
 import com.sksamuel.avro4s.{SchemaFor, ToRecord}
 import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerConfig, ProducerRecord, RecordMetadata}
+import org.apache.kafka.clients.producer.{
+  Callback,
+  KafkaProducer,
+  ProducerConfig,
+  ProducerRecord,
+  RecordMetadata
+}
 import org.apache.kafka.common.config.SslConfigs
 import org.apache.kafka.common.serialization.StringSerializer
 
@@ -17,7 +23,8 @@ import scala.collection.JavaConverters._
 
 object Producer {
 
-  def apply[E: SchemaFor: ToRecord](topic: Topic[E]): Either[Retry.Failed, KafkaProducer[String, E]] = {
+  def apply[E: SchemaFor: ToRecord](
+      topic: Topic[E]): Either[Retry.Failed, KafkaProducer[String, E]] = {
 
     val initialSettings = Map(
       ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> topic.kafkaConfig.hosts,
@@ -33,7 +40,10 @@ object Producer {
     val sslSettings = topic.kafkaConfig.ssl.map { ssl =>
       Map(
         CommonClientConfigs.SECURITY_PROTOCOL_CONFIG -> "SSL",
-        SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG -> Paths.get(ssl.keystore.location).toAbsolutePath.toString,
+        SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG -> Paths
+          .get(ssl.keystore.location)
+          .toAbsolutePath
+          .toString,
         SslConfigs.SSL_KEYSTORE_TYPE_CONFIG -> "PKCS12",
         SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG -> ssl.keystore.password,
         SslConfigs.SSL_KEY_PASSWORD_CONFIG -> ssl.keyPassword,
@@ -47,11 +57,17 @@ object Producer {
 
     topic.serializer
       .map { valueSerialiser =>
-        new KafkaProducer[String, E](producerSettings.asJava, new StringSerializer(), valueSerialiser)
+        new KafkaProducer[String, E](
+          producerSettings.asJava,
+          new StringSerializer(),
+          valueSerialiser)
       }
   }
 
-  def publisher[E, F[_]: Async](getKey: E => String, producer: KafkaProducer[String, E], topicName: String)(t: E) = {
+  def publisher[E, F[_]: Async](
+      getKey: E => String,
+      producer: KafkaProducer[String, E],
+      topicName: String)(t: E) = {
 
     val record = new ProducerRecord[String, E](
       topicName,

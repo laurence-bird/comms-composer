@@ -18,7 +18,8 @@ class S3PdfRepoSpec extends FlatSpec with Matchers with Arbitraries with TestGen
     val itt = incomingEvent.internalMetadata.internalTraceToken
 
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val dateOfCreation = LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault()).format(dateFormatter)
+    val dateOfCreation =
+      LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault()).format(dateFormatter)
 
     val expected = s"$templateId/$dateOfCreation/${createdAt.toEpochMilli}-$tt-$itt.pdf"
 

@@ -27,7 +27,10 @@ object BuildFeedback {
     override def apply(inEvent: OrchestratedEmailV4, error: ComposerError) = {
       AllFeedback(
         FailedV3(
-          MetadataV3.fromSourceMetadata("comms-composer", inEvent.metadata, s"${inEvent.metadata.eventId}-failed"),
+          MetadataV3.fromSourceMetadata(
+            "comms-composer",
+            inEvent.metadata,
+            s"${inEvent.metadata.eventId}-failed"),
           inEvent.internalMetadata,
           error.reason,
           error.errorCode
@@ -49,7 +52,10 @@ object BuildFeedback {
     override def apply(inEvent: OrchestratedSMSV3, error: ComposerError) = {
       AllFeedback(
         FailedV3(
-          MetadataV3.fromSourceMetadata("comms-composer", inEvent.metadata, s"${inEvent.metadata.eventId}-failed"),
+          MetadataV3.fromSourceMetadata(
+            "comms-composer",
+            inEvent.metadata,
+            s"${inEvent.metadata.eventId}-failed"),
           inEvent.internalMetadata,
           error.reason,
           error.errorCode
@@ -71,7 +77,10 @@ object BuildFeedback {
     override def apply(inEvent: OrchestratedPrintV2, error: ComposerError) = {
       AllFeedback(
         FailedV3(
-          MetadataV3.fromSourceMetadata("comms-composer", inEvent.metadata, s"${inEvent.metadata.eventId}-failed"),
+          MetadataV3.fromSourceMetadata(
+            "comms-composer",
+            inEvent.metadata,
+            s"${inEvent.metadata.eventId}-failed"),
           inEvent.internalMetadata,
           error.reason,
           error.errorCode

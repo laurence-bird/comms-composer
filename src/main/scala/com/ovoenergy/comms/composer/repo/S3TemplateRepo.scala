@@ -17,34 +17,36 @@ object S3TemplateRepo {
 
   // TODO caching: cache template files indefinitely, fragments for 5 minutes
 
-  def getEmailTemplate(templateManifest: TemplateManifest) = ReaderT[ErrorOr, TemplatesContext, EmailTemplate[Id]] {
-    context =>
+  def getEmailTemplate(templateManifest: TemplateManifest) =
+    ReaderT[ErrorOr, TemplatesContext, EmailTemplate[Id]] { context =>
       val template = TemplatesRepo.getTemplate(context, templateManifest).map(_.email)
       wrangle(template, templateManifest).flatMap(_.flattenOption(templateManifest))
-  }
+    }
 
-  def getSMSTemplate(templateManifest: TemplateManifest) = ReaderT[ErrorOr, TemplatesContext, SMSTemplate[Id]] {
-    context =>
+  def getSMSTemplate(templateManifest: TemplateManifest) =
+    ReaderT[ErrorOr, TemplatesContext, SMSTemplate[Id]] { context =>
       val template = TemplatesRepo.getTemplate(context, templateManifest).map(_.sms)
       wrangle(template, templateManifest).flatMap(_.flattenOption(templateManifest))
-  }
+    }
 
-  def getPrintTemplate(templateManifest: TemplateManifest) = ReaderT[ErrorOr, TemplatesContext, PrintTemplate[Id]] {
-    context =>
+  def getPrintTemplate(templateManifest: TemplateManifest) =
+    ReaderT[ErrorOr, TemplatesContext, PrintTemplate[Id]] { context =>
       val template = TemplatesRepo.getTemplate(context, templateManifest).map(_.print)
       wrangle(template, templateManifest).flatMap(_.flattenOption(templateManifest))
-  }
+    }
 
-  def getTemplate(templateManifest: TemplateManifest) = ReaderT[ErrorOr, TemplatesContext, CommTemplate[Id]] {
-    context =>
+  def getTemplate(templateManifest: TemplateManifest) =
+    ReaderT[ErrorOr, TemplatesContext, CommTemplate[Id]] { context =>
       val template = TemplatesRepo.getTemplate(context, templateManifest)
       wrangle(template, templateManifest)
-  }
+    }
 
   /*
   Mapping the ValidatedNel to an Either[String, A]
    */
-  private def wrangle[A](validated: ValidatedNel[String, A], templateManifest: TemplateManifest): ErrorOr[A] =
+  private def wrangle[A](
+      validated: ValidatedNel[String, A],
+      templateManifest: TemplateManifest): ErrorOr[A] =
     validated match {
       case Invalid(errs) =>
         Left(s"""The specified template (${S3Prefix

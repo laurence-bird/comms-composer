@@ -20,7 +20,8 @@ class PrintComposerSpec extends FlatSpec with Matchers {
     override def apply[A](op: PrintComposerA[A]) = op match {
       case RetrieveTemplate(_) =>
         PrintTemplate[Id](
-          body = HandlebarsTemplate("<h2>Thanks for your payment of £{{amount}}</h2>", requiredFields)
+          body =
+            HandlebarsTemplate("<h2>Thanks for your payment of £{{amount}}</h2>", requiredFields)
         )
 
       case RenderPrintHtml(_, template, _) =>
@@ -49,7 +50,8 @@ class PrintComposerSpec extends FlatSpec with Matchers {
       sourceMetadata = None,
       triggerSource = "Laurence"
     ),
-    address = CustomerAddress("line1", Some("line2"), "London", Some("Middlesex"), "HA9 8PH", Some("UK")),
+    address =
+      CustomerAddress("line1", Some("line2"), "London", Some("Middlesex"), "HA9 8PH", Some("UK")),
     customerProfile = Some(CustomerProfile("Joe", "Bloggs")),
     templateData = Map.empty,
     internalMetadata = InternalMetadata("HI"),

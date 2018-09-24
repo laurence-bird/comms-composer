@@ -15,11 +15,12 @@ import okhttp3._
 
 import scala.util.Try
 
-case class DocRaptorRequest(document_content: String,
-                            test: Boolean,
-                            `type`: String,
-                            prince_options: PrinceOptions,
-                            javascript: Boolean = true) // We want to run JS assets prior to PDF rendering
+case class DocRaptorRequest(
+    document_content: String,
+    test: Boolean,
+    `type`: String,
+    prince_options: PrinceOptions,
+    javascript: Boolean = true) // We want to run JS assets prior to PDF rendering
 
 case class PrinceOptions(profile: String)
 
@@ -56,8 +57,9 @@ case class UnprocessableEntity(errorDetails: String) extends DocRaptorError {
 
 object DocRaptorClient extends Logging {
 
-  def renderPdf(printContext: PrintContext,
-                renderedPrintHtml: RenderedPrintHtml): Either[DocRaptorError, RenderedPrintPdf] = {
+  def renderPdf(
+      printContext: PrintContext,
+      renderedPrintHtml: RenderedPrintHtml): Either[DocRaptorError, RenderedPrintPdf] = {
 
     val docRaptorConfig: DocRaptorConfig = printContext.docRaptorConfig
     val retryConfig: Retry.RetryConfig = printContext.retryConfig
@@ -105,11 +107,13 @@ object DocRaptorClient extends Logging {
     val onFailure = (error: DocRaptorError) =>
       log.warn(s"Request to docraptor failed with response: ${error.errorDetails}")
 
-    val result = Retry.retry[DocRaptorError, RenderedPrintPdf](retryConfig, onFailure, _.shouldRetry) {
-      makeRequest.toEither
-        .leftMap((e: Throwable) => UnknownError(s"Call to Docraptor failed with error: ${e.getMessage}"))
-        .flatMap(handleApiResponse)
-    }
+    val result =
+      Retry.retry[DocRaptorError, RenderedPrintPdf](retryConfig, onFailure, _.shouldRetry) {
+        makeRequest.toEither
+          .leftMap((e: Throwable) =>
+            UnknownError(s"Call to Docraptor failed with error: ${e.getMessage}"))
+          .flatMap(handleApiResponse)
+      }
 
     result.flattenRetry
   }

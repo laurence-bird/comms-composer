@@ -16,9 +16,10 @@ object S3PdfRepo extends Logging {
 
   case class S3Config(s3Client: AmazonS3Client, bucketName: String)
 
-  def saveRenderedPdf(renderedPrintPdf: RenderedPrintPdf,
-                      incomingEvent: OrchestratedPrintV2,
-                      s3Config: S3Config): Either[String, String] = {
+  def saveRenderedPdf(
+      renderedPrintPdf: RenderedPrintPdf,
+      incomingEvent: OrchestratedPrintV2,
+      s3Config: S3Config): Either[String, String] = {
 
     val s3Client = s3Config.s3Client
     val bucketName = s3Config.bucketName
@@ -42,7 +43,8 @@ object S3PdfRepo extends Logging {
     val itt = incomingEvent.internalMetadata.internalTraceToken
 
     val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-    val dateOfCreation = LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault()).format(dateFormatter)
+    val dateOfCreation =
+      LocalDateTime.ofInstant(createdAt, ZoneId.systemDefault()).format(dateFormatter)
 
     s"$templateId/$dateOfCreation/${createdAt.toEpochMilli}-$tt-$itt.pdf"
   }

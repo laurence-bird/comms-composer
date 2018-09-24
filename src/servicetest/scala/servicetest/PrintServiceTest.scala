@@ -78,6 +78,14 @@ class PrintServiceTest
   )
 
   val templatesBucket = "ovo-comms-templates"
+  lazy val s3Client = {
+    val s3clientOptions = S3ClientOptions.builder().setPathStyleAccess(true).disableChunkedEncoding().build()
+    val s3: AmazonS3Client = new AmazonS3Client(new BasicAWSCredentials("service-test", "dummy"))
+      .withRegion(Regions.fromName(config.getString("aws.region")))
+    s3.setS3ClientOptions(s3clientOptions)
+    s3.setEndpoint(s3Endpoint)
+    s3
+  }
 
   override def beforeAll(): Unit = {
     super.beforeAll()
@@ -86,13 +94,10 @@ class PrintServiceTest
     uploadTemplateToS3(orchestratedPrintEvent.metadata.templateManifest, s3Client, templatesBucket)
   }
 
-  lazy val s3Client = {
-    val s3clientOptions = S3ClientOptions.builder().setPathStyleAccess(true).disableChunkedEncoding().build()
-    val s3: AmazonS3Client = new AmazonS3Client(new BasicAWSCredentials("service-test", "dummy"))
-      .withRegion(Regions.fromName(config.getString("aws.region")))
-    s3.setS3ClientOptions(s3clientOptions)
-    s3.setEndpoint(s3Endpoint)
-    s3
+  override def afterAll(): Unit = {
+    mockServerClient.close()
+    s3Client.shutdown()
+    super.afterAll()
   }
 
   it should "create a ComposedPrint event, for a valid request, archiving the rendered pdf in s3" in {

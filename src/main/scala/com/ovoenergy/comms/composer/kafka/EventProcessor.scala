@@ -12,16 +12,18 @@ import scala.language.higherKinds
 
 object EventProcessor extends Logging {
 
-  implicit def consumerRecordShow[K, V]: Show[ConsumerRecord[K, V]] = Show.show[ConsumerRecord[K, V]] { record =>
-    s"kafkaTopic: ${record.topic()}, kafkaPartition: ${record.partition()}, kafkaOffset: ${record.offset()}"
-  }
+  implicit def consumerRecordShow[K, V]: Show[ConsumerRecord[K, V]] =
+    Show.show[ConsumerRecord[K, V]] { record =>
+      s"kafkaTopic: ${record.topic()}, kafkaPartition: ${record.partition()}, kafkaOffset: ${record.offset()}"
+    }
 
   implicit def consumerRecordLoggable[K, V]: Loggable[ConsumerRecord[K, V]] =
     Loggable.instance(
       record =>
-        Map("kafkaTopic" -> record.topic(),
-            "kafkaPartition" -> record.partition().toString,
-            "kafkaOffset" -> record.offset().toString))
+        Map(
+          "kafkaTopic" -> record.topic(),
+          "kafkaPartition" -> record.partition().toString,
+          "kafkaOffset" -> record.offset().toString))
 
   def apply[F[_], InEvent <: LoggableEvent, OutEvent <: LoggableEvent](
       outputProducer: => OutEvent => F[RecordMetadata],
@@ -30,7 +32,9 @@ object EventProcessor extends Logging {
       processEvent: InEvent => Either[ComposerError, OutEvent])(
       implicit buildFeedbackFrom: BuildFeedback[InEvent],
       F: Effect[F]): Record[InEvent] => F[Seq[RecordMetadata]] = { record: Record[InEvent] =>
-    def sendFeedback(failedToComposeError: ComposerError, inEvent: InEvent): F[Seq[RecordMetadata]] = {
+    def sendFeedback(
+        failedToComposeError: ComposerError,
+        inEvent: InEvent): F[Seq[RecordMetadata]] = {
 
       val feedback = buildFeedbackFrom(inEvent, failedToComposeError)
 

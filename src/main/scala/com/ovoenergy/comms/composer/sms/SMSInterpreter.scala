@@ -43,13 +43,17 @@ object SMSInterpreter extends Logging {
                   Clock.systemDefaultZone(),
                   event.metadata.templateManifest,
                   template,
-                  SMSTemplateData(event.templateData, event.customerProfile, event.recipientPhoneNumber)
+                  SMSTemplateData(
+                    event.templateData,
+                    event.customerProfile,
+                    event.recipientPhoneNumber)
                 )
                 .leftMap { templateErrors =>
                   failSMS(templateErrors.reason, templateErrors.errorCode)
                 }
-              result.fold(e => warn(event)(s"Failed to render SMS: ${e.reason}"),
-                          _ => info(event)("Rendered SMS successfully"))
+              result.fold(
+                e => warn(event)(s"Failed to render SMS: ${e.reason}"),
+                _ => info(event)("Rendered SMS successfully"))
 
               result
             } catch {

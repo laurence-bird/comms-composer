@@ -8,20 +8,23 @@ package object rendering {
 
   case class FailedToRender(reason: String, errorCode: ErrorCode)
 
-  private[rendering] final case class Errors(missingKeys: Set[String],
-                                             exceptions: Seq[Throwable],
-                                             errorCode: ErrorCode) {
+  private[rendering] final case class Errors(
+      missingKeys: Set[String],
+      exceptions: Seq[Throwable],
+      errorCode: ErrorCode) {
     def toErrorMessage: String = {
       val missingKeysMsg = {
         if (missingKeys.nonEmpty)
-          List(s"""The template referenced the following non-existent keys: ${missingKeys.mkString("[", ",", "]")}""")
+          List(s"""The template referenced the following non-existent keys: ${missingKeys
+            .mkString("[", ",", "]")}""")
         else
           List.empty[String]
       }
       val exceptionsMsg = {
         if (exceptions.nonEmpty)
-          List(
-            s"""The following exceptions were thrown: ${exceptions.map(e => e.getMessage).mkString("[", ",", "]")}""")
+          List(s"""The following exceptions were thrown: ${exceptions
+            .map(e => e.getMessage)
+            .mkString("[", ",", "]")}""")
         else
           List.empty[String]
       }

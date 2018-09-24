@@ -132,7 +132,8 @@ object Loggable {
   }
 
   implicit def catsInstancesForLoggable: Contravariant[Loggable] = new Contravariant[Loggable] {
-    override def contramap[A, B](fa: Loggable[A])(f: B => A): Loggable[B] = instance[B](b => fa.mdcMap(f(b)))
+    override def contramap[A, B](fa: Loggable[A])(f: B => A): Loggable[B] =
+      instance[B](b => fa.mdcMap(f(b)))
   }
 
   implicit val stringStringLoggable: Loggable[(String, String)] =
@@ -144,11 +145,12 @@ object Loggable {
         Map(k -> v.show)
     }
 
-  implicit def mapLoggable[A, B](implicit abLoggable: Loggable[(A, B)]): Loggable[Map[A, B]] = instance { xs =>
-    xs.foldLeft(Map.empty[String, String]) { (s, x) =>
-      s ++ abLoggable.mdcMap(x)
+  implicit def mapLoggable[A, B](implicit abLoggable: Loggable[(A, B)]): Loggable[Map[A, B]] =
+    instance { xs =>
+      xs.foldLeft(Map.empty[String, String]) { (s, x) =>
+        s ++ abLoggable.mdcMap(x)
+      }
     }
-  }
 
   implicit def traverseLoggable[M[_]: Traverse, A: Loggable]: Loggable[M[A]] = instance { xs =>
     xs.foldLeft(Map.empty[String, String]) { (s, x) =>
@@ -156,54 +158,63 @@ object Loggable {
     }
   }
 
-  implicit def prefixedLoggable[A](implicit aLoggable: Loggable[A]): Loggable[Prefixed[A]] = instance {
-    case Prefixed(prefix, a) =>
-      aLoggable.mdcMap(a).map {
-        case (k, v) =>
-          s"$prefix$k" -> v
-      }
-  }
+  implicit def prefixedLoggable[A](implicit aLoggable: Loggable[A]): Loggable[Prefixed[A]] =
+    instance {
+      case Prefixed(prefix, a) =>
+        aLoggable.mdcMap(a).map {
+          case (k, v) =>
+            s"$prefix$k" -> v
+        }
+    }
 
-  implicit def capitalizedLoggable[A](implicit aLoggable: Loggable[A]): Loggable[Capitalized[A]] = instance {
-    case Capitalized(a) =>
-      aLoggable.mdcMap(a).map {
-        case (k, v) =>
-          k.capitalize -> v
-      }
-  }
+  implicit def capitalizedLoggable[A](implicit aLoggable: Loggable[A]): Loggable[Capitalized[A]] =
+    instance {
+      case Capitalized(a) =>
+        aLoggable.mdcMap(a).map {
+          case (k, v) =>
+            k.capitalize -> v
+        }
+    }
 
-  implicit def tuple1Loggable[A](implicit aLoggable: Loggable[A]): Loggable[Tuple1[A]] = aLoggable.contramap(_._1)
+  implicit def tuple1Loggable[A](implicit aLoggable: Loggable[A]): Loggable[Tuple1[A]] =
+    aLoggable.contramap(_._1)
 
-  implicit def tuple2Loggable[A1, A2](implicit a1Loggable: Loggable[A1],
-                                      a2Loggable: Loggable[A2]): Loggable[(A1, A2)] =
+  implicit def tuple2Loggable[A1, A2](
+      implicit a1Loggable: Loggable[A1],
+      a2Loggable: Loggable[A2]): Loggable[(A1, A2)] =
     instance {
       case (a1, a2) =>
         a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2)
     }
 
-  implicit def tuple3Loggable[A1, A2, A3](implicit a1Loggable: Loggable[A1],
-                                          a2Loggable: Loggable[A2],
-                                          a3Loggable: Loggable[A3]): Loggable[(A1, A2, A3)] = instance {
+  implicit def tuple3Loggable[A1, A2, A3](
+      implicit a1Loggable: Loggable[A1],
+      a2Loggable: Loggable[A2],
+      a3Loggable: Loggable[A3]): Loggable[(A1, A2, A3)] = instance {
     case (a1, a2, a3) =>
       a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2) ++ a3Loggable.mdcMap(a3)
   }
 
-  implicit def tuple4Loggable[A1, A2, A3, A4](implicit a1Loggable: Loggable[A1],
-                                              a2Loggable: Loggable[A2],
-                                              a3Loggable: Loggable[A3],
-                                              a4Loggable: Loggable[A4]): Loggable[(A1, A2, A3, A4)] = instance {
+  implicit def tuple4Loggable[A1, A2, A3, A4](
+      implicit a1Loggable: Loggable[A1],
+      a2Loggable: Loggable[A2],
+      a3Loggable: Loggable[A3],
+      a4Loggable: Loggable[A4]): Loggable[(A1, A2, A3, A4)] = instance {
     case (a1, a2, a3, a4) =>
-      a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2) ++ a3Loggable.mdcMap(a3) ++ a4Loggable.mdcMap(a4)
+      a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2) ++ a3Loggable.mdcMap(a3) ++ a4Loggable.mdcMap(
+        a4)
   }
 
-  implicit def tuple5Loggable[A1, A2, A3, A4, A5](implicit a1Loggable: Loggable[A1],
-                                                  a2Loggable: Loggable[A2],
-                                                  a3Loggable: Loggable[A3],
-                                                  a4Loggable: Loggable[A4],
-                                                  a5Loggable: Loggable[A5]): Loggable[(A1, A2, A3, A4, A5)] =
+  implicit def tuple5Loggable[A1, A2, A3, A4, A5](
+      implicit a1Loggable: Loggable[A1],
+      a2Loggable: Loggable[A2],
+      a3Loggable: Loggable[A3],
+      a4Loggable: Loggable[A4],
+      a5Loggable: Loggable[A5]): Loggable[(A1, A2, A3, A4, A5)] =
     instance {
       case (a1, a2, a3, a4, a5) =>
-        a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2) ++ a3Loggable.mdcMap(a3) ++ a4Loggable.mdcMap(a4) ++ a5Loggable
+        a1Loggable.mdcMap(a1) ++ a2Loggable.mdcMap(a2) ++ a3Loggable.mdcMap(a3) ++ a4Loggable
+          .mdcMap(a4) ++ a5Loggable
           .mdcMap(a5)
     }
 

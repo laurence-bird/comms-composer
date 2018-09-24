@@ -11,10 +11,11 @@ import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
 
 object SMSTemplateRendering extends Rendering {
 
-  def renderSMS(clock: Clock,
-                templateManifest: TemplateManifest,
-                template: SMSTemplate[Id],
-                smsTemplateData: CommTemplateData): Either[FailedToRender, RenderedSMS] = {
+  def renderSMS(
+      clock: Clock,
+      templateManifest: TemplateManifest,
+      template: SMSTemplate[Id],
+      smsTemplateData: CommTemplateData): Either[FailedToRender, RenderedSMS] = {
 
     val context = buildHandlebarsContext(
       smsTemplateData.buildHandlebarsData,
