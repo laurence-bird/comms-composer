@@ -1,15 +1,12 @@
 package com.ovoenergy.comms.composer
 package v2
+package rendering
 
 import cats.effect.Effect
 import cats.implicits._
-
 import io.circe.Encoder
 import io.circe.generic.semiauto._
-
 import fs2._
-import model.Print
-
 import org.http4s._
 import headers._
 import Method._
@@ -17,6 +14,8 @@ import circe._
 import client._
 import client.dsl.Http4sClientDsl
 import client.middleware.{Retry, RetryPolicy}
+
+import model.Print
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._

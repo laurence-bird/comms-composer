@@ -1,11 +1,13 @@
 package com.ovoenergy.comms.composer
 package v2
 
+import rendering.PdfRendering
+import rendering.PdfRendering.DocRaptorConfig
+
 import fs2._
 import cats.effect.IO
 import org.http4s.client.Client
 import org.scalatest._
-import PdfRendering.DocRaptorConfig
 import model.Print
 import org.http4s.{Challenge, HttpService, Uri}
 import org.http4s.dsl.Http4sDsl
