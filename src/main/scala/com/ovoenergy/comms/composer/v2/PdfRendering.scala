@@ -3,17 +3,20 @@ package v2
 
 import cats.effect.Effect
 import cats.implicits._
-import io.circe.generic.auto._
+
+import io.circe.Encoder
 import io.circe.generic.semiauto._
+
 import fs2._
 import model.Print
-import org.http4s.client.dsl.Http4sClientDsl
-import org.http4s.{BasicCredentials, Request, Response, Uri}
-import org.http4s.client.Client
-import org.http4s.Method._
-import org.http4s.circe._
-import org.http4s.client.middleware.{RetryPolicy, Retry}
-import org.http4s.headers._
+
+import org.http4s._
+import headers._
+import Method._
+import circe._
+import client._
+import client.dsl.Http4sClientDsl
+import client.middleware.{Retry, RetryPolicy}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -60,14 +63,17 @@ object PdfRendering extends Logging {
       }
     }
 
-    val retryingClient =
-      Retry[F](RetryPolicy(RetryPolicy.exponentialBackoff(2 minutes, Int.MaxValue), retriable))(
-        client)
+    val retryingClient = Retry[F](
+      RetryPolicy(RetryPolicy.exponentialBackoff(2.minutes, Int.MaxValue), retriable)
+    )(client)
 
     new PdfRendering[F] with Http4sClientDsl[F] {
 
-      implicit val docRaptorRequestEncoder = deriveEncoder[DocRaptorRequest]
-      implicit val docRaptorRequestEntityEncoder = jsonEncoderOf[F, DocRaptorRequest]
+      implicit val princeOptionsEncoder: Encoder[PrinceOptions] = deriveEncoder[PrinceOptions]
+      implicit val docRaptorRequestEncoder: Encoder[DocRaptorRequest] =
+        deriveEncoder[DocRaptorRequest]
+      implicit val docRaptorRequestEntityEncoder: EntityEncoder[F, DocRaptorRequest] =
+        jsonEncoderOf[F, DocRaptorRequest]
 
       def render(renderedPrintHtml: Print.HtmlBody): F[Print.RenderedPdf] = {
 
@@ -94,7 +100,8 @@ object PdfRendering extends Logging {
                   case 422 => UnProcessableEntity(error)
                   case otherStatusCode =>
                     UnknownError(
-                      s"Request to DocRaptor failed with unknown response, statusCode ${otherStatusCode}, response $error")
+                      s"Request to DocRaptor failed with unknown response, statusCode $otherStatusCode, response $error"
+                    )
               })
           }
         } yield Print.RenderedPdf(Print.PdfBody(result))

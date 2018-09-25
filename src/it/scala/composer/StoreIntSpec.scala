@@ -1,10 +1,9 @@
 package com.ovoenergy.comms.composer
 
-import java.nio.charset.StandardCharsets.UTF_8
 import java.util.UUID
 
 import cats.implicits._
-import cats.effect.{IO, Sync, Effect}
+import cats.effect.IO
 import com.ovoenergy.comms.aws._
 import com.ovoenergy.comms.composer.v2.Store
 import com.ovoenergy.comms.composer.v2.Store.Keys
@@ -46,8 +45,7 @@ class StoreIntSpec extends IntegrationSpec {
 
       val fragment = Subject("This is a good news")
 
-      val key = Key(UUID.randomUUID().toString)
-      val content = ObjectContent.fromByteArray[IO](fragment.content.getBytes(UTF_8))
+      val key = Key(s"$commId/${UUID.randomUUID().toString}")
 
       withS3 { s3 =>
         val store = Store[IO](s3, Store.Config(existingBucket), constantKeys(key))
@@ -62,8 +60,7 @@ class StoreIntSpec extends IntegrationSpec {
 
       val fragment = Subject("This is a good news")
 
-      val key = Key(UUID.randomUUID().toString)
-      val content = ObjectContent.fromByteArray[IO](fragment.content.getBytes(UTF_8))
+      val key = Key(s"$commId/${UUID.randomUUID().toString}")
 
       withS3 { s3 =>
         val store = Store[IO](s3, Store.Config(existingBucket), constantKeys(key))
@@ -81,8 +78,7 @@ class StoreIntSpec extends IntegrationSpec {
 
       val fragment = Subject("This is a good news")
 
-      val key = Key(UUID.randomUUID().toString)
-      val content = ObjectContent.fromByteArray[IO](fragment.content.getBytes(UTF_8))
+      val key = Key(s"$commId/${UUID.randomUUID().toString}")
 
       withS3 { s3 =>
         val store = Store[IO](s3, Store.Config(existingBucket), constantKeys(key))
