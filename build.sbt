@@ -37,6 +37,11 @@ libraryDependencies ++= Seq(
   fs2.core,
   fs2.kafkaClient,
 
+  ciris.core,
+  ciris.cats,
+  ciris.catsEffect,
+  ciris.credstash,
+
   circe.core,
   circe.generic,
   circe.parser,
