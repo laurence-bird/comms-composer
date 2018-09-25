@@ -53,7 +53,7 @@ object PdfRendering extends Logging {
   def apply[F[_]](client: Client[F], docRaptorConfig: DocRaptorConfig)(
       implicit ec: ExecutionContext,
       F: Effect[F],
-      s: Scheduler): PdfRendering[F] with Http4sClientDsl[F] = {
+      s: Scheduler): PdfRendering[F] = {
 
     def retriable(req: Request[F], result: Either[Throwable, Response[F]]): Boolean = {
       result match {
