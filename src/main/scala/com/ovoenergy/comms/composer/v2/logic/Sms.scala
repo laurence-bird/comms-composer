@@ -9,7 +9,7 @@ import rendering.Rendering
 import com.ovoenergy.comms.model.MetadataV3
 import com.ovoenergy.comms.model.sms.{ComposedSMSV4, OrchestratedSMSV3}
 
-object Program {
+object Sms {
 
   def apply[F[_]: FlatMap](event: OrchestratedSMSV3)(
       implicit rendering: Rendering[F],
