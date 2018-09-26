@@ -85,4 +85,15 @@ object Dependencies {
     lazy val circe = "org.http4s" %% "http4s-circe" % version
     lazy val dsl = "org.http4s" %% "http4s-dsl" % version
   }
+
+  object ciris {
+
+    private val cirisVersion = "0.10.2"
+    private val cirisCredstashVersion = "0.6"
+
+    lazy val core = "is.cir" %% "ciris-core" % cirisVersion
+    lazy val cats = "is.cir" %% "ciris-cats" % cirisVersion
+    lazy val catsEffect = "is.cir" %% "ciris-cats-effect" % cirisVersion
+    lazy val credstash = "com.ovoenergy" %% "ciris-credstash" % cirisCredstashVersion
+  }
 }
