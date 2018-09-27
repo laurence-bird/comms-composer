@@ -2,7 +2,6 @@ package com.ovoenergy.comms.composer
 package rendering
 
 import org.http4s.client.blaze.Http1Client
-import v2.rendering.PdfRendering
 import cats.effect.IO
 import cats.implicits._
 import com.ovoenergy.comms.composer.v2.rendering.PdfRendering.DocRaptorConfig
@@ -11,12 +10,11 @@ import ciris._
 import ciris.syntax._
 import ciris.cats.effect._
 import ciris.credstash.credstashF
-import com.ovoenergy.comms.composer.v2.model.Print
+import model.Print
 import org.http4s.client.Client
-import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
+import org.http4s.client.middleware.{ResponseLogger, RequestLogger}
 
 import scala.concurrent.duration._
-
 import scala.concurrent.ExecutionContext.Implicits.global
 
 class PdfRenderingIntSpec extends IntegrationSpec {

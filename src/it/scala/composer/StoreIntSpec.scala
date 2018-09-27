@@ -5,9 +5,8 @@ import java.util.UUID
 import cats.implicits._
 import cats.effect.IO
 import com.ovoenergy.comms.aws._
-import com.ovoenergy.comms.composer.v2.Store
 import com.ovoenergy.comms.composer.v2.Store.Keys
-import com.ovoenergy.comms.composer.v2.model.Email.Subject
+import model.Email.Subject
 import common.CredentialsProvider
 import common.model._
 import fs2.Stream.ToEffect

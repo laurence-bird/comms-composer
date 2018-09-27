@@ -19,6 +19,7 @@ import com.ovoenergy.comms.templates.util.Hash
 import servicetest.util.MockTemplates
 
 import scala.language.reflectiveCalls
+
 class AivenServiceTest
     extends FlatSpec
     with Matchers

@@ -15,7 +15,7 @@ scalacOptions := Seq(
 
 // Make ScalaTest write test reports that CircleCI understands
 testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
-lazy val ServiceTest = config("servicetest") extend(Test)
+lazy val ServiceTest = config("servicetest") extend Test
 lazy val It = config("it") extend Test
 
 configs(ServiceTest, It)
@@ -41,6 +41,8 @@ libraryDependencies ++= Seq(
   ciris.cats,
   ciris.catsEffect,
   ciris.credstash,
+  ciris.kafka,
+  ciris.kafka,
 
   circe.core,
   circe.generic,
@@ -57,17 +59,19 @@ libraryDependencies ++= Seq(
 
   kafkaSerialization.cats,
 
+  ovoEnergy.kafkaSerializationCore,
+  ovoEnergy.kafkaSerializationCats,
+  ovoEnergy.kafkaSerializationAvro,
+  ovoEnergy.kafkaSerializationAvro4s,
+
+
   ovoEnergy.commsMessages,
-  ovoEnergy.commsMessagesTests,
-  ovoEnergy.commsHelpers,
-  ovoEnergy.commsSerialisation,
   ovoEnergy.commsTemplates,
   ovoEnergy.commsAwsS3,
 
   handlebars,
   s3Sdk,
   shapeless,
-  okhttp,
 
   logging.logbackClassic,
   logging.logzIoLogbackAppender,
@@ -79,7 +83,8 @@ libraryDependencies ++= Seq(
   scalacheck.scalacheck         % Test,
   scalatest                     % Test,
   mockserver                    % Test,
-  ovoEnergy.dockerKit           % Test,
+  ovoEnergy.commsDockerKit      % Test,
+  ovoEnergy.commsMessagesTests  % Test,
 
   whisk.scalaTest               % ServiceTest,
   whisk.dockerJava              % ServiceTest,

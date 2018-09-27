@@ -1,14 +1,46 @@
-package com.ovoenergy.comms.composer.rendering
+package com.ovoenergy.comms.composer
+package rendering
 
-import cats.kernel.{Monoid, Semigroup}
 import cats.implicits._
-import com.ovoenergy.comms.composer.rendering.templating.SMSTemplateRendering.valueToMap
-import com.ovoenergy.comms.model.{CustomerAddress, CustomerProfile, TemplateData}
-import shapeless.ops.hlist.ToTraversable
-import shapeless.ops.record.Fields
-import shapeless.{HList, LabelledGeneric}
+import cats.kernel.Monoid
+import java.util.{Map => JMap, HashMap => JHashMap}
+import scala.collection.JavaConverters._
 
-package object templating extends Rendering {
+import com.ovoenergy.comms.model.{CustomerAddress, CustomerProfile, TemplateData}
+
+import shapeless.ops.hlist.ToTraversable
+
+import shapeless._
+import shapeless.ops.hlist._
+import shapeless.ops.record._
+
+package object templating {
+
+  implicit class JMapBuilders(map1: Map[String, AnyRef]) {
+    def combineWith(maps: Map[String, Map[String, String]]*): JMap[String, AnyRef] = {
+      val result = new JHashMap[String, AnyRef]()
+      result.putAll(map1.asJava)
+
+      maps.foreach { map: Map[String, Map[String, String]] =>
+        val jMap = map.mapValues(_.asJava)
+        result.putAll(jMap.asJava)
+      }
+      result
+    }
+  }
+
+  def valueToMap[E, L <: HList, F <: HList](instanceToConvert: E)(
+      implicit gen: LabelledGeneric.Aux[E, L],
+      fields: Fields.Aux[L, F],
+      toTraversableAux: ToTraversable.Aux[F, List, (Symbol, String)]): Map[String, String] = {
+
+    val fieldsHlist = fields.apply(gen.to(instanceToConvert))
+    val fieldsList = toTraversableAux(fieldsHlist)
+
+    fieldsList.map {
+      case (sym, value) => (sym.name, value)
+    }.toMap
+  }
 
   sealed trait CommTemplateData {
     def buildHandlebarsData: HandlebarsData

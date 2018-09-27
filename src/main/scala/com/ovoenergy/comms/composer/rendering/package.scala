@@ -1,12 +1,10 @@
 package com.ovoenergy.comms.composer
 
+import model._
 import cats.Semigroup
-import cats.data.Validated
 import com.ovoenergy.comms.model.ErrorCode
 
 package object rendering {
-
-  case class FailedToRender(reason: String, errorCode: ErrorCode)
 
   final case class Errors(
       missingKeys: Set[String],
@@ -37,12 +35,11 @@ package object rendering {
   }
 
   object Errors {
+    // TODO: We shouldn't discard the errorCode here, should be a Nel[ErrorCode] ?
     implicit val semigroup: Semigroup[Errors] = new Semigroup[Errors] {
       override def combine(x: Errors, y: Errors): Errors =
-        Errors(x.missingKeys ++ y.missingKeys, x.exceptions ++ y.exceptions, x.errorCode) // TODO: We shouldn't discard the errorCode here, should be a Nel[ErrorCode] ?
+        Errors(x.missingKeys ++ y.missingKeys, x.exceptions ++ y.exceptions, x.errorCode)
     }
   }
-
-  private[rendering] type ErrorsOr[A] = Validated[Errors, A]
 
 }
