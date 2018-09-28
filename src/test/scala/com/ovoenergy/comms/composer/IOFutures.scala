@@ -1,10 +1,8 @@
 package com.ovoenergy.comms.composer
-package v2
-
 import cats.effect.IO
-import org.scalatest.concurrent.Futures
 
-import scala.util.{Failure, Success}
+import scala.util.{Success, Failure}
+import org.scalatest.concurrent.Futures
 
 trait IOFutures extends Futures {
 

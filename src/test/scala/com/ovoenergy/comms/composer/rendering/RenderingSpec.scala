@@ -1,28 +1,31 @@
 package com.ovoenergy.comms.composer
-package v2
+package rendering
 
-import java.time.ZonedDateTime
-
-import cats.Id
-import cats.effect.IO
-import com.ovoenergy.comms.composer.rendering.templating.{
+import model._
+import rendering.templating.{
   CommTemplateData,
   EmailTemplateData,
-  PrintTemplateData,
-  SMSTemplateData
+  SMSTemplateData,
+  PrintTemplateData
 }
-import com.ovoenergy.comms.composer.rendering.{Errors, templating}
-import rendering.{HandlebarsRendering, Rendering}
-import model.{Email, SMS}
-import com.ovoenergy.comms.model.{Arbitraries, MissingTemplateData, TemplateManifest}
-import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
-import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
-import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
-import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
+
+import com.ovoenergy.comms.model.{Email => _, SMS => _, Print => _, _}
+
+import com.ovoenergy.comms.templates.model._
+import template.processed.email.EmailTemplate
+import template.processed.print.PrintTemplate
+import template.processed.sms.SMSTemplate
+
+import cats.Id
+import cats.implicits._
+import cats.effect.IO
+
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{EitherValues, FlatSpec, Matchers}
+import org.scalatest.{FlatSpec, EitherValues, Matchers}
 
 import scala.collection.mutable
+
+import java.time.ZonedDateTime
 
 class RenderingSpec
     extends FlatSpec

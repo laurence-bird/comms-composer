@@ -1,4 +1,4 @@
-package com.ovoenergy.comms.composer.v2
+package com.ovoenergy.comms.composer
 
 import java.security.MessageDigest
 

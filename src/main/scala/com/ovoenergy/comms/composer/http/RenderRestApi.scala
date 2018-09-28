@@ -9,10 +9,8 @@ import org.http4s.dsl.Http4sDsl
 import io.circe.generic.semiauto._
 import io.circe.syntax._
 import cats.implicits._
-import com.ovoenergy.comms.composer.{Logging, Time, Templates}
 import com.ovoenergy.comms.composer.model.Print.RenderedPdf
 import com.ovoenergy.comms.composer.model._
-import com.ovoenergy.comms.composer.rendering.Rendering
 import com.ovoenergy.comms.templates.util.Hash
 import shapeless.{Inl, Inr}
 import org.http4s.circe._
@@ -26,6 +24,8 @@ case class TemplateId(value: String) extends AnyVal
 case class TemplateVersion(value: String) extends AnyVal
 
 object RenderRestApi {
+
+  type Render[F[_]] = (TemplateManifest, Map[String, TemplateData]) => F[RenderedPdf]
 
   case class RenderRequest(data: Map[String, TemplateData])
 
@@ -111,14 +111,11 @@ object RenderRestApi {
   implicit def errorResponseEncoder: Encoder[ErrorResponse] = deriveEncoder[ErrorResponse]
   implicit def errorResponseDecoder: Decoder[ErrorResponse] = deriveDecoder[ErrorResponse]
 
-  def apply[F[_]: Sync](
-      render: (TemplateManifest, Map[String, TemplateData]) => F[RenderedPdf]): RenderRestApi[F] =
-    new RenderRestApi[F](render) with Logging
+  def apply[F[_]: Sync](render: Render[F]): RenderRestApi[F] =
+    new RenderRestApi[F](render)
 }
 
-class RenderRestApi[F[_]: Sync](
-    render: (TemplateManifest, Map[String, TemplateData]) => F[RenderedPdf])
-    extends Http4sDsl[F] { logger: Logging =>
+class RenderRestApi[F[_]: Sync](render: Render[F]) extends Http4sDsl[F] {
 
   def renderService: HttpService[F] = HttpService[F] {
 

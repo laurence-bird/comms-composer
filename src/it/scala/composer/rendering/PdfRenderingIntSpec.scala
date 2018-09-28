@@ -1,18 +1,22 @@
 package com.ovoenergy.comms.composer
 package rendering
 
-import org.http4s.client.blaze.Http1Client
+import model.Print
+import rendering.PdfRendering.DocRaptorConfig
+
 import cats.effect.IO
 import cats.implicits._
-import com.ovoenergy.comms.composer.v2.rendering.PdfRendering.DocRaptorConfig
+
 import fs2._
+
 import ciris._
 import ciris.syntax._
 import ciris.cats.effect._
 import ciris.credstash.credstashF
-import model.Print
+
 import org.http4s.client.Client
 import org.http4s.client.middleware.{ResponseLogger, RequestLogger}
+import org.http4s.client.blaze.Http1Client
 
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global

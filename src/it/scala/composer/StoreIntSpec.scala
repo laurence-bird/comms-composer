@@ -1,30 +1,33 @@
 package com.ovoenergy.comms.composer
 
-import java.util.UUID
+import model._
+import model.Email.Subject
+
+import com.ovoenergy.comms.aws._
+import common.CredentialsProvider
+import common.model._
+import s3.S3
+import s3.model._
 
 import cats.implicits._
 import cats.effect.IO
-import com.ovoenergy.comms.aws._
-import com.ovoenergy.comms.composer.v2.Store.Keys
-import model.Email.Subject
-import common.CredentialsProvider
-import common.model._
-import fs2.Stream.ToEffect
-import s3.S3
-import s3.model._
-import org.http4s.Uri
+
 import fs2._
+import fs2.Stream.ToEffect
+
+import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.client.blaze._
 import org.http4s.client.middleware.{ResponseLogger, RequestLogger}
 
+import java.util.UUID
 
 class StoreIntSpec extends IntegrationSpec {
 
   private val existingBucket = Bucket("ovo-comms-test")
   private val region = Region.`eu-west-1`
 
-  def constantKeys(key: Key): Keys[IO] = new Keys[IO] {
+  def constantKeys(key: Key): Store.Keys[IO] = new Store.Keys[IO] {
     override def get(commId: CommId, traceToken: TraceToken): IO[Key] = key.pure[IO]
   }
 

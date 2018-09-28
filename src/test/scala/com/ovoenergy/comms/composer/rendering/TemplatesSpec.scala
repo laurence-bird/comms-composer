@@ -1,28 +1,33 @@
-package com.ovoenergy.comms.composer.v2
+package com.ovoenergy.comms.composer
+package rendering
+
+import com.ovoenergy.comms.model.{SMS, Print, Email, TemplateManifest}
+
+import com.ovoenergy.comms.templates
+import templates.retriever.{PartialsRetriever, TemplatesRetriever}
+import templates.{ErrorsOr, TemplatesContext}
+import templates.cache.CachingStrategy
+import templates.model._
+import templates.parsing.handlebars.HandlebarsParsing
+import template.files.TemplateFile
+import template.files.email.EmailTemplateFiles
+import template.files.print.PrintTemplateFiles
+import template.files.sms.SMSTemplateFiles
+import template.processed.email.EmailTemplate
+import template.processed.print.PrintTemplate
+import template.processed.sms.SMSTemplate
 
 import cats.Id
 import cats.data.Validated.Valid
-import cats.effect.{Effect, IO}
-import com.ovoenergy.comms.model.{Email, Print, SMS, TemplateManifest}
-import com.ovoenergy.comms.templates.cache.CachingStrategy
-import com.ovoenergy.comms.templates.model.RequiredTemplateData.string
-import com.ovoenergy.comms.templates.model.{FileFormat, HandlebarsTemplate, RequiredTemplateData}
-import com.ovoenergy.comms.templates.model.template.files.TemplateFile
-import com.ovoenergy.comms.templates.model.template.files.email.EmailTemplateFiles
-import com.ovoenergy.comms.templates.model.template.files.print.PrintTemplateFiles
-import com.ovoenergy.comms.templates.model.template.files.sms.SMSTemplateFiles
-import com.ovoenergy.comms.templates.model.template.processed.email.EmailTemplate
-import com.ovoenergy.comms.templates.model.template.processed.print.PrintTemplate
-import com.ovoenergy.comms.templates.model.template.processed.sms.SMSTemplate
-import com.ovoenergy.comms.templates.parsing.handlebars.HandlebarsParsing
-import com.ovoenergy.comms.templates.{ErrorsOr, TemplatesContext}
-import com.ovoenergy.comms.templates.retriever.{PartialsRetriever, TemplatesRetriever}
+import cats.effect.{IO, Effect}
+
 import org.scalatest.{FlatSpec, Matchers}
 
 class TemplatesSpec extends FlatSpec with Matchers {
 
   val requiredFields =
-    RequiredTemplateData.obj(Map[String, RequiredTemplateData]("firstName" -> string))
+    RequiredTemplateData.obj(
+      Map[String, RequiredTemplateData]("firstName" -> RequiredTemplateData.string))
 
   implicit val templateContext: TemplatesContext = TemplatesContext(
     new TemplatesRetriever {
