@@ -1,14 +1,12 @@
-package com.ovoenergy.comms.composer
-package v2
+package com.ovoenergy.comms.composer.rendering
 
 import java.time.ZonedDateTime
+
 import com.ovoenergy.comms.composer.rendering.templating.EmailTemplateData
-import com.ovoenergy.comms.composer.v2.rendering.{HandlebarsRendering, HandlebarsWrapper}
-import com.ovoenergy.comms.model.{Arbitraries, CustomerProfile, TemplateData}
-import com.ovoenergy.comms.templates.model.{HandlebarsTemplate, RequiredTemplateData}
-import com.ovoenergy.comms.composer.rendering.Errors
+import com.ovoenergy.comms.model.{CustomerProfile, Arbitraries, TemplateData}
+import com.ovoenergy.comms.templates.model.{RequiredTemplateData, HandlebarsTemplate}
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{FlatSpec, Matchers, OptionValues}
+import org.scalatest.{OptionValues, FlatSpec, Matchers}
 
 class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries with OptionValues {
 

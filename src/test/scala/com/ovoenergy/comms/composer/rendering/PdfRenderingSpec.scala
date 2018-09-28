@@ -1,15 +1,13 @@
-package com.ovoenergy.comms.composer
-package v2
-
-import rendering.PdfRendering
-import rendering.PdfRendering.DocRaptorConfig
+package com.ovoenergy.comms.composer.rendering
 
 import fs2._
 import cats.effect.IO
+import com.ovoenergy.comms.composer.IOFutures
+import com.ovoenergy.comms.composer.model.Print
+import com.ovoenergy.comms.composer.rendering.PdfRendering.DocRaptorConfig
 import org.http4s.client.Client
 import org.scalatest._
-import model.Print
-import org.http4s.{Challenge, HttpService, Uri}
+import org.http4s.{Challenge, Uri, HttpService}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.`WWW-Authenticate`
 import org.scalatest.concurrent.ScalaFutures

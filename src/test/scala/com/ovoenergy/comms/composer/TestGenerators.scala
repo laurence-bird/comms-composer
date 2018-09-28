@@ -5,7 +5,7 @@ import org.scalacheck.rng.Seed
 import org.scalacheck.{Arbitrary, Gen}
 
 trait TestGenerators { arbs: Arbitraries =>
-  def generate[A: Arbitrary] = {
+  def generate[A: Arbitrary]: A = {
     implicitly[Arbitrary[A]].arbitrary.apply(Gen.Parameters.default.withSize(3), Seed.random()).get
   }
 }

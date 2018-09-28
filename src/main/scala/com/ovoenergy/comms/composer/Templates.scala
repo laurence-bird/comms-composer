@@ -2,7 +2,7 @@ package com.ovoenergy.comms.composer
 
 import cats.Id
 import cats.data.Validated.{Invalid, Valid}
-import cats.effect.Effect
+import cats.effect.{Effect, Sync}
 import com.ovoenergy.comms.model.TemplateManifest
 import com.ovoenergy.comms.templates.{TemplatesContext, TemplatesRepo}
 import com.ovoenergy.comms.templates.model.template.{processed => templates}
@@ -39,7 +39,7 @@ object Templates {
     }
 
   def loadTemplate[F[_], A](manifest: TemplateManifest, f: CommTemplate[Id] => Option[A])(
-      implicit F: Effect[F],
+      implicit F: Sync[F],
       templatesContext: TemplatesContext): F[A] = {
     TemplatesRepo.getTemplate(templatesContext, manifest) match {
       case Valid(commTemplate) =>
