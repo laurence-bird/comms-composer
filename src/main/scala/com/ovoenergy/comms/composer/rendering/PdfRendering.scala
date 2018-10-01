@@ -34,7 +34,7 @@ object PdfRendering extends Logging {
 
   case class PrinceOptions(profile: String)
 
-  case class DocRaptorConfig(apiKey: String, url: String, isTest: Boolean)
+  case class DocRaptorConfig(apiKey: String, url: Uri, isTest: Boolean)
 
   sealed trait DocRaptorError extends Throwable {
     val errorDetails: String

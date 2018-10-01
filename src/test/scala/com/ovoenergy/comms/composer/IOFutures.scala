@@ -4,6 +4,8 @@ import cats.effect.IO
 import scala.util.{Success, Failure}
 import org.scalatest.concurrent.Futures
 
+import scala.language.implicitConversions
+
 trait IOFutures extends Futures {
 
   implicit def convertIO[T](io: IO[T]): FutureConcept[T] =

@@ -28,7 +28,7 @@ class PdfRenderingSpec
   behavior of "Pdf Renderer"
 
   val uri = Uri.unsafeFromString(s"http://localhost:8080")
-  val docRaptorConfig = DocRaptorConfig("apiKey", uri.renderString, true)
+  val docRaptorConfig = DocRaptorConfig("apiKey", uri, true)
 
   val printBody =
     Print.HtmlBody("<html><h>Here is a template</h><body>Laurence says Hi</body></html>")

@@ -38,6 +38,7 @@ object Templates {
       def get(manifest: TemplateManifest): F[Print] = loadTemplate(manifest, _.print)
     }
 
+  // FIXME It is blocking the main EC
   def loadTemplate[F[_], A](manifest: TemplateManifest, f: CommTemplate[Id] => Option[A])(
       implicit F: Sync[F],
       templatesContext: TemplatesContext): F[A] = {

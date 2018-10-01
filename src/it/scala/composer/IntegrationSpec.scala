@@ -9,6 +9,8 @@ import scala.util.{Failure, Success}
 
 abstract class IntegrationSpec extends WordSpec with Matchers with Futures {
 
+  sys.props.put("logback.configurationFile","logback-it.xml")
+
   implicit val patience: PatienceConfig = PatienceConfig(scaled(5.seconds), 500.millis)
 
   implicit def convertIO[T](io: IO[T]): FutureConcept[T] =
