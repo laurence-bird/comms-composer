@@ -23,7 +23,8 @@ object model {
 
   type FailedOr[A] = Either[ComposerError, A]
 
-  case class ComposerError(reason: String, errorCode: ErrorCode) extends Throwable
+  case class ComposerError(reason: String, errorCode: ErrorCode)
+      extends RuntimeException(s"$errorCode - $reason")
 
   object Email {
     def chooseSender(template: Templates.Email): EmailSender =

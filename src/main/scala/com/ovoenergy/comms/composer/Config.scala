@@ -147,7 +147,7 @@ object Config {
                 nativeSettings = kafkaSSL.setProperties(
                   Map(
                     ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
-                    ConsumerConfig.GROUP_ID_CONFIG -> "comms-profiles",
+                    ConsumerConfig.GROUP_ID_CONFIG -> "comms-composer",
                     ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
                     ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
                   )) { (acc, k, v) =>
@@ -227,7 +227,7 @@ object Config {
                 maxParallelism = Int.MaxValue,
                 nativeSettings = Map(
                   ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
-                  ConsumerConfig.GROUP_ID_CONFIG -> "comms-profiles",
+                  ConsumerConfig.GROUP_ID_CONFIG -> "comms-composer",
                   ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
                   ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
                 )

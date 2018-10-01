@@ -197,8 +197,10 @@ class KafkaStream[F[_]](config: KafkaConfig, hash: Hash[F], time: Time[F]) exten
             valueDeserializer,
             config.consumer
           ) { record =>
+            val logRecord = F.delay(info(record)("Consumed Kafka message"))
+
             // TODO I believe this should be encapsulated in a logic that work on an algebra.
-            process(record.value())
+            logRecord *> process(record.value())
               .flatMap { b =>
                 produceRecord[F](bProducer, producerRecord(topicB.name, record.key(), b))
                   .flatMap { metadata =>
@@ -206,6 +208,9 @@ class KafkaStream[F[_]](config: KafkaConfig, hash: Hash[F], time: Time[F]) exten
                   }
               }
               .handleErrorWith { error =>
+                val logFailure =
+                  F.delay(warnWithException(record)("Error processing Kafka record")(error))
+
                 val sendFailedEvent = failedEvent(record.value(), composerError(error)).flatMap(
                   event =>
                     produceRecord[F](
@@ -225,7 +230,7 @@ class KafkaStream[F[_]](config: KafkaConfig, hash: Hash[F], time: Time[F]) exten
                       }
                   }
 
-                sendFailedEvent *> sendFeedbackEvent
+                logFailure *> sendFailedEvent *> sendFeedbackEvent
               }
           }
       }

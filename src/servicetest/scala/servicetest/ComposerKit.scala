@@ -16,8 +16,7 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider with DockerLog
     with DynamoDbKit
     with KafkaKit
     with SchemaRegistryKit
-    with ZookeeperKit
-    with FakeS3Kit =>
+    with ZookeeperKit =>
 
   val awsAccountId: String = sys.env.getOrElse(
     "AWS_ACCOUNT_ID",
@@ -30,8 +29,8 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider with DockerLog
   def composerEndpoint: String = s"http://$composerContainerName:$composerPort"
   def composerPublicEndpoint: String = s"http://$dockerHostIp:$composerPublicPort"
 
-  def composerTemplatesS3Bucket: String = s"comms_templates"
-  def composerRenderedS3Bucket: String = s"comms_rendered"
+  def composerTemplatesS3Bucket: String = s"ovo-comms-test"
+  def composerRenderedS3Bucket: String = s"ovo-comms-test"
 
   def composerDocraptorEndpoint: String = s"http://$wiremockContainerName:$wiremockHttpPort"
 
@@ -44,7 +43,6 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider with DockerLog
       // Kafka need to be connected on the public endpoint
       s"KAFKA_BOOTSTRAP_SERVERS=$kafkaPublicEndpoint",
       s"SCHEMA_REGISTRY_ENDPOINT=http://$schemaRegistryContainerName:$schemaRegistryPort",
-      s"S3_ENDPOINT=$fakeS3ContainerName:$fakeS3Port",
       s"TEMPLATES_S3_BUCKET=$composerTemplatesS3Bucket",
       s"RENDERED_S3_BUCKET=$composerRenderedS3Bucket",
       s"DOCRAPTOR_ENDPOINT=$composerDocraptorEndpoint",
