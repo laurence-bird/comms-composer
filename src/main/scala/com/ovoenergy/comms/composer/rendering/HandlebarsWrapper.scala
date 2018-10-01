@@ -5,11 +5,13 @@ import java.util.{Map => JMap}
 
 import com.github.jknack.handlebars.helper.DefaultHelperRegistry
 import com.github.jknack.handlebars.io.StringTemplateSource
-import com.github.jknack.handlebars.{Helper, Handlebars, Options}
+import com.github.jknack.handlebars.{Helper, Handlebars, Options, Context}
 import com.ovoenergy.comms.model.{MissingTemplateData, InvalidTemplate}
 
 import scala.collection.mutable
 import scala.util.{Success, Failure, Try}
+
+import java.util.{Map => JMap, HashMap => JHashMap, List => JList, LinkedList => JLinkedList}
 
 trait HandlebarsWrapper {
 
@@ -20,6 +22,20 @@ trait HandlebarsWrapper {
 }
 
 object HandlebarsWrapper {
+
+  def javize(x: AnyRef): AnyRef = x match {
+    case map: Map[String, AnyRef] =>
+      val jmap = new JHashMap[String, AnyRef](map.size)
+      map.foreach { case (k, v) => jmap.put(k, javize(v)) }
+      jmap
+    case seq: Seq[AnyRef] =>
+      val jlist: JList[AnyRef] = new JLinkedList[AnyRef]()
+      seq.foreach { x =>
+        jlist.add(javize(x))
+      }
+      jlist
+    case str: String => str
+  }
 
   // TODO: Lift to F
   def apply: HandlebarsWrapper = new HandlebarsWrapper {
@@ -43,9 +59,13 @@ object HandlebarsWrapper {
       val handlebars = new Handlebars().`with`(helperRegistry)
 
       Try {
+        // TODO we should cache the compilation
         val compiledTemplate =
           handlebars.compile(new StringTemplateSource(fileName, templateRawContent))
-        compiledTemplate.apply(context)
+
+        // TODO rather than create a java map, we pass a ValueResolver to the
+        // handlebar that is able to use the TemplateData
+        compiledTemplate.apply(javize(context))
       } match { // note: Try has a `fold` function in Scala 2.12 :)
         case Success(result) =>
           if (missingKeys.isEmpty)

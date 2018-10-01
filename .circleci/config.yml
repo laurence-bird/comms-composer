@@ -247,7 +247,7 @@ jobs:
 
     - run:
         command: |
-          build/deploy_to_ecs.sh -s profiles -c ecs-cluster-UATv2 UAT `git describe --abbrev=0 --tags | cut -c2-` aws/container-definition.json
+          build/deploy_to_ecs.sh -s composer -c ecs-cluster-UATv2 UAT `git describe --abbrev=0 --tags | cut -c2-` aws/container-definition.json
 
   e2e_test:
 
@@ -293,7 +293,7 @@ jobs:
 
     - run:
         command: |
-          build/deploy_to_ecs.sh -s profiles -c ecs-cluster-PRDv2 PRD `git describe --abbrev=0 --tags | cut -c2-` aws/container-definition.json
+          build/deploy_to_ecs.sh -s composer -c ecs-cluster-PRDv2 PRD `git describe --abbrev=0 --tags | cut -c2-` aws/container-definition.json
 
 
 workflows:

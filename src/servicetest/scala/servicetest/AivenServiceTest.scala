@@ -1,24 +1,24 @@
-package servicetest
-
-import java.time.OffsetDateTime
-import java.util.UUID
-
-import com.amazonaws.auth.BasicAWSCredentials
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
-import com.ovoenergy.comms.helpers.Kafka
-import com.ovoenergy.comms.model._
-import com.ovoenergy.comms.model.email._
-import com.ovoenergy.comms.model.sms._
-import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.scalatest.{Failed => _, _}
-import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
-import shapeless.Coproduct
-import scala.concurrent.duration._
-import com.ovoenergy.comms.templates.util.Hash
-import servicetest.util.MockTemplates
-
-import scala.language.reflectiveCalls
+//package servicetest
+//
+//import java.time.OffsetDateTime
+//import java.util.UUID
+//
+//import com.amazonaws.auth.BasicAWSCredentials
+//import com.amazonaws.regions.Regions
+//import com.amazonaws.services.s3.{AmazonS3Client, S3ClientOptions}
+//import com.ovoenergy.comms.helpers.Kafka
+//import com.ovoenergy.comms.model._
+//import com.ovoenergy.comms.model.email._
+//import com.ovoenergy.comms.model.sms._
+//import org.apache.kafka.clients.consumer.KafkaConsumer
+//import org.scalatest.{Failed => _, _}
+//import com.ovoenergy.comms.testhelpers.KafkaTestHelpers._
+//import shapeless.Coproduct
+//import scala.concurrent.duration._
+//import com.ovoenergy.comms.templates.util.Hash
+//import servicetest.util.MockTemplates
+//
+//import scala.language.reflectiveCalls
 
 //class AivenServiceTest
 //    extends FlatSpec

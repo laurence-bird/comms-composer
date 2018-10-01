@@ -6,7 +6,7 @@ lazy val It = config("it") extend Test
 name := "composer"
 organization := "com.ovoenergy.comms"
 
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.7"
 scalacOptions := Seq(
   "-unchecked",
   "-deprecation",
@@ -22,12 +22,24 @@ configs(ServiceTest, It)
 inConfig(It)(Defaults.testSettings)
 inConfig(ServiceTest)(Defaults.testSettings)
 
-(test in ServiceTest) := (test in ServiceTest).dependsOn(publishLocal in Docker).value
-(testOnly in ServiceTest) := (testOnly in ServiceTest).dependsOn(publishLocal in Docker).inputTaskValue
+ServiceTest/test := (ServiceTest/test).dependsOn(Docker/publishLocal).value
 
 resolvers ++= Seq(
   Resolver.bintrayRepo("ovotech", "maven"),
   "confluent-release" at "http://packages.confluent.io/maven/"
+)
+
+
+lazy val awsJavaSdkVersion = "1.11.419"
+lazy val jerseyVersion = "2.25.1"
+dependencyOverrides ++= Seq(
+  "com.amazonaws" % "aws-java-sdk-core" % awsJavaSdkVersion,
+  "com.amazonaws" % "aws-java-sdk-s3" % awsJavaSdkVersion,
+  "com.amazonaws" % "aws-java-sdk-dynamodb" % awsJavaSdkVersion,
+  "com.amazonaws" % "aws-java-sdk-kms" % awsJavaSdkVersion,
+  "org.glassfish.jersey.core" % "jersey-common" % jerseyVersion,
+  "org.glassfish.jersey.media" % "jersey-media-json-jackson" % jerseyVersion,
+  "org.glassfish.jersey.media" % "jersey-media-json-processing" % jerseyVersion
 )
 
 libraryDependencies ++= Seq(
@@ -77,7 +89,6 @@ libraryDependencies ++= Seq(
   scalacheck.toolboxDatetime    % Test,
   scalacheck.scalacheck         % Test,
   scalatest                     % Test,
-  mockserver                    % Test,
   ovoEnergy.commsDockerKit      % Test,
   ovoEnergy.commsMessagesTests  % Test,
 
@@ -86,6 +97,8 @@ libraryDependencies ++= Seq(
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, DockerPlugin)
+
+commsPackagingDownloadAivenStuffAtStartup := false
 commsPackagingMaxMetaspaceSize := 128
 dockerExposedPorts += 8080
 

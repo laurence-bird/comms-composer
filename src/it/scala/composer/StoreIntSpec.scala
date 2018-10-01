@@ -31,14 +31,6 @@ class StoreIntSpec extends IntegrationSpec {
     override def get(commId: CommId, traceToken: TraceToken): IO[Key] = key.pure[IO]
   }
 
-  implicit class RichToEffectIO[O](te: ToEffect[IO, O]) {
-    def lastOrRethrow: IO[O] =
-      te.last
-        .map(_.toRight[Throwable](new IllegalStateException("Empty Stream")))
-        .rethrow
-
-  }
-
   "Store" should {
     "store fragment and return valid s3 URI" in {
 

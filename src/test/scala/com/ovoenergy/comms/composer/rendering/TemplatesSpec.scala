@@ -2,7 +2,6 @@ package com.ovoenergy.comms.composer
 package rendering
 
 import com.ovoenergy.comms.model.{SMS, Print, Email, TemplateManifest}
-
 import com.ovoenergy.comms.templates
 import templates.retriever.{PartialsRetriever, TemplatesRetriever}
 import templates.{ErrorsOr, TemplatesContext}
@@ -16,14 +15,16 @@ import template.files.sms.SMSTemplateFiles
 import template.processed.email.EmailTemplate
 import template.processed.print.PrintTemplate
 import template.processed.sms.SMSTemplate
-
 import cats.Id
 import cats.data.Validated.Valid
 import cats.effect.{IO, Effect}
-
 import org.scalatest.{FlatSpec, Matchers}
 
+import scala.concurrent.ExecutionContext
+
 class TemplatesSpec extends FlatSpec with Matchers {
+
+  implicit val ec: ExecutionContext = ExecutionContext.global
 
   val requiredFields =
     RequiredTemplateData.obj(
@@ -112,19 +113,19 @@ class TemplatesSpec extends FlatSpec with Matchers {
 
   it should "retrieve non existent sms template" in {
     intercept[RuntimeException] {
-      Templates.sms[IO](Effect[IO], emptyTemplatesContext).get(manifest).unsafeRunSync()
+      Templates.sms[IO](Effect[IO], ec, emptyTemplatesContext).get(manifest).unsafeRunSync()
     }.getMessage shouldBe "Template has no channels defined"
   }
 
   it should "retrieve non existent email template" in {
     intercept[RuntimeException] {
-      Templates.email[IO](Effect[IO], emptyTemplatesContext).get(manifest).unsafeRunSync()
+      Templates.email[IO](Effect[IO], ec, emptyTemplatesContext).get(manifest).unsafeRunSync()
     }.getMessage shouldBe "Template has no channels defined"
   }
 
   it should "retrieve non existent print template" in {
     intercept[RuntimeException] {
-      Templates.print[IO](Effect[IO], emptyTemplatesContext).get(manifest).unsafeRunSync()
+      Templates.print[IO](Effect[IO], ec, emptyTemplatesContext).get(manifest).unsafeRunSync()
     }.getMessage shouldBe "Template has no channels defined"
   }
 
@@ -158,13 +159,13 @@ class TemplatesSpec extends FlatSpec with Matchers {
 
   it should "retrieve non existent email channel template" in {
     intercept[RuntimeException] {
-      Templates.email[IO](Effect[IO], partialTemplatesContext).get(manifest).unsafeRunSync()
+      Templates.email[IO](Effect[IO], ec, partialTemplatesContext).get(manifest).unsafeRunSync()
     }.getMessage shouldBe "Template for channel not found"
   }
 
   it should "retrieve non existent print channel template" in {
     intercept[RuntimeException] {
-      Templates.print[IO](Effect[IO], partialTemplatesContext).get(manifest).unsafeRunSync()
+      Templates.print[IO](Effect[IO], ec, partialTemplatesContext).get(manifest).unsafeRunSync()
     }.getMessage shouldBe "Template for channel not found"
   }
 

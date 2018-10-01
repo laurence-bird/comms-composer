@@ -37,29 +37,37 @@ object HandlebarsRendering {
     def extractValueFromTemplateData(templateData: TemplateData): AnyRef = {
       // TODO use select
       templateData.value match {
-        case Inl(stringValue) => stringValue
-        case Inr(Inl(sequence)) => sequence.map(extractValueFromTemplateData)
+        case Inl(stringValue) =>
+          stringValue
+        case Inr(Inl(sequence)) =>
+          sequence.map(extractValueFromTemplateData)
         case Inr(Inr(Inl(map))) =>
-          map.map({ case (key, value) => key -> extractValueFromTemplateData(value) })
+          map.map {
+            case (key, value) =>
+              key -> extractValueFromTemplateData(value)
+          }
         case _ =>
           throw new Exception("Unable to extract value from template data")
       }
     }
 
-    val dataAsStrings: Map[String, AnyRef] = handlebarsData.templateData map {
-      case (key, templateData) => key -> extractValueFromTemplateData(templateData)
+    val data: Map[String, AnyRef] = handlebarsData.templateData.map {
+      case (key, value) => key -> extractValueFromTemplateData(value)
     }
 
-    systemVariables(time) ++ handlebarsData.otherData ++ dataAsStrings
+    // TODO: It should do a deep merge
+    // TODO: I believe the handlebarsData should contain the data already merged
+    systemVariables(time) ++ handlebarsData.otherData ++ data
   }
 
   private def systemVariables(time: ZonedDateTime): Map[String, Map[String, String]] = {
     Map(
-      "system" ->
-        Map(
-          "year" -> time.getYear.toString,
-          "month" -> time.getMonth.getValue.toString,
-          "dayOfMonth" -> time.getDayOfMonth.toString
-        ))
+      "system" -> Map(
+        "year" -> time.getYear.toString,
+        "month" -> time.getMonth.getValue.toString,
+        "dayOfMonth" -> time.getDayOfMonth.toString,
+      )
+    )
+
   }
 }

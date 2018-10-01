@@ -1,12 +1,27 @@
 package com.ovoenergy.comms.composer
+
+import cats.syntax.monadError._
 import cats.effect.IO
+import fs2.Stream.ToEffect
 
 import scala.util.{Success, Failure}
 import org.scalatest.concurrent.Futures
 
 import scala.language.implicitConversions
 
+object IOFutures {
+  def lastOrRethrow[O](te: ToEffect[IO, O]): IO[O] = {
+    te.last
+      .map(_.toRight[Throwable](new IllegalStateException("Empty Stream")))
+      .rethrow
+  }
+}
+
 trait IOFutures extends Futures {
+
+  implicit class RichToEffectIO[O](te: ToEffect[IO, O]) {
+    def lastOrRethrow: IO[O] = IOFutures.lastOrRethrow(te)
+  }
 
   implicit def convertIO[T](io: IO[T]): FutureConcept[T] =
     new FutureConcept[T] {

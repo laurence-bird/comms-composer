@@ -14,7 +14,7 @@ class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries wi
 
   val requiredTemplateData = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
 
-  implicit val arbEmailTemplateData = Arbitrary {
+  implicit val arbEmailTemplateData: Arbitrary[EmailTemplateData] = Arbitrary {
     for {
       td <- Arbitrary.arbitrary[Map[String, TemplateData]]
       pf <- Gen.option(Arbitrary.arbitrary[CustomerProfile])

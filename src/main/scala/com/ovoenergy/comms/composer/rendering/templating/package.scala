@@ -51,6 +51,7 @@ package object templating {
       customerProfile: Option[CustomerProfile],
       recipientEmailAddress: String)
       extends CommTemplateData {
+
     override def buildHandlebarsData: HandlebarsData = {
       val emailAddressMap: Map[String, Map[String, String]] = Map(
         "recipient" -> Map("emailAddress" -> recipientEmailAddress))
