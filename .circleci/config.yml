@@ -103,7 +103,7 @@ jobs:
 
     - store_artifacts:
         path: target/unit-test.log
-        destination: logs
+        destination: logs/unit-test.log
 
   integration_test:
 
@@ -126,8 +126,12 @@ jobs:
         path: target/test-reports
 
     - store_artifacts:
-        path: target/integration_test.log
-        destination: integration_test.log
+        path: target/it.log
+        destination: logs/integration_test.log
+
+    - store_artifacts:
+        path: target/it-docker.log
+        destination: logs/integration_test-docker.log
 
 
   service_test:
@@ -160,7 +164,11 @@ jobs:
 
     - store_artifacts:
         path: target/service-test.log
-        destination: logs
+        destination: logs/service-test.log
+
+    - store_artifacts:
+        path: target/service-test-docker.log
+        destination: logs/service-test-docker.log
 
   tag:
 

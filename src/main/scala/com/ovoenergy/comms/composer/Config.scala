@@ -1,6 +1,17 @@
 package com.ovoenergy.comms.composer
 
-import com.ovoenergy.comms.composer.kafka.KafkaStream.{Topics, KafkaConfig, Topic}
+import Config.Env.{Uat, Prd}
+import http.HttpServerConfig
+import rendering.PdfRendering.DocRaptorConfig
+import kafka.KafkaStream.{Topics, KafkaConfig, Topic}
+import com.ovoenergy.comms.model.{FailedV3, Feedback}
+import com.ovoenergy.comms.model.email.{OrchestratedEmailV4, ComposedEmailV4}
+import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
+import com.ovoenergy.comms.model.sms.{OrchestratedSMSV3, ComposedSMSV4}
+import com.ovoenergy.comms.aws.common.model.Region
+import com.ovoenergy.comms.aws.s3.model.Bucket
+import com.ovoenergy.fs2.kafka.{ConsumerSettings, ProducerSettings}
+import com.ovoenergy.kafka.serialization.avro.SchemaRegistryClientSettings
 import cats.implicits._
 import cats.effect.Sync
 import ciris._
@@ -8,21 +19,13 @@ import ciris.syntax._
 import ciris.cats.effect._
 import ciris.credstash.credstashF
 import ciris.aiven.kafka.aivenKafkaSetup
-import com.ovoenergy.comms.aws.common.model.Region
-import com.ovoenergy.comms.aws.s3.model.Bucket
-import com.ovoenergy.comms.composer.Config.Env.{Uat, Prd}
-import com.ovoenergy.comms.composer.http.HttpServerConfig
-import com.ovoenergy.comms.model.{FailedV3, Feedback}
-import com.ovoenergy.comms.model.email.{OrchestratedEmailV4, ComposedEmailV4}
-import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
-import com.ovoenergy.comms.model.sms.{OrchestratedSMSV3, ComposedSMSV4}
-import com.ovoenergy.fs2.kafka.{ConsumerSettings, ProducerSettings}
-import com.ovoenergy.kafka.serialization.avro.SchemaRegistryClientSettings
+import CirisAws._
+import org.http4s.Uri
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
 
 import scala.concurrent.duration._
-import CirisAws._
+import scala.util.Try
 
 case class TemplatesConfig(bucket: Bucket)
 
@@ -30,7 +33,9 @@ case class Config(
     http: HttpServerConfig,
     kafka: KafkaConfig,
     store: Store.Config,
-    templates: TemplatesConfig)
+    templates: TemplatesConfig,
+    docRaptor: DocRaptorConfig
+)
 
 object Config {
 
@@ -43,6 +48,9 @@ object Config {
     ConfigDecoder.catchNonFatal("AWS Region") { str =>
       Region(str)
     }
+
+  implicit val UriConfigDecoder: ConfigDecoder[String, Uri] =
+    ConfigDecoder.fromTry("Uri")(str => Try(Uri.unsafeFromString(str)))
 
   sealed trait Env {
     def toStringLowerCase: String = toString.toLowerCase
@@ -95,85 +103,116 @@ object Config {
               credstashF()(s"${environment.toStringLowerCase}.kafka.service_certificate")
           ),
           credstashF[F, Secret[String]]()(
-            s"${environment.toStringLowerCase}.aiven.schema_registry.password")
-        ) { (awsRegion, templatesBucket, storeBucket, kafkaSSL, schemaRegistryPassword) =>
-          val store = Store.Config(storeBucket, awsRegion)
-
-          val templates = TemplatesConfig(templatesBucket)
-
-          val kafka = {
-
-            val kafkaBootstrapServers = environment match {
-              case Uat => "kafka-uat.ovo-uat.aivencloud.com:13581"
-              case Prd => "kafka-prd.ovo-prd.aivencloud.com:21556"
-            }
-
-            val schemaRegistryEndpoint = environment match {
-              case Uat => "https://kafka-uat.ovo-uat.aivencloud.com:13584"
-              case Prd => "https://kafka-prd.ovo-prd.aivencloud.com:21559"
-            }
-
-            val schemaRegistry = SchemaRegistryClientSettings(
-              schemaRegistryEndpoint,
-              "comms-platform-service-user",
-              schemaRegistryPassword.value
-            )
-
-            val consumer = ConsumerSettings(
-              pollTimeout = 500.milliseconds,
-              maxParallelism = Int.MaxValue,
-              nativeSettings = kafkaSSL.setProperties(
-                Map(
-                  ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
-                  ConsumerConfig.GROUP_ID_CONFIG -> "comms-profiles",
-                  ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
-                  ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
-                )) { (acc, k, v) =>
-                acc + (k -> v)
-              }
-            )
-
-            val producer = ProducerSettings(
-              nativeSettings = kafkaSSL.setProperties(
-                Map(
-                  ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers
-                )) { (acc, k, v) =>
-                acc + (k -> v)
-              }
-            )
-
-            KafkaConfig(
-              topics,
-              consumer,
-              producer,
-              schemaRegistry
-            )
-
-          }
-
-          Config(
-            http,
-            kafka,
-            store,
-            templates
-          )
-        }
-
-      case _ =>
-        loadConfig(
-          awsF[F, Region](AwsRegion),
-          envF[F, Bucket]("TEMPLATES_S3_BUCKET"),
-          envF[F, Bucket]("RENDERED_S3_BUCKET"),
-          envF[F, String]("KAFKA_BOOTSTRAP_SERVERS"),
-          envF[F, String]("SCHEMA_REGISTRY_ENDPOINT")
+            s"${environment.toStringLowerCase}.aiven.schema_registry.password"),
+          credstashF[F, Secret[String]]()(s"${environment.toStringLowerCase}.docraptor.api_key")
         ) {
           (
               awsRegion,
               templatesBucket,
               storeBucket,
-              kafkaBootstrapServers,
-              schemaRegistryEndpoint) =>
+              kafkaSSL,
+              schemaRegistryPassword,
+              docRaptorApiKey) =>
+            val docRaptor = DocRaptorConfig(
+              docRaptorApiKey.value,
+              Uri.uri("https://docraptor.com"),
+              isTest = false
+            )
+
             val store = Store.Config(storeBucket, awsRegion)
+
+            val templates = TemplatesConfig(templatesBucket)
+
+            val kafka = {
+
+              val kafkaBootstrapServers = environment match {
+                case Uat => "kafka-uat.ovo-uat.aivencloud.com:13581"
+                case Prd => "kafka-prd.ovo-prd.aivencloud.com:21556"
+              }
+
+              val schemaRegistryEndpoint = environment match {
+                case Uat => "https://kafka-uat.ovo-uat.aivencloud.com:13584"
+                case Prd => "https://kafka-prd.ovo-prd.aivencloud.com:21559"
+              }
+
+              val schemaRegistry = SchemaRegistryClientSettings(
+                schemaRegistryEndpoint,
+                "comms-platform-service-user",
+                schemaRegistryPassword.value
+              )
+
+              val consumer = ConsumerSettings(
+                pollTimeout = 500.milliseconds,
+                maxParallelism = Int.MaxValue,
+                nativeSettings = kafkaSSL.setProperties(
+                  Map(
+                    ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
+                    ConsumerConfig.GROUP_ID_CONFIG -> "comms-profiles",
+                    ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
+                    ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
+                  )) { (acc, k, v) =>
+                  acc + (k -> v)
+                }
+              )
+
+              val producer = ProducerSettings(
+                nativeSettings = kafkaSSL.setProperties(
+                  Map(
+                    ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers
+                  )) { (acc, k, v) =>
+                  acc + (k -> v)
+                }
+              )
+
+              KafkaConfig(
+                topics,
+                consumer,
+                producer,
+                schemaRegistry
+              )
+
+            }
+
+            Config(
+              http,
+              kafka,
+              store,
+              templates,
+              docRaptor
+            )
+        }
+
+      case _ =>
+        loadConfig(
+          awsF[F, Region](AwsRegion),
+          envF[F, Option[Uri]]("S3_ENDPOINT"),
+          envF[F, Bucket]("TEMPLATES_S3_BUCKET"),
+          envF[F, Bucket]("RENDERED_S3_BUCKET"),
+          envF[F, String]("KAFKA_BOOTSTRAP_SERVERS"),
+          envF[F, String]("SCHEMA_REGISTRY_ENDPOINT"),
+          envF[F, Option[Uri]]("DOCRAPTOR_ENDPOINT")
+            .mapValue(_.getOrElse(Uri.uri("https://docraptor.com"))),
+          envF[F, Secret[String]]("DOCRAPTOR_API_KEY"),
+          envF[F, Option[Boolean]]("DOCRAPTOR_IS_TEST").mapValue(_.getOrElse(true))
+        ) {
+          (
+              awsRegion,
+              s3Endpoint,
+              templatesBucket,
+              storeBucket,
+              kafkaBootstrapServers,
+              schemaRegistryEndpoint,
+              docraptorEndpoint,
+              docraptorApiKey,
+              docraptorIsTest,
+          ) =>
+            val docraptor = DocRaptorConfig(
+              url = docraptorEndpoint,
+              apiKey = docraptorApiKey.value,
+              isTest = docraptorIsTest
+            )
+
+            val store = Store.Config(storeBucket, awsRegion, s3Endpoint)
 
             val templates = TemplatesConfig(templatesBucket)
 
@@ -213,7 +252,8 @@ object Config {
               http,
               kafka,
               store,
-              templates
+              templates,
+              docraptor
             )
         }
 

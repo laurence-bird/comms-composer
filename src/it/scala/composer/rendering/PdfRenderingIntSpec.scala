@@ -14,6 +14,7 @@ import ciris.syntax._
 import ciris.cats.effect._
 import ciris.credstash.credstashF
 
+import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.client.middleware.{ResponseLogger, RequestLogger}
 import org.http4s.client.blaze.Http1Client
@@ -27,7 +28,7 @@ class PdfRenderingIntSpec extends IntegrationSpec {
 
   val docRaptorConfig: IO[DocRaptorConfig] = loadConfig(
     credstashF[IO, String]()("prd.docraptor.api_key")
-  )(apiKey => DocRaptorConfig(apiKey, "https://docraptor.com", isTest = true)).orRaiseThrowable
+  )(apiKey => DocRaptorConfig(apiKey, Uri.uri("https://docraptor.com"), isTest = true)).orRaiseThrowable
 
 
   "Pdf rendering" should {

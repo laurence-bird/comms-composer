@@ -5,7 +5,6 @@ object Dependencies {
   lazy val handlebars = "com.github.jknack" % "handlebars" % "4.0.6"
   lazy val s3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % "1.11.57"
   lazy val shapeless = "com.chuusai" %% "shapeless" % "2.3.2"
-  lazy val okhttp = "com.squareup.okhttp3" % "okhttp" % "3.4.2"
 
   object scalacheck {
     lazy val shapeless = "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % "1.1.4"
@@ -31,15 +30,7 @@ object Dependencies {
 
     lazy val kafkaClient = "com.ovoenergy" %% "fs2-kafka-client" % fs2KafkaClientVersion
   }
-
-  object kafkaSerialization {
-    private val kafkaSerializationVersion = "0.3.6"
-
-    lazy val core = "com.ovoenergy" %% "kafka-serialization-core" % kafkaSerializationVersion
-    lazy val cats = "com.ovoenergy" %% "kafka-serialization-cats" % kafkaSerializationVersion
-    lazy val avro = "com.ovoenergy" %% "kafka-serialization-avro" % kafkaSerializationVersion
-    lazy val avro4s = "com.ovoenergy" %% "kafka-serialization-avro4s" % kafkaSerializationVersion
-  }
+  
 
   object ovoEnergy {
 
@@ -47,9 +38,8 @@ object Dependencies {
     private val commsKafkaTestHelperVersion = "3.18"
     private val commsKafkaMessagesVersion = "1.79"
     private val commsTemplatesVersion = "0.25"
-    private val commsDockerTestkitVersion = "1.8"
-    private val commsAwsVersion = "0.1.7"
-
+    private val commsDockerTestkitVersion = "1.8.3-2-11b4665d"
+    private val commsAwsVersion = "0.1.7-20181001-1151"
 
     lazy val kafkaSerializationCore = "com.ovoenergy" %% "kafka-serialization-core" % kafkaSerializationVersion
     lazy val kafkaSerializationAvro = "com.ovoenergy" %% "kafka-serialization-avro" % kafkaSerializationVersion
@@ -73,12 +63,6 @@ object Dependencies {
     lazy val literal = "io.circe" %% "circe-literal" % version
   }
 
-  object whisk {
-    private val version = "0.9.6"
-
-    lazy val scalaTest = "com.whisk" %% "docker-testkit-scalatest" % version
-    lazy val dockerJava = "com.whisk" %% "docker-testkit-impl-docker-java" % version
-  }
 
   object http4s {
 

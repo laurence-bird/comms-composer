@@ -15,7 +15,7 @@ import cats.effect.{Sync, Effect}
 import fs2._
 
 import org.http4s.Uri
-
+import org.http4s.client._
 import org.http4s.client.blaze._
 
 trait Store[F[_]] {
@@ -24,7 +24,11 @@ trait Store[F[_]] {
 
 object Store {
 
-  case class Config(bucketName: Bucket, region: Region = Region.`eu-west-1`)
+  case class Config(
+      bucketName: Bucket,
+      region: Region = Region.`eu-west-1`,
+      s3Endpoint: Option[Uri] = None
+  )
 
   trait Keys[F[_]] {
     def get(commId: CommId, traceToken: TraceToken): F[Key]
@@ -37,13 +41,13 @@ object Store {
   }
 
   def stream[F[_]: Effect](config: Config): Stream[F, Store[F]] = {
-    Http1Client.stream[F]().map { client =>
-      apply(
-        new S3[F](client, CredentialsProvider.default[F], config.region),
-        config,
-        new RandomSuffixKeys[F])
-    }
+    Http1Client
+      .stream[F]()
+      .map(httpClient => fromHttpClient(httpClient, config, new RandomSuffixKeys[F]))
   }
+
+  def fromHttpClient[F[_]: Sync](httpclient: Client[F], config: Config, keys: Keys[F]): Store[F] =
+    apply[F](new S3[F](httpclient, CredentialsProvider.default[F], config.region), config, keys)
 
   def apply[F[_]: Sync](s3: S3[F], config: Config, keys: Keys[F]): Store[F] = new Store[F] {
 

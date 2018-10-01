@@ -34,6 +34,11 @@ class RenderingSpec
     with TestGenerators
     with EitherValues {
 
+  private val nopPdfRendering = new PdfRendering[IO] {
+    override def render(renderedPrintHtml: Print.HtmlBody): IO[Print.RenderedPdf] =
+      IO.raiseError(new NotImplementedError())
+  }
+
   behavior of "renderEmail"
 
   implicit val arbEmailTemplateData: Arbitrary[EmailTemplateData] = Arbitrary(for {
@@ -79,7 +84,7 @@ class RenderingSpec
         Right(s"Result ${timesCalled}")
       }
     }
-    val rendering = Rendering[IO](happyHtmlRendering)
+    val rendering = Rendering[IO](happyHtmlRendering, nopPdfRendering)
     val now = ZonedDateTime.now()
     val result =
       rendering.renderEmail(now, templateManifest, emailTemplate, emailTemplateData).unsafeRunSync()
@@ -121,7 +126,7 @@ class RenderingSpec
         Left(Errors(Set(s"error $timesCalled"), Seq.empty[Throwable], MissingTemplateData))
       }
     }
-    val rendering = Rendering[IO](unhappyHtmlRendering)
+    val rendering = Rendering[IO](unhappyHtmlRendering, nopPdfRendering)
     val resultEither =
       rendering
         .renderEmail(now, templateManifest, emailTemplate, emailTemplateData)
@@ -169,7 +174,7 @@ class RenderingSpec
         Right(s"Result $timesCalled")
       }
     }
-    val rendering = Rendering[IO](happyRendering)
+    val rendering = Rendering[IO](happyRendering, nopPdfRendering)
 
     val result: SMS.Rendered =
       rendering
@@ -206,7 +211,7 @@ class RenderingSpec
         Left(errors)
       }
     }
-    val rendering = Rendering[IO](unhappyRendering)
+    val rendering = Rendering[IO](unhappyRendering, nopPdfRendering)
 
     val result =
       rendering
@@ -259,7 +264,7 @@ class RenderingSpec
         Right(s"Result $timesCalled")
       }
     }
-    val rendering = Rendering[IO](happyRendering)
+    val rendering = Rendering[IO](happyRendering, nopPdfRendering)
 
     val result = rendering
       .renderPrintHtml(now, templateManifest, printTemplate, printTemplateData)
@@ -296,7 +301,7 @@ class RenderingSpec
         Left(errors)
       }
     }
-    val rendering = Rendering[IO](unhappyRendering)
+    val rendering = Rendering[IO](unhappyRendering, nopPdfRendering)
 
     val result = rendering
       .renderPrintHtml(now, templateManifest, printTemplate, printTemplateData)

@@ -1,5 +1,8 @@
 import Dependencies._
 
+lazy val ServiceTest = config("servicetest") extend Test
+lazy val It = config("it") extend Test
+
 name := "composer"
 organization := "com.ovoenergy.comms"
 
@@ -13,23 +16,18 @@ scalacOptions := Seq(
   "-Ypartial-unification",
 )
 
-// Make ScalaTest write test reports that CircleCI understands
 testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
-lazy val ServiceTest = config("servicetest") extend Test
-lazy val It = config("it") extend Test
 
 configs(ServiceTest, It)
 inConfig(It)(Defaults.testSettings)
 inConfig(ServiceTest)(Defaults.testSettings)
 
-inConfig(ServiceTest)(parallelExecution in test := false)
-inConfig(ServiceTest)(parallelExecution in testOnly := false)
 (test in ServiceTest) := (test in ServiceTest).dependsOn(publishLocal in Docker).value
+(testOnly in ServiceTest) := (testOnly in ServiceTest).dependsOn(publishLocal in Docker).inputTaskValue
 
 resolvers ++= Seq(
   Resolver.bintrayRepo("ovotech", "maven"),
-  "confluent-release" at "http://packages.confluent.io/maven/",
-  Resolver.bintrayRepo("cakesolutions", "maven")
+  "confluent-release" at "http://packages.confluent.io/maven/"
 )
 
 libraryDependencies ++= Seq(
@@ -57,13 +55,10 @@ libraryDependencies ++= Seq(
   http4s.client,
   http4s.blazeClient,
 
-  kafkaSerialization.cats,
-
   ovoEnergy.kafkaSerializationCore,
   ovoEnergy.kafkaSerializationCats,
   ovoEnergy.kafkaSerializationAvro,
   ovoEnergy.kafkaSerializationAvro4s,
-
 
   ovoEnergy.commsMessages,
   ovoEnergy.commsTemplates,
@@ -78,7 +73,7 @@ libraryDependencies ++= Seq(
   logging.logbackGelf,
 
   http4s.blazeClient            % Test,
-  scalacheck.shapeless          % Test exclude("org.slf4j", "log4j-over-slf4j"),
+  scalacheck.shapeless          % Test,
   scalacheck.toolboxDatetime    % Test,
   scalacheck.scalacheck         % Test,
   scalatest                     % Test,
@@ -86,8 +81,6 @@ libraryDependencies ++= Seq(
   ovoEnergy.commsDockerKit      % Test,
   ovoEnergy.commsMessagesTests  % Test,
 
-  whisk.scalaTest               % ServiceTest,
-  whisk.dockerJava              % ServiceTest,
   ovoEnergy.commsTestHelpers    % ServiceTest,
 )
 
@@ -101,3 +94,5 @@ scalafmtOnCompile := true
 version ~= (_.replace('+', '-'))
 dynver ~= (_.replace('+', '-'))
 
+buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoPackage := "com.ovoenergy.comms.composer"

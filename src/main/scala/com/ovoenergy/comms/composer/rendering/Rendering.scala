@@ -44,7 +44,8 @@ object Rendering {
   def fileName(channel: Channel, manifest: TemplateManifest, suffixes: String*): String =
     (Seq(S3Prefix.fromTemplateManifest(manifest), channel.toString) ++ suffixes).mkString("::")
 
-  def apply[F[_]](handlebars: HandlebarsRendering)(implicit F: Sync[F]): Rendering[F] =
+  def apply[F[_]](handlebars: HandlebarsRendering, pdfRendering: PdfRendering[F])(
+      implicit F: Sync[F]): Rendering[F] =
     new Rendering[F] {
       override def renderEmail(
           time: ZonedDateTime,
@@ -117,7 +118,8 @@ object Rendering {
             .map(body => Print.HtmlBody(body))
         }.rethrow
 
-      override def renderPrintPdf(html: Print.HtmlBody): F[Print.RenderedPdf] = ???
+      override def renderPrintPdf(html: Print.HtmlBody): F[Print.RenderedPdf] =
+        pdfRendering.render(html)
 
     }
 }
