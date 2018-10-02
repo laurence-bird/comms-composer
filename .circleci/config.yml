@@ -51,6 +51,14 @@ defaults:
       git config user.name ovo-comms-circleci
       git config user.email "hello.comms@ovoenergy.com"
 
+- &persist-target
+  persist_to_workspace:
+    root: .
+    paths:
+    - project/target
+    - target
+
+
 
 jobs:
   build:
@@ -77,10 +85,7 @@ jobs:
         command: sbt test:compile
         no_output_timeout: 20m
 
-    - persist_to_workspace:
-        root: .
-        paths:
-        - target
+    - *persist-target
 
   unit_test:
 
@@ -104,6 +109,8 @@ jobs:
     - store_artifacts:
         path: target/unit-test.log
         destination: logs/unit-test.log
+
+    - *persist-target
 
   integration_test:
 
@@ -133,6 +140,7 @@ jobs:
         path: target/it-docker.log
         destination: logs/integration_test-docker.log
 
+    - *persist-target
 
   service_test:
 
@@ -170,6 +178,8 @@ jobs:
         path: target/service-test-docker.log
         destination: logs/service-test-docker.log
 
+    - *persist-target
+
   tag:
 
     <<: *defaults
@@ -194,6 +204,9 @@ jobs:
         root: .
         paths:
         - .git
+
+    - *persist-target
+
 
   publish:
 
@@ -222,6 +235,8 @@ jobs:
     - run:
         command: "sbt publish"
         no_output_timeout: 20m
+
+    - *persist-target
 
   deploy-to-uat:
 
