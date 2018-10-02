@@ -268,4 +268,10 @@ abstract class ServiceSpec
       )(f)
   }
 
+  def producerRecord[A](topic: Topic[A])(message: A, key: A => String) =
+    new ProducerRecord[String, A](
+      topic.name,
+      key(message),
+      message)
+
 }

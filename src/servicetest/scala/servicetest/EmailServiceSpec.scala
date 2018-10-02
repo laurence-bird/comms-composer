@@ -2,14 +2,12 @@ package com.ovoenergy.comms.composer
 package servicetest
 
 import com.ovoenergy.comms.model._
-import email.{OrchestratedEmailV4, ComposedEmailV4}
+import email._
 
 import com.ovoenergy.fs2.kafka
 
 import cats.implicits._
 import cats.effect.IO
-
-import org.apache.kafka.clients.producer.ProducerRecord
 
 class EmailServiceSpec extends ServiceSpec with TestGenerators {
 
@@ -31,10 +29,7 @@ class EmailServiceSpec extends ServiceSpec with TestGenerators {
           )
           _ <- kafka.produceRecord[IO](
             producer,
-            new ProducerRecord[String, OrchestratedEmailV4](
-              topics.orchestratedEmail.name,
-              sourceMessage.metadata.commId,
-              sourceMessage)
+            producerRecord(topics.orchestratedEmail)(sourceMessage, _.metadata.commId)
           )
           record <- consume(topics.composedEmail)(r => r.pure[IO]).head.compile.lastOrRethrow
         } yield record
@@ -58,10 +53,7 @@ class EmailServiceSpec extends ServiceSpec with TestGenerators {
         for {
           _ <- kafka.produceRecord[IO](
             producer,
-            new ProducerRecord[String, OrchestratedEmailV4](
-              topics.orchestratedEmail.name,
-              sourceMessage.metadata.commId,
-              sourceMessage)
+            producerRecord(topics.orchestratedEmail)(sourceMessage, _.metadata.commId)
           )
           failedRecord <- consume(topics.failed)(r => r.pure[IO]).head.compile.lastOrRethrow
           feedbackRecord <- consume(topics.feedback)(r => r.pure[IO]).head.compile.lastOrRethrow
