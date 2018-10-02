@@ -61,7 +61,7 @@ class EmailServiceSpec extends ServiceSpec with TestGenerators {
       }.futureValue
 
       failed.value().metadata.commId shouldBe sourceMessage.metadata.commId
-      failed.value().errorCode shouldBe TemplateDownloadFailed
+      failed.value().errorCode shouldBe InvalidTemplate
 
       feedback.value().commId shouldBe sourceMessage.metadata.commId
       feedback.value().status shouldBe FeedbackOptions.Failed

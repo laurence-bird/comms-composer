@@ -166,7 +166,11 @@ class RenderRestApi[F[_]: Sync](render: Render[F]) extends Http4sDsl[F] {
 
     renderResult match {
       case Left(err: ComposerError) => handleError(err)
-      case Left(err) => handleError(ComposerError(err.getMessage, CompositionError))
+      case Left(err) =>
+        handleError(
+          ComposerError(
+            Option(err.getMessage).getOrElse(err.getClass.getSimpleName),
+            CompositionError))
       case Right(r) => Ok(RenderResponse(r).asJson)
     }
   }

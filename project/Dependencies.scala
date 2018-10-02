@@ -5,6 +5,7 @@ object Dependencies {
   lazy val handlebars = "com.github.jknack" % "handlebars" % "4.0.6"
   lazy val s3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % "1.11.419"
   lazy val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
+  lazy val wiremock = "com.github.tomakehurst" % "wiremock-standalone" % "2.19.0"
 
   object scalacheck {
     lazy val shapeless = "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % "1.1.4"

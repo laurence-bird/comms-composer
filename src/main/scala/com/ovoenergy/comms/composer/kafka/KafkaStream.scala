@@ -75,7 +75,8 @@ object KafkaStream {
 
   def composerError(t: Throwable): ComposerError = t match {
     case ce: ComposerError => ce
-    case _ => ComposerError(t.getMessage, CompositionError)
+    case _ =>
+      ComposerError(Option(t.getMessage).getOrElse(t.getClass.getSimpleName), CompositionError)
   }
 
   def apply[F[_]](config: KafkaConfig, hash: Hash[F], time: Time[F]): KafkaStream[F] =
