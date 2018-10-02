@@ -68,20 +68,19 @@ object Templates {
       ec: ExecutionContext,
       templatesContext: TemplatesContext): F[A] = {
 
-    try {
-      Async.shift(blockingEc) >> F
-        .delay(TemplatesRepo.getTemplate(templatesContext, manifest))
-        .flatMap {
-          case Valid(commTemplate) =>
-            f(commTemplate).fold(
-              F.raiseError[A](ComposerError(s"Template for channel not found", InvalidTemplate)))(
-              _.pure[F])
-          case Invalid(i) =>
-            F.raiseError[A](ComposerError(i.toList.mkString(","), InvalidTemplate))
-        }
-        .handleErrorWith(e => F.raiseError[A](ComposerError(e.getMessage, TemplateDownloadFailed)))
-    } finally {
-      Async.shift(ec)
-    }
+    Async.shift(blockingEc) >> F
+      .delay(TemplatesRepo.getTemplate(templatesContext, manifest))
+      .flatMap {
+        case Valid(commTemplate) =>
+          f(commTemplate).fold(
+            F.raiseError[A](ComposerError(s"Template for channel not found", InvalidTemplate)))(
+            _.pure[F])
+        case Invalid(i) =>
+          F.raiseError[A](ComposerError(i.toList.mkString(","), InvalidTemplate))
+      }
+      .handleErrorWith(e => F.raiseError[A](ComposerError(e.getMessage, TemplateDownloadFailed)))
+      .onError {
+        case _ => Async.shift(ec)
+      }
   }
 }
