@@ -37,7 +37,7 @@ object Dependencies {
     private val commsKafkaTestHelperVersion = "3.18"
     private val commsKafkaMessagesVersion = "1.79.2"
     private val commsTemplatesVersion = "0.28"
-    private val commsDockerTestkitVersion = "1.8.4-20181002-1232"
+    private val commsDockerTestkitVersion = "1.8.5"
     private val commsAwsVersion = "0.1.8"
 
     lazy val kafkaSerializationCore = "com.ovoenergy" %% "kafka-serialization-core" % kafkaSerializationVersion
@@ -52,7 +52,7 @@ object Dependencies {
     lazy val commsDockerKit = "com.ovoenergy" %% "comms-docker-testkit" % commsDockerTestkitVersion
     lazy val commsAwsS3 = "com.ovoenergy.comms" %% "comms-aws-s3" % commsAwsVersion
   }
-  
+
   object circe {
     private val version = "0.9.3"
 
