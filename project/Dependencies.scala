@@ -35,7 +35,7 @@ object Dependencies {
 
     private val kafkaSerializationVersion = "0.3.11"
     private val commsKafkaTestHelperVersion = "3.18"
-    private val commsKafkaMessagesVersion = "1.79-5-8de50153-20181001-1648"
+    private val commsKafkaMessagesVersion = "1.79.2"
     private val commsTemplatesVersion = "0.28"
     private val commsDockerTestkitVersion = "1.8.4"
     private val commsAwsVersion = "0.1.7-20181001-1151"
