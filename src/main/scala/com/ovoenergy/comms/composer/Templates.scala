@@ -7,8 +7,8 @@ import cats.Id
 import cats.data.Validated.{Invalid, Valid}
 import cats.effect.Async
 import cats.implicits._
-
-import com.ovoenergy.comms.model.TemplateManifest
+import com.ovoenergy.comms.composer.model.ComposerError
+import com.ovoenergy.comms.model.{TemplateDownloadFailed, TemplateManifest, InvalidTemplate}
 import com.ovoenergy.comms.templates.{TemplatesContext, TemplatesRepo}
 import com.ovoenergy.comms.templates.model.template.{processed => templates}
 import com.ovoenergy.comms.templates.model.template.processed.CommTemplate
@@ -74,10 +74,12 @@ object Templates {
         .flatMap {
           case Valid(commTemplate) =>
             f(commTemplate).fold(
-              F.raiseError[A](new RuntimeException(s"Template for channel not found")))(_.pure[F])
+              F.raiseError[A](ComposerError(s"Template for channel not found", InvalidTemplate)))(
+              _.pure[F])
           case Invalid(i) =>
-            F.raiseError[A](new RuntimeException(i.toList.mkString(",")))
+            F.raiseError[A](ComposerError(i.toList.mkString(","), InvalidTemplate))
         }
+        .handleErrorWith(e => F.raiseError[A](ComposerError(e.getMessage, TemplateDownloadFailed)))
     } finally {
       Async.shift(ec)
     }
