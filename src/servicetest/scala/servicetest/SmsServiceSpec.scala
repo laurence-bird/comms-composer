@@ -2,18 +2,17 @@ package com.ovoenergy.comms.composer
 package servicetest
 
 import com.ovoenergy.comms.model._
-import sms.OrchestratedSMSV3
+import sms._
 import com.ovoenergy.fs2.kafka
 
 import cats.implicits._
 import cats.effect.IO
 
-import org.apache.kafka.clients.producer.ProducerRecord
 
 class SmsServiceSpec extends ServiceSpec with TestGenerators {
 
   "Composer" should {
-    "process orchestrated email message successfully" in {
+    "process orchestrated sms message successfully" in {
 
       val sourceMessage = {
         val initial = generate[OrchestratedSMSV3]
@@ -30,12 +29,9 @@ class SmsServiceSpec extends ServiceSpec with TestGenerators {
           )
           _ <- kafka.produceRecord[IO](
             producer,
-            new ProducerRecord[String, OrchestratedSMSV3](
-              topics.orchestratedSms.name,
-              sourceMessage.metadata.commId,
-              sourceMessage)
-          )
-          record <- consume(topics.composedEmail)(r => r.pure[IO]).head.compile.lastOrRethrow
+            producerRecord(topics.orchestratedSms)(sourceMessage, _.metadata.commId)
+         )
+          record <- consume(topics.composedSms)(r => r.pure[IO]).head.compile.lastOrRethrow
         } yield record
       }.futureValue
 
@@ -57,10 +53,7 @@ class SmsServiceSpec extends ServiceSpec with TestGenerators {
         for {
           _ <- kafka.produceRecord[IO](
             producer,
-            new ProducerRecord[String, OrchestratedSMSV3](
-              topics.orchestratedEmail.name,
-              sourceMessage.metadata.commId,
-              sourceMessage)
+            producerRecord(topics.orchestratedSms)(sourceMessage, _.metadata.commId)
           )
           failedRecord <- consume(topics.failed)(r => r.pure[IO]).head.compile.lastOrRethrow
           feedbackRecord <- consume(topics.feedback)(r => r.pure[IO]).head.compile.lastOrRethrow
