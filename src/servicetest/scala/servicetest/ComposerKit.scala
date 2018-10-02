@@ -32,7 +32,7 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider with DockerLog
   def composerTemplatesS3Bucket: String = s"ovo-comms-test"
   def composerRenderedS3Bucket: String = s"ovo-comms-test"
 
-  def composerDocraptorEndpoint: String = s"http://$wiremockContainerName:$wiremockHttpPort"
+  def composerDocraptorEndpoint: String = s"http://$wiremockContainerName:$wiremockHttpPort/docraptor"
 
   lazy val composerContainerName: String = ComposerKit.nextContainerName("composer")
 

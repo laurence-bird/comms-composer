@@ -31,6 +31,8 @@ import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 
+import com.github.tomakehurst.wiremock.client._
+
 import org.scalatest._
 import org.scalatest.concurrent.Eventually
 
@@ -50,10 +52,10 @@ abstract class ServiceSpec
     with ComposerKit
     with BeforeAndAfterAll
     with Eventually
-    with Arbitraries {
+    with Arbitraries
+    with BeforeAndAfterEach {
 
   sys.props.put("logback.configurationFile", "logback-servicetest.xml")
-
 
   implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -79,6 +81,12 @@ abstract class ServiceSpec
     feedback = Topic[Feedback]("comms.feedback")
   )
 
+  private lazy val wm: WireMock = WireMock
+    .create()
+    .host(dockerHostIp)
+    .port(wiremockPublicHttpPort)
+    .build()
+
   protected override def beforeAll(): Unit = {
     super.beforeAll()
 
@@ -97,6 +105,12 @@ abstract class ServiceSpec
     }.futureValue
   }
 
+  override protected def beforeEach(): Unit = {
+    super.beforeEach()
+
+    wm.resetMappings()
+    println(s"Resetted Wiremock")
+  }
 
   def withHttpClient[A](f: Client[IO] => IO[A]): IO[A] = {
     Http1Client.stream[IO]().evalMap(f).compile.lastOrRethrow
@@ -114,7 +128,6 @@ abstract class ServiceSpec
 
   def uploadTemplateToS3(templateManifest: TemplateManifest): IO[Unit] = withS3 { s3 =>
     val bucketName = Bucket(composerTemplatesS3Bucket)
-
 
     List(
       s3.putObject(
@@ -191,7 +204,7 @@ abstract class ServiceSpec
   }
 
   def withProducerFor[A: SchemaFor: ToRecord, B](topic: Topic[A])(
-    f: Producer[String, A] => IO[B]): IO[B] = {
+      f: Producer[String, A] => IO[B]): IO[B] = {
 
     val producerSettings = ProducerSettings(
       Map(
@@ -214,7 +227,7 @@ abstract class ServiceSpec
   }
 
   def withConsumerFor[A: SchemaFor: FromRecord, B](topic: Topic[A])(
-    f: Consumer[String, A] => IO[B]): IO[B] = {
+      f: Consumer[String, A] => IO[B]): IO[B] = {
 
     val consumerSettings = ConsumerSettings(
       pollTimeout = 500.millis,
@@ -243,7 +256,7 @@ abstract class ServiceSpec
   }
 
   def consume[A: SchemaFor: FromRecord, B](topic: Topic[A])(
-    f: ConsumerRecord[String, A] => IO[B]): fs2.Stream[IO, B] = {
+      f: ConsumerRecord[String, A] => IO[B]): fs2.Stream[IO, B] = {
 
     val consumerSettings = ConsumerSettings(
       pollTimeout = 500.millis,
@@ -269,9 +282,37 @@ abstract class ServiceSpec
   }
 
   def producerRecord[A](topic: Topic[A])(message: A, key: A => String) =
-    new ProducerRecord[String, A](
-      topic.name,
-      key(message),
-      message)
+    new ProducerRecord[String, A](topic.name, key(message), message)
 
+  def givenDocRaptorSucceeds: IO[Array[Byte]] = {
+    import WireMock._
+
+    import fs2._
+    import fs2.io._
+
+    val body: IO[Array[Byte]] =
+      readInputStream(IO(getClass.getResourceAsStream("/test.pdf")), chunkSize = 1024).compile
+        .fold(Vector.empty[Byte])(_ :+ _)
+        .map(_.toArray)
+
+    body.flatTap { xs =>
+      IO(
+        wm.register(
+          post(urlPathEqualTo("/docraptor/docs"))
+            .willReturn(aResponse().withBody(xs))
+        )
+      )
+    }
+  }
+
+  def givenDocRaptorFails(statusCode: Int): IO[Unit] = {
+    import WireMock._
+
+    IO(
+      wm.register(
+        post(urlPathEqualTo("/docraptor/docs"))
+          .willReturn(status(statusCode))
+      )
+    )
+  }
 }

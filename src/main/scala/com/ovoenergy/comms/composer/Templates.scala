@@ -80,7 +80,11 @@ object Templates {
       }
       .handleErrorWith {
         case ce: ComposerError => F.raiseError[A](ce)
-        case e => F.raiseError[A](ComposerError(e.getMessage, TemplateDownloadFailed))
+        case e =>
+          F.raiseError[A](
+            ComposerError(
+              Option(e.getMessage).getOrElse(e.getClass.getSimpleName),
+              TemplateDownloadFailed))
       }
       .onError {
         case _ => Async.shift(ec)

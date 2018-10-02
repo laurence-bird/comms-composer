@@ -81,6 +81,7 @@ libraryDependencies ++= Seq(
   scalatest % Test,
   ovoEnergy.commsDockerKit % Test,
   ovoEnergy.commsMessagesTests % Test,
+  wiremock % ServiceTest,
   ovoEnergy.commsTestHelpers % ServiceTest,
 )
 
