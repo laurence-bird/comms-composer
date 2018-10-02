@@ -18,11 +18,12 @@ import template.processed.sms.SMSTemplate
 import cats.Id
 import cats.data.Validated.Valid
 import cats.effect.{IO, Effect}
+import com.ovoenergy.comms.composer.model.ComposerError
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.ExecutionContext
 
-class TemplatesSpec extends FlatSpec with Matchers {
+class TemplatesSpec extends FlatSpec with Matchers with IOFutures {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -112,21 +113,33 @@ class TemplatesSpec extends FlatSpec with Matchers {
   )
 
   it should "retrieve non existent sms template" in {
-    intercept[RuntimeException] {
-      Templates.sms[IO](Effect[IO], ec, emptyTemplatesContext).get(manifest).unsafeRunSync()
-    }.getMessage shouldBe "Template has no channels defined"
+    Templates
+      .sms[IO](Effect[IO], ec, emptyTemplatesContext)
+      .get(manifest)
+      .attempt
+      .futureValue
+      .left
+      .map(_.getMessage should include("Template has no channels defined"))
   }
 
   it should "retrieve non existent email template" in {
-    intercept[RuntimeException] {
-      Templates.email[IO](Effect[IO], ec, emptyTemplatesContext).get(manifest).unsafeRunSync()
-    }.getMessage shouldBe "Template has no channels defined"
+    Templates
+      .email[IO](Effect[IO], ec, emptyTemplatesContext)
+      .get(manifest)
+      .attempt
+      .futureValue
+      .left
+      .map(_.getMessage should include("Template has no channels defined"))
   }
 
   it should "retrieve non existent print template" in {
-    intercept[RuntimeException] {
-      Templates.print[IO](Effect[IO], ec, emptyTemplatesContext).get(manifest).unsafeRunSync()
-    }.getMessage shouldBe "Template has no channels defined"
+    Templates
+      .print[IO](Effect[IO], ec, emptyTemplatesContext)
+      .get(manifest)
+      .attempt
+      .futureValue
+      .left
+      .map(_.getMessage should include("Template has no channels defined"))
   }
 
   val partialTemplatesContext: TemplatesContext = TemplatesContext(
@@ -154,19 +167,27 @@ class TemplatesSpec extends FlatSpec with Matchers {
 
   it should "retrieve sms channel template" in {
     val expected = SMSTemplate[Id](HandlebarsTemplate("Hello {{firstName}}!", requiredFields))
-    Templates.sms[IO].get(manifest).unsafeRunSync() shouldBe expected
+    Templates.sms[IO].get(manifest).futureValue shouldBe expected
   }
 
   it should "retrieve non existent email channel template" in {
-    intercept[RuntimeException] {
-      Templates.email[IO](Effect[IO], ec, partialTemplatesContext).get(manifest).unsafeRunSync()
-    }.getMessage shouldBe "Template for channel not found"
+    Templates
+      .email[IO](Effect[IO], ec, partialTemplatesContext)
+      .get(manifest)
+      .attempt
+      .futureValue
+      .left
+      .map(_.getMessage should include("Template for channel not found"))
   }
 
   it should "retrieve non existent print channel template" in {
-    intercept[RuntimeException] {
-      Templates.print[IO](Effect[IO], ec, partialTemplatesContext).get(manifest).unsafeRunSync()
-    }.getMessage shouldBe "Template for channel not found"
+    Templates
+      .print[IO](Effect[IO], ec, partialTemplatesContext)
+      .get(manifest)
+      .attempt
+      .futureValue
+      .left
+      .map(_.getMessage should include("Template for channel not found"))
   }
 
 }

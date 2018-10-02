@@ -78,7 +78,10 @@ object Templates {
         case Invalid(i) =>
           F.raiseError[A](ComposerError(i.toList.mkString(","), InvalidTemplate))
       }
-      .handleErrorWith(e => F.raiseError[A](ComposerError(e.getMessage, TemplateDownloadFailed)))
+      .handleErrorWith {
+        case ce: ComposerError => F.raiseError[A](ce)
+        case e => F.raiseError[A](ComposerError(e.getMessage, TemplateDownloadFailed))
+      }
       .onError {
         case _ => Async.shift(ec)
       }
