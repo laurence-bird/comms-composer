@@ -46,6 +46,7 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
       s"TEMPLATES_S3_BUCKET=$composerTemplatesS3Bucket",
       s"RENDERED_S3_BUCKET=$composerRenderedS3Bucket",
       s"DOCRAPTOR_ENDPOINT=$composerDocraptorEndpoint",
+      s"AWS_REGION=eu-west-1",
       s"DOCRAPTOR_API_KEY=FooBar",
       s"DOCRAPTOR_IS_TEST=true"
     )
