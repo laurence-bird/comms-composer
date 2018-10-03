@@ -10,7 +10,7 @@ import scala.concurrent.duration._
 
 object ComposerKit extends DockerContainerNamer
 
-trait ComposerKit extends DockerTestKit with DockerHostIpProvider with DockerLogs {
+trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
   self: Suite
     with WiremockKit
     with DynamoDbKit
