@@ -51,15 +51,6 @@ defaults:
       git config user.name ovo-comms-circleci
       git config user.email "hello.comms@ovoenergy.com"
 
-- &persist-target
-  persist_to_workspace:
-    root: .
-    paths:
-    - project/target
-    - target
-
-
-
 jobs:
   build:
 
@@ -82,10 +73,15 @@ jobs:
         - /home/circleci/.sbt
 
     - run:
-        command: sbt test:compile
+        command: sbt compile
         no_output_timeout: 20m
 
-    - *persist-target
+    - persist_to_workspace:
+        root: .
+        paths:
+        - project/target
+        - target
+
 
   unit_test:
 
@@ -110,7 +106,10 @@ jobs:
         path: target/unit-test.log
         destination: logs/unit-test.log
 
-    - *persist-target
+    - persist_to_workspace:
+        root: .
+        paths:
+        - target/scala-2.12/test-classes
 
   integration_test:
 
@@ -143,7 +142,10 @@ jobs:
         path: target/it-docker.log
         destination: logs/integration_test-docker.log
 
-    - *persist-target
+    - persist_to_workspace:
+        root: .
+        paths:
+        - target/scala-2.12/it-classes
 
   service_test:
 
@@ -184,7 +186,10 @@ jobs:
         path: target/service-test-docker.log
         destination: logs/service-test-docker.log
 
-    - *persist-target
+    - persist_to_workspace:
+        root: .
+        paths:
+        - target/scala-2.12/servicetest-classes
 
   tag:
 
