@@ -244,8 +244,6 @@ jobs:
         command: "sbt publish"
         no_output_timeout: 20m
 
-    - *persist-target
-
   deploy-to-uat:
 
     <<: *defaults
