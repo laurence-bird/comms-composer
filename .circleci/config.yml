@@ -117,6 +117,9 @@ jobs:
     machine:
       enabled: true
 
+    environment:
+      JAVA_OPTS: "-Xms1024m -Xmx1024m -XX:MaxMetaspaceSize=512m"
+
     steps:
 
     - checkout
@@ -146,6 +149,9 @@ jobs:
 
     machine:
       enabled: true
+
+    environment:
+      JAVA_OPTS: "-Xms1024m -Xmx1024m -XX:MaxMetaspaceSize=512m"
 
     steps:
 
