@@ -109,7 +109,6 @@ abstract class ServiceSpec
     super.beforeEach()
 
     wm.resetMappings()
-    println(s"Resetted Wiremock")
   }
 
   def withHttpClient[A](f: Client[IO] => IO[A]): IO[A] = {
