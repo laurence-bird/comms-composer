@@ -99,3 +99,6 @@ dynver ~= (_.replace('+', '-'))
 
 buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
 buildInfoPackage := "com.ovoenergy.comms.composer"
+
+publish := (Docker / publish).value
+publishLocal := (Docker / publishLocal).value
