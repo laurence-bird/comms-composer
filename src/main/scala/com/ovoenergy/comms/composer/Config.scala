@@ -92,8 +92,6 @@ object Config {
       case Some(environment) =>
         loadConfig(
           awsF[F, Region](AwsRegion),
-          envF[F, Bucket]("TEMPLATES_S3_BUCKET"),
-          envF[F, Bucket]("RENDERED_S3_BUCKET"),
           aivenKafkaSetup[F](
             clientPrivateKey =
               credstashF()(s"${environment.toStringLowerCase}.kafka.client_private_key"),
@@ -105,81 +103,76 @@ object Config {
           credstashF[F, Secret[String]]()(
             s"${environment.toStringLowerCase}.aiven.schema_registry.password"),
           credstashF[F, Secret[String]]()(s"${environment.toStringLowerCase}.docraptor.api_key")
-        ) {
-          (
-              awsRegion,
-              templatesBucket,
-              storeBucket,
-              kafkaSSL,
-              schemaRegistryPassword,
-              docRaptorApiKey) =>
-            val docRaptor = DocRaptorConfig(
-              docRaptorApiKey.value,
-              Uri.uri("https://docraptor.com"),
-              isTest = false
-            )
+        ) { (awsRegion, kafkaSSL, schemaRegistryPassword, docRaptorApiKey) =>
+          val docRaptor = DocRaptorConfig(
+            docRaptorApiKey.value,
+            Uri.uri("https://docraptor.com"),
+            isTest = false
+          )
 
-            val store = Store.Config(storeBucket, awsRegion)
+          val storeBucket = Bucket(s"ovo-comms-rendered-content-${environment.toStringLowerCase}")
+          val store = Store.Config(storeBucket, awsRegion)
 
-            val templates = TemplatesConfig(templatesBucket)
+          val templatesBucket = Bucket("ovo-comms-templates")
+          val templates = TemplatesConfig(templatesBucket)
 
-            val kafka = {
+          val kafka = {
 
-              val kafkaBootstrapServers = environment match {
-                case Uat => "kafka-uat.ovo-uat.aivencloud.com:13581"
-                case Prd => "kafka-prd.ovo-prd.aivencloud.com:21556"
-              }
-
-              val schemaRegistryEndpoint = environment match {
-                case Uat => "https://kafka-uat.ovo-uat.aivencloud.com:13584"
-                case Prd => "https://kafka-prd.ovo-prd.aivencloud.com:21559"
-              }
-
-              val schemaRegistry = SchemaRegistryClientSettings(
-                schemaRegistryEndpoint,
-                "comms-platform-service-user",
-                schemaRegistryPassword.value
-              )
-
-              val consumer = ConsumerSettings(
-                pollTimeout = 500.milliseconds,
-                maxParallelism = Int.MaxValue,
-                nativeSettings = kafkaSSL.setProperties(
-                  Map(
-                    ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
-                    ConsumerConfig.GROUP_ID_CONFIG -> "comms-composer",
-                    ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
-                    ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
-                  )) { (acc, k, v) =>
-                  acc + (k -> v)
-                }
-              )
-
-              val producer = ProducerSettings(
-                nativeSettings = kafkaSSL.setProperties(
-                  Map(
-                    ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers
-                  )) { (acc, k, v) =>
-                  acc + (k -> v)
-                }
-              )
-
-              KafkaConfig(
-                topics,
-                consumer,
-                producer,
-                schemaRegistry
-              )
-
+            val kafkaBootstrapServers = environment match {
+              case Uat => "kafka-uat.ovo-uat.aivencloud.com:13581"
+              case Prd => "kafka-prd.ovo-prd.aivencloud.com:21556"
             }
 
-            Config(
-              http,
-              kafka,
-              store,
-              templates,
-              docRaptor
+            val schemaRegistryEndpoint = environment match {
+              case Uat => "https://kafka-uat.ovo-uat.aivencloud.com:13584"
+              case Prd => "https://kafka-prd.ovo-prd.aivencloud.com:21559"
+            }
+
+            val schemaRegistry = SchemaRegistryClientSettings(
+              schemaRegistryEndpoint,
+              "comms-platform-service-user",
+              schemaRegistryPassword.value
             )
+
+            val consumer = ConsumerSettings(
+              pollTimeout = 500.milliseconds,
+              maxParallelism = Int.MaxValue,
+              nativeSettings = kafkaSSL.setProperties(
+                Map(
+                  ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
+                  ConsumerConfig.GROUP_ID_CONFIG -> "comms-composer",
+                  ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
+                  ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
+                )) { (acc, k, v) =>
+                acc + (k -> v)
+              }
+            )
+
+            val producer = ProducerSettings(
+              nativeSettings = kafkaSSL.setProperties(
+                Map(
+                  ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers
+                )) { (acc, k, v) =>
+                acc + (k -> v)
+              }
+            )
+
+            KafkaConfig(
+              topics,
+              consumer,
+              producer,
+              schemaRegistry
+            )
+
+          }
+
+          Config(
+            http,
+            kafka,
+            store,
+            templates,
+            docRaptor
+          )
         }
 
       case _ =>
