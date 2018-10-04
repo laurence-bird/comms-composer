@@ -3,9 +3,12 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: ECS task role and other resources for the comms composer service
 
 Parameters:
-  Environment:
+  EnvironmentLowerCase:
     Type: String
     AllowedValues: [ uat, prd ]
+  Environment:
+    Type: String
+    AllowedValues: [ UAT, PRD ]
   VPC:
     Type: AWS::EC2::VPC::Id
   ECSInstancesSecurityGroup:
@@ -55,8 +58,26 @@ Resources:
               Action:
                 - 's3:Put*'
               Resource:
-                - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs'
-                - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs/*'
+                - !Sub 'arn:aws:s3:::${EnvironmentLowerCase}-ovo-comms-pdfs'
+                - !Sub 'arn:aws:s3:::${EnvironmentLowerCase}-ovo-comms-pdfs/*'
+
+        -
+          PolicyName: write-rendered-content-bucket
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 's3:PutObject'
+
+              Resource:
+              - Fn::ImportValue:
+                  !Sub "${Environment}-RenderedContent-Arn"
+              - Fn::Sub:
+                - "${BucketArn}/*"
+                - BucketArn:
+                    Fn::ImportValue:
+                      !Sub "${Environment}-RenderedContent-Arn"
+
         -
           PolicyName: read-credstash
           PolicyDocument:
