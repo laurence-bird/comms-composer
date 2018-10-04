@@ -43,7 +43,7 @@ object PdfRendering extends Logging {
   trait Retriable extends DocRaptorError
 
   // More details of docRaptor status codes at: https://docraptor.com/documentation/api#api_status_codes
-  case class BadRequest(errorDetails: String) extends Retriable
+  case class BadRequest(errorDetails: String) extends DocRaptorError
   case class UnknownError(errorDetails: String) extends DocRaptorError
   case class Unauthorised(errorDetails: String) extends DocRaptorError
   case class Forbidden(errorDetails: String) extends Retriable
