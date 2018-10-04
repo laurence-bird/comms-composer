@@ -216,9 +216,6 @@ jobs:
         paths:
         - .git
 
-    - *persist-target
-
-
   publish:
 
     <<: *defaults
