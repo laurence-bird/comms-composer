@@ -27,7 +27,7 @@ class PdfRenderingIntSpec extends IntegrationSpec {
   override implicit val patience: PatienceConfig = PatienceConfig(scaled(15.seconds), 500.millis)
 
   val docRaptorConfig: IO[DocRaptorConfig] = loadConfig(
-    credstashF[IO, String]()("prd.docraptor.api_key")
+    credstashF[IO, String]()("uat.docraptor.api_key")
   )(apiKey => DocRaptorConfig(apiKey, Uri.uri("https://docraptor.com"), isTest = true)).orRaiseThrowable
 
 
