@@ -52,7 +52,9 @@ object Composer extends StreamApp[IO] with Logging {
       BlazeClientConfig.defaultConfig
         .copy(
           executionContext = ec,
-          userAgent = Some(`User-Agent`(AgentProduct(s"ovo-energy/comms/${BuildInfo.name}", Some(BuildInfo.version)))),
+          userAgent = Some(
+            `User-Agent`(
+              AgentProduct(s"ovo-energy/comms/${BuildInfo.name}", Some(BuildInfo.version)))),
           responseHeaderTimeout = 60.seconds,
         )
     )
