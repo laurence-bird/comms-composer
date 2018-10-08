@@ -145,7 +145,8 @@ class KafkaStream[F[_]](config: KafkaConfig, hash: Hash[F], time: Time[F]) exten
           status = FeedbackOptions.Failed,
           channel = channel,
           description = s"Error: ${e.errorCode} ${e.reason}".some,
-          email = none
+          email = none,
+          templateManifest = Some(a.metadata.templateManifest)
         )
       }
     }
