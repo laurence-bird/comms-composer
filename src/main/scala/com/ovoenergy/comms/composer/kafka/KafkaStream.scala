@@ -141,6 +141,7 @@ class KafkaStream[F[_]](config: KafkaConfig, hash: Hash[F], time: Time[F]) exten
         Feedback(
           metadata = metadata,
           commId = a.metadata.commId,
+          commDescription = Some(a.metadata.friendlyDescription),
           customer = customer,
           status = FeedbackOptions.Failed,
           channel = channel,
