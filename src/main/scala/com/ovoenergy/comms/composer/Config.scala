@@ -151,7 +151,8 @@ object Config {
             val producer = ProducerSettings(
               nativeSettings = kafkaSSL.setProperties(
                 Map(
-                  ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers
+                  ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
+                  ProducerConfig.ACKS_CONFIG -> "all"
                 )) { (acc, k, v) =>
                 acc + (k -> v)
               }
