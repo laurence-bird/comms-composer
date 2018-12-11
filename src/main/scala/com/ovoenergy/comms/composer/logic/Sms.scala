@@ -28,7 +28,7 @@ object Sms {
         event.metadata.commId,
         event.metadata.traceToken,
         renderedSms.textBody)
-      eventId <- hash(event.metadata.eventId)
+      eventId <- hash(event.metadata.eventId ++ "-composed-sms")
       hashedComm <- hash(event)
     } yield
       ComposedSMSV4(
