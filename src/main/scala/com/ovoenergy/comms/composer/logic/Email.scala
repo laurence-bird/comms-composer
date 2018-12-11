@@ -30,7 +30,7 @@ object Email {
         renderedEmail.subject)
       textUri <- renderedEmail.text.traverse(x =>
         store.upload(event.metadata.commId, event.metadata.traceToken, x))
-      eventId <- hash(event.metadata.eventId)
+      eventId <- hash(event.metadata.eventId ++ "-composed-email")
       hashedComm <- hash(event)
     } yield
       ComposedEmailV4(
