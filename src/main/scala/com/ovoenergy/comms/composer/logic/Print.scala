@@ -30,11 +30,14 @@ object Print {
       )
       renderedPdf <- rendering.renderPrintPdf(html)
       pdfUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedPdf.fragment)
-      eventId <- hash.apply(event.metadata.eventId ++ "-composed-print")
       hashedComm <- hash.apply(event)
     } yield
       ComposedPrintV2(
-        metadata = MetadataV3.fromSourceMetadata("comms-composer", event.metadata, eventId),
+        metadata = MetadataV3.fromSourceMetadata(
+          "comms-composer",
+          event.metadata,
+          event.metadata.commId ++ "-composed-print"
+        ),
         internalMetadata = event.internalMetadata,
         pdfIdentifier = pdfUri.renderString,
         hashedComm = hashedComm,

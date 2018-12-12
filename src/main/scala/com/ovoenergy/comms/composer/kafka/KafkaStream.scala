@@ -104,10 +104,10 @@ class KafkaStream[F[_]](config: KafkaConfig, hash: Hash[F], time: Time[F]) exten
       process: A => F[B])(implicit F: Effect[F], ec: ExecutionContext): Stream[F, Unit] = {
 
     def failedEvent(a: A, e: ComposerError): F[FailedV3] = {
-      (hash(a.metadata.eventId ++ "-composer-failed"), time.now).mapN { (eventId, now) =>
+      time.now.map { now =>
         val failedMetadata = a.metadata.copy(
           createdAt = now.toInstant,
-          eventId = eventId
+          eventId = a.metadata.commId ++ "-failed"
         )
 
         FailedV3(
@@ -120,9 +120,9 @@ class KafkaStream[F[_]](config: KafkaConfig, hash: Hash[F], time: Time[F]) exten
     }
 
     def feedbackEvent(a: A, e: ComposerError): F[Feedback] = {
-      (hash(a.metadata.eventId ++ "-composer-feedback"), time.now).mapN { (eventId, now) =>
+      time.now.map { now =>
         val metadata = EventMetadata(
-          eventId = eventId,
+          eventId = a.metadata.commId ++ "-failed",
           traceToken = a.metadata.traceToken,
           createdAt = now.toInstant
         )

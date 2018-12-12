@@ -30,11 +30,13 @@ object Email {
         renderedEmail.subject)
       textUri <- renderedEmail.text.traverse(x =>
         store.upload(event.metadata.commId, event.metadata.traceToken, x))
-      eventId <- hash(event.metadata.eventId ++ "-composed-email")
       hashedComm <- hash(event)
     } yield
       ComposedEmailV4(
-        metadata = MetadataV3.fromSourceMetadata("comms-composer", event.metadata, eventId),
+        metadata = MetadataV3.fromSourceMetadata(
+          "comms-composer",
+          event.metadata,
+          event.metadata.commId ++ "-composed-email"),
         internalMetadata = event.internalMetadata,
         sender = model.Email.chooseSender(template).toString,
         recipient = event.recipientEmailAddress,
