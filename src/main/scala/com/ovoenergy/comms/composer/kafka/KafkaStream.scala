@@ -122,7 +122,7 @@ class KafkaStream[F[_]](config: KafkaConfig, hash: Hash[F], time: Time[F]) exten
     def feedbackEvent(a: A, e: ComposerError): F[Feedback] = {
       time.now.map { now =>
         val metadata = EventMetadata(
-          eventId = a.metadata.commId ++ "-failed",
+          eventId = a.metadata.commId ++ "-feedback-failed",
           traceToken = a.metadata.traceToken,
           createdAt = now.toInstant
         )
