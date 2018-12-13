@@ -28,11 +28,14 @@ object Sms {
         event.metadata.commId,
         event.metadata.traceToken,
         renderedSms.textBody)
-      eventId <- hash(event.metadata.eventId ++ "-composed-sms")
       hashedComm <- hash(event)
     } yield
       ComposedSMSV4(
-        metadata = MetadataV3.fromSourceMetadata("comms-composer", event.metadata, eventId),
+        metadata = MetadataV3.fromSourceMetadata(
+          "comms-composer",
+          event.metadata,
+          event.metadata.commId ++ "-composed-sms"
+        ),
         internalMetadata = event.internalMetadata,
         recipient = event.recipientPhoneNumber,
         textBody = bodyUri.renderString,
