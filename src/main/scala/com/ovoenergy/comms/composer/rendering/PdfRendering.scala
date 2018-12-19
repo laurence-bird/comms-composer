@@ -1,6 +1,8 @@
 package com.ovoenergy.comms.composer
 package rendering
 
+import java.util.concurrent.TimeoutException
+
 import cats.effect.Effect
 import cats.implicits._
 import io.circe.Encoder
@@ -54,12 +56,11 @@ object PdfRendering extends Logging {
       F: Effect[F],
       s: Scheduler): PdfRendering[F] = {
 
-    def retriable(req: Request[F], result: Either[Throwable, Response[F]]): Boolean = {
+    def retriable(req: Request[F], result: Either[Throwable, Response[F]]): Boolean =
       result match {
         case Right(_) => false
-        case Left(err) => err.isInstanceOf[Retriable]
+        case Left(err) => err.isInstanceOf[Retriable] | err.isInstanceOf[TimeoutException]
       }
-    }
 
     val retryingClient = Retry[F](
       RetryPolicy(RetryPolicy.exponentialBackoff(2.minutes, Int.MaxValue), retriable)
