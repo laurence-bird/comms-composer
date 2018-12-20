@@ -30,7 +30,5 @@
     <logger name="org.apache" level="WARN"/>
     <root level="INFO">
         <appender-ref ref="LogzioLogbackAppender"/>
-        <appender-ref ref="GELF UDP APPENDER"/>
-        <appender-ref ref="CONSOLE"/>
     </root>
 </configuration>
