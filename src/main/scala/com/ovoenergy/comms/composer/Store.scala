@@ -1,19 +1,19 @@
 package com.ovoenergy.comms.composer
 
-import model._
+import java.io.{ByteArrayInputStream, InputStream}
 
+import model._
 import com.ovoenergy.comms.aws._
 import common.CredentialsProvider
 import common.model._
 import s3.S3
 import s3.model._
-
 import java.util.UUID
 
 import cats.implicits._
-import cats.effect.{Sync, Effect}
+import cats.effect.{Effect, Sync}
+import com.amazonaws.services.s3.AmazonS3Client
 import fs2._
-
 import org.http4s.Uri
 import org.http4s.client._
 import org.http4s.client.blaze._
@@ -71,6 +71,13 @@ object Store {
         s"s3-${region.value}.amazonaws.com"
       }
 
+      val inputStream = new InputStream {
+        override def read(): Int = ???
+      }
+      val s3: AmazonS3Client= ???
+      val thing = fragA.content(fragment).
+      val inputStream = new ByteArrayInputStream()
+//      s3.putObject()
       for {
         key <- keys.get(commId, traceToken)
         result <- s3

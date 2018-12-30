@@ -31,7 +31,7 @@ import org.http4s.server.blaze.BlazeBuilder
 import org.http4s.client.Client
 import org.http4s.client.blaze.Http1Client
 import org.http4s.client.blaze.BlazeClientConfig
-
+import org.http4s.client.middleware.{Logger => RequestLogger}
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import java.util.concurrent._
@@ -93,19 +93,23 @@ object Composer extends StreamApp[IO] with Logging {
           Scheduler[IO](corePoolSize = 2).flatMap { implicit sch =>
             httpClientStream
               .flatMap { httpClient =>
+                val loggingHttpClient = RequestLogger[IO](true, true)(httpClient)
                 s3ClientStream(config.store.s3Endpoint, config.store.region).flatMap { amazonS3 =>
                   implicit val hash: Hash[IO] = Hash[IO]
                   implicit val time: Time[IO] = Time[IO]
                   implicit val rendering: Rendering[IO] =
                     Rendering[IO](
                       HandlebarsRendering(HandlebarsWrapper.apply),
-                      PdfRendering[IO](httpClient, config.docRaptor))
+                      PdfRendering[IO](loggingHttpClient, config.docRaptor))
 
                   val topics = config.kafka.topics
                   val kafkaStream: KafkaStream[IO] = KafkaStream(config.kafka, hash, time)
 
                   implicit val store: Store[IO] =
-                    Store.fromHttpClient(httpClient, config.store, new Store.RandomSuffixKeys)
+                    Store.fromHttpClient(
+                      loggingHttpClient,
+                      config.store,
+                      new Store.RandomSuffixKeys)
 
                   implicit val templatesContext: TemplatesContext = {
                     val s3Client = new AmazonS3ClientWrapper(amazonS3, config.templates.bucket.name)
