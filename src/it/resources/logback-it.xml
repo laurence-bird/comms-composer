@@ -17,7 +17,6 @@
         </encoder>
     </appender>
 
-    <logger name="akka" level="INFO" />
     <logger name="org.apache" level="WARN" />
     <logger name="org.http4s.blaze.channel.ServerChannelGroup" level="WARN"/>
     <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="INFO" />
