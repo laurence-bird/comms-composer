@@ -142,7 +142,8 @@ object Config {
                   ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
                   ConsumerConfig.GROUP_ID_CONFIG -> "comms-composer",
                   ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
-                  ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
+                  ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
+                  ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> "25"
                 )) { (acc, k, v) =>
                 acc + (k -> v)
               }
