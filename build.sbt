@@ -28,6 +28,7 @@ ServiceTest / test / parallelExecution := false
 
 resolvers ++= Seq(
   Resolver.bintrayRepo("ovotech", "maven"),
+  Resolver.bintrayRepo("cakesolutions", "maven"),
   "confluent-release" at "http://packages.confluent.io/maven/"
 )
 
