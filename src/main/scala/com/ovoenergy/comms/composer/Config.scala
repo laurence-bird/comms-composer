@@ -1,28 +1,26 @@
 package com.ovoenergy.comms.composer
 
-import Config.Env.{Uat, Prd}
+import Config.Env.{Prd, Uat}
 import http.HttpServerConfig
 import rendering.PdfRendering.DocRaptorConfig
-import kafka.KafkaStream.{Topics, KafkaConfig, Topic}
 import com.ovoenergy.comms.model.{FailedV3, Feedback}
-import com.ovoenergy.comms.model.email.{OrchestratedEmailV4, ComposedEmailV4}
+import com.ovoenergy.comms.model.email.{ComposedEmailV4, OrchestratedEmailV4}
 import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
-import com.ovoenergy.comms.model.sms.{OrchestratedSMSV3, ComposedSMSV4}
+import com.ovoenergy.comms.model.sms.{ComposedSMSV4, OrchestratedSMSV3}
 import com.ovoenergy.comms.aws.common.model.Region
 import com.ovoenergy.comms.aws.s3.model.Bucket
-import com.ovoenergy.fs2.kafka.{ConsumerSettings, ProducerSettings}
 import com.ovoenergy.kafka.serialization.avro.SchemaRegistryClientSettings
 import cats.implicits._
 import cats.effect.Sync
 import ciris._
-import ciris.syntax._
 import ciris.cats.effect._
 import ciris.credstash.credstashF
 import ciris.aiven.kafka.aivenKafkaSetup
 import CirisAws._
+import com.ovoenergy.comms.composer.kafka.Kafka
+import com.ovoenergy.comms.composer.kafka.Kafka.{Topic, Topics}
 import org.http4s.Uri
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.producer.ProducerConfig
+import fs2.kafka._
 
 import scala.concurrent.duration._
 import scala.util.Try
@@ -31,7 +29,7 @@ case class TemplatesConfig(bucket: Bucket)
 
 case class Config(
     http: HttpServerConfig,
-    kafka: KafkaConfig,
+    kafka: Kafka.Config,
     store: Store.Config,
     templates: TemplatesConfig,
     docRaptor: DocRaptorConfig
@@ -87,6 +85,7 @@ object Config {
       "0.0.0.0",
       8080
     )
+    val groupId = "comms-composer"
 
     withValue(envF[F, Option[Env]]("ENV")) {
       case Some(environment) =>
@@ -104,6 +103,11 @@ object Config {
             s"${environment.toStringLowerCase}.aiven.schema_registry.password"),
           credstashF[F, Secret[String]]()(s"${environment.toStringLowerCase}.docraptor.api_key")
         ) { (awsRegion, kafkaSSL, schemaRegistryPassword, docRaptorApiKey) =>
+          val test = environment match {
+            case Uat => true
+            case Prd => false
+          }
+
           val docRaptor = DocRaptorConfig(
             docRaptorApiKey.value,
             Uri.uri("https://docraptor.com"),
@@ -134,38 +138,13 @@ object Config {
               schemaRegistryPassword.value
             )
 
-            val consumer = ConsumerSettings(
-              pollTimeout = 500.milliseconds,
-              maxParallelism = Int.MaxValue,
-              nativeSettings = kafkaSSL.setProperties(
-                Map(
-                  ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
-                  ConsumerConfig.GROUP_ID_CONFIG -> "comms-composer",
-                  ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
-                  ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest",
-                  ConsumerConfig.MAX_POLL_RECORDS_CONFIG -> "25"
-                )) { (acc, k, v) =>
-                acc + (k -> v)
-              }
+            Kafka.Config(
+              kafkaSSL.properties,
+              schemaRegistry,
+              kafkaBootstrapServers,
+              groupId,
+              topics
             )
-
-            val producer = ProducerSettings(
-              nativeSettings = kafkaSSL.setProperties(
-                Map(
-                  ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
-                  ProducerConfig.ACKS_CONFIG -> "all"
-                )) { (acc, k, v) =>
-                acc + (k -> v)
-              }
-            )
-
-            KafkaConfig(
-              topics,
-              consumer,
-              producer,
-              schemaRegistry
-            )
-
           }
 
           Config(
@@ -217,30 +196,13 @@ object Config {
                 schemaRegistryEndpoint
               )
 
-              val consumer = ConsumerSettings(
-                pollTimeout = 500.milliseconds,
-                maxParallelism = Int.MaxValue,
-                nativeSettings = Map(
-                  ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers,
-                  ConsumerConfig.GROUP_ID_CONFIG -> "comms-composer",
-                  ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
-                  ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
-                )
+              Kafka.Config(
+                Map.empty[String, String],
+                schemaRegistry,
+                kafkaBootstrapServers,
+                groupId,
+                topics
               )
-
-              val producer = ProducerSettings(
-                nativeSettings = Map(
-                  ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaBootstrapServers
-                )
-              )
-
-              KafkaConfig(
-                topics,
-                consumer,
-                producer,
-                schemaRegistry
-              )
-
             }
 
             Config(
@@ -251,8 +213,6 @@ object Config {
               docraptor
             )
         }
-
     }.orRaiseThrowable
   }
-
 }

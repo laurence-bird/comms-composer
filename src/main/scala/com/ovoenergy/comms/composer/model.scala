@@ -8,7 +8,8 @@ import scala.util.Try
 import io.circe.Decoder._
 import org.http4s._
 import headers.{`Content-Type` => ContentType}
-import org.http4s.MediaType.{`application/pdf` => pdf, `text/html` => html, `text/plain` => text}
+import org.http4s.MediaType.application.pdf
+import org.http4s.MediaType.text.{plain, html}
 import org.http4s.Charset.{`UTF-8` => utf8}
 import java.nio.charset.StandardCharsets.{UTF_8 => nioUtf8}
 
@@ -84,7 +85,7 @@ object model {
     def strings: Fragment[String] = new Fragment[String] {
       // can't reuse the nio charset in `http4s.Charset`, it's private
       def content(s: String): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(s.getBytes(nioUtf8)))
-      def contentType: ContentType = ContentType(text).withCharset(utf8)
+      def contentType: ContentType = ContentType(plain).withCharset(utf8)
       def contentLength(s: String): Long = s.getBytes(utf8.nioCharset).length
     }
 

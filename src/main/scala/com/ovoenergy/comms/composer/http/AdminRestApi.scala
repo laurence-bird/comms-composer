@@ -1,21 +1,21 @@
 package com.ovoenergy.comms.composer
 package http
 
-import cats.Monad
-import org.http4s.{HttpService, BuildInfo => _, _}
+import cats.effect.Sync
+import org.http4s.{BuildInfo => _, _}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.circe._
 import io.circe.literal._
 
-class AdminRestApi[F[_]: Monad] extends Http4sDsl[F] {
+class AdminRestApi[F[_]: Sync] extends Http4sDsl[F] {
 
-  def adminService: HttpService[F] = HttpService[F] {
+  def adminService = HttpRoutes.of[F] {
     case GET -> Root / "ping" =>
       Ok()
     case GET -> Root / "health" =>
-      Ok(json"""{"status": "healthy"}""")
+      Ok(s"""{"status": "healthy"}""")
     case GET -> Root / "info" =>
-      Ok(json"""{"name": ${BuildInfo.name}, "version": ${BuildInfo.version}}""")
+      Ok(s"""{"name": ${BuildInfo.name}, "version": ${BuildInfo.version}}""")
 
   }
 
@@ -23,6 +23,6 @@ class AdminRestApi[F[_]: Monad] extends Http4sDsl[F] {
 
 object AdminRestApi {
 
-  def apply[F[_]: Monad]: AdminRestApi[F] =
+  def apply[F[_]: Sync]: AdminRestApi[F] =
     new AdminRestApi[F]
 }

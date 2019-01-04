@@ -3,8 +3,8 @@ package com.ovoenergy.comms.composer.http
 import cats.effect.Sync
 import com.ovoenergy.comms.composer.http.RenderRestApi._
 import com.ovoenergy.comms.model._
-import io.circe.{Json, Encoder, Decoder}
-import org.http4s.{Request, Response, HttpService}
+import io.circe.{Decoder, Encoder, Json}
+import org.http4s.{HttpRoutes, Request, Response}
 import org.http4s.dsl.Http4sDsl
 import io.circe.generic.semiauto._
 import io.circe.syntax._
@@ -117,7 +117,7 @@ object RenderRestApi {
 
 class RenderRestApi[F[_]: Sync](render: Render[F]) extends Http4sDsl[F] {
 
-  def renderService: HttpService[F] = HttpService[F] {
+  def renderService = HttpRoutes.of[F] {
 
     case req @ POST -> Root / CommNamePath(commName) / CommVersionPath(commVersion) / CommTypePath(
           commType) / "print" =>

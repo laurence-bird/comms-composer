@@ -1,21 +1,27 @@
 package com.ovoenergy.comms.composer
 package rendering
 
+import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeoutException
 
-import cats.effect.Effect
-import cats.implicits._
 import io.circe.Encoder
 import io.circe.generic.semiauto._
+import io.circe.syntax._
+
+import cats.effect._
+import cats.implicits._
+
 import fs2._
+import org.http4s.client.Client
+import org.http4s.circe._
 import org.http4s._
 import headers._
 import Method._
 import circe._
 import client._
-import client.dsl.Http4sClientDsl
+import client.blaze._
+import client.dsl._
 import client.middleware.{Retry, RetryPolicy}
-import com.ovoenergy.comms.composer.Logging
 import com.ovoenergy.comms.composer.model.Print
 
 import scala.concurrent.ExecutionContext
@@ -51,10 +57,10 @@ object PdfRendering extends Logging {
   case class Forbidden(errorDetails: String) extends Retriable
   case class UnProcessableEntity(errorDetails: String) extends DocRaptorError
 
-  def apply[F[_]](client: Client[F], docRaptorConfig: DocRaptorConfig)(
+  def apply[F[_]: ConcurrentEffect](client: Client[F], docRaptorConfig: DocRaptorConfig)(
       implicit ec: ExecutionContext,
       F: Effect[F],
-      s: Scheduler): PdfRendering[F] = {
+      timer: Timer[F]): PdfRendering[F] = {
 
     def retriable(req: Request[F], result: Either[Throwable, Response[F]]): Boolean =
       result match {
@@ -62,7 +68,7 @@ object PdfRendering extends Logging {
         case Left(err) => err.isInstanceOf[Retriable] | err.isInstanceOf[TimeoutException]
       }
 
-    val retryingClient = Retry[F](
+    val retryingClient: Client[F] = Retry[F](
       RetryPolicy(RetryPolicy.exponentialBackoff(2.minutes, Int.MaxValue), retriable)
     )(client)
 
@@ -76,7 +82,7 @@ object PdfRendering extends Logging {
 
       def render(renderedPrintHtml: Print.HtmlBody, toWatermark: Boolean): F[Print.RenderedPdf] = {
 
-        val body: DocRaptorRequest = DocRaptorRequest(
+        val docRaptorBody: DocRaptorRequest = DocRaptorRequest(
           renderedPrintHtml.htmlBody,
           docRaptorConfig.isTest || toWatermark,
           "pdf",
@@ -86,8 +92,17 @@ object PdfRendering extends Logging {
         val credentials = BasicCredentials(docRaptorConfig.apiKey, "")
 
         for {
-          uri <- F.fromEither(Uri.fromString(s"${docRaptorConfig.url}/docs"))
-          request <- POST(uri, body, Authorization(credentials))
+          docRaptorUri <- F.fromEither(Uri.fromString(s"${docRaptorConfig.url}/docs"))
+          request <- F.pure(
+            Request[F](
+              method = Method.POST,
+              uri = docRaptorUri,
+              body = Stream
+                .emit(docRaptorBody.asJson)
+                .flatMap(json =>
+                  fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
+                .covary[F]
+            ).withHeaders(Authorization(credentials)))
           result <- retryingClient.expectOr[Array[Byte]](request) { response =>
             response
               .as[String]
