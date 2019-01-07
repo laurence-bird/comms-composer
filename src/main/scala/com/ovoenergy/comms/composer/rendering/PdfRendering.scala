@@ -7,12 +7,11 @@ import java.util.concurrent.TimeoutException
 import io.circe.Encoder
 import io.circe.generic.semiauto._
 import io.circe.syntax._
-
 import cats.effect._
 import cats.implicits._
-
 import fs2._
 import org.http4s.client.Client
+import org.http4s.headers.`Content-Type`
 import org.http4s.circe._
 import org.http4s._
 import headers._
@@ -31,7 +30,7 @@ trait PdfRendering[F[_]] {
   def render(renderedPrintHtml: Print.HtmlBody, toWatermark: Boolean): F[Print.RenderedPdf]
 }
 
-object PdfRendering extends Logging {
+object PdfRendering {
 
   case class DocRaptorRequest(
       document_content: String,
@@ -91,18 +90,23 @@ object PdfRendering extends Logging {
         // Docraptor requires API key to be set as the username for basic Auth
         val credentials = BasicCredentials(docRaptorConfig.apiKey, "")
 
+        val bodyStream: Stream[F, Byte] = Stream
+          .emit(docRaptorBody.asJson)
+          .flatMap(json => fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
+          .covary[F]
+
         for {
           docRaptorUri <- F.fromEither(Uri.fromString(s"${docRaptorConfig.url}/docs"))
           request <- F.pure(
             Request[F](
               method = Method.POST,
               uri = docRaptorUri,
-              body = Stream
-                .emit(docRaptorBody.asJson)
-                .flatMap(json =>
-                  fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
-                .covary[F]
-            ).withHeaders(Authorization(credentials)))
+              body = bodyStream
+            ).withHeaders(
+              Authorization(credentials),
+              `Content-Type`(MediaType.application.json)
+            )
+          )
           result <- retryingClient.expectOr[Array[Byte]](request) { response =>
             response
               .as[String]

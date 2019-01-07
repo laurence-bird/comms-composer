@@ -3,22 +3,18 @@ package rendering
 
 import model.Print
 import rendering.PdfRendering.DocRaptorConfig
-
-import cats.effect.IO
+import cats.effect.{IO, Timer}
 import cats.implicits._
-
 import fs2._
-
 import ciris._
-import ciris.syntax._
-import ciris.cats.effect._
+import cats.effect._
 import ciris.credstash.credstashF
-
 import org.http4s.Uri
 import org.http4s.client.Client
-import org.http4s.client.middleware.{ResponseLogger, RequestLogger}
-import org.http4s.client.blaze.Http1Client
+import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
+import org.http4s.client.blaze.{BlazeClientBuilder, Http1Client}
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -53,22 +49,25 @@ class PdfRenderingIntSpec extends IntegrationSpec {
   }
 
   def withPdfRendering[A](f: PdfRendering[IO] => IO[A]): IO[A] = {
-    Scheduler[IO](2)
-      .flatMap { implicit sch =>
-        Http1Client
-          .stream[IO]()
-          .zip(Stream.eval(docRaptorConfig))
-          .map {
-            case (client, cfg) =>
 
-              val responseLogger: Client[IO] => Client[IO] = ResponseLogger.apply0[IO](logBody = true, logHeaders = true)
-              val requestLogger: Client[IO] => Client[IO] = RequestLogger.apply0[IO](logBody = false, logHeaders = true, redactHeadersWhen = _ => false)
+    val ec = ExecutionContext.Implicits.global
+    implicit val contextShift = IO.contextShift(ec)
+    implicit val timer: Timer[IO] = IO.timer(ec)
+    implicit val concurrentEffect = IO.ioConcurrentEffect
+
+    BlazeClientBuilder[IO](ec)
+      .stream
+      .zip(Stream.eval(docRaptorConfig))
+      .map {
+        case (client, cfg) =>
+
+          val responseLogger: Client[IO] => Client[IO] = ResponseLogger[IO](logBody = true, logHeaders = true)
+          val requestLogger: Client[IO] => Client[IO] = RequestLogger[IO](logBody = false, logHeaders = true, redactHeadersWhen = _ => false)
 
 
-              PdfRendering[IO](requestLogger(responseLogger(client)), cfg)
-          }
-          .evalMap(f)
+          PdfRendering[IO](requestLogger(responseLogger(client)), cfg)
       }
+      .evalMap(f)
       .compile
       .last
       .map(_.toRight[Throwable](new IllegalStateException("The stream should not be empty")))

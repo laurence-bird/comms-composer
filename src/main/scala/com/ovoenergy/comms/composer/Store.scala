@@ -43,7 +43,7 @@ object Store {
   }
 
   def fromHttpClient[F[_]: Sync](httpclient: Client[F], config: Config, keys: Keys[F]): Store[F] =
-    apply[F](new S3[F](httpclient, CredentialsProvider.default[F], config.region), config, keys)
+    apply[F](S3[F](httpclient, CredentialsProvider.default[F], config.region), config, keys)
 
   def apply[F[_]: Sync](s3: S3[F], config: Config, keys: Keys[F]): Store[F] = new Store[F] {
 

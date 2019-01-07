@@ -2,25 +2,21 @@ package com.ovoenergy.comms.composer
 
 import model._
 import model.Email.Subject
-
 import com.ovoenergy.comms.aws._
 import common.CredentialsProvider
 import common.model._
 import s3.S3
 import s3.model._
-
 import cats.implicits._
-import cats.effect.IO
-
+import cats.effect.{IO, Timer}
 import fs2._
-import fs2.Stream.ToEffect
-
 import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.client.blaze._
-import org.http4s.client.middleware.{ResponseLogger, RequestLogger}
-
+import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import java.util.UUID
+
+import scala.concurrent.ExecutionContext
 
 class StoreIntSpec extends IntegrationSpec {
 
@@ -81,25 +77,32 @@ class StoreIntSpec extends IntegrationSpec {
           retrieved <- s3.getObject(existingBucket, key)
             .map(_.leftWiden[Throwable])
             .rethrow
-            .flatMap(_.content.through(text.utf8Decode).compile.lastOrRethrow)
+            .flatMap(_.content.through(text.utf8Decode).compile.lastOrError)
         } yield retrieved
       }.futureValue shouldBe fragment.content
     }
   }
 
   def withS3[A](f: S3[IO] => IO[A]): IO[A] = {
-    Http1Client
-      .stream[IO]()
+
+    implicit val ec = ExecutionContext.Implicits.global
+    implicit val contextShift = cats.effect.IO.contextShift(ec)
+    implicit val timer: Timer[IO] = IO.timer(ec)
+    implicit val concurrentEffect = IO.ioConcurrentEffect
+
+    BlazeClientBuilder[IO](ec)
+      .stream
       .map { client =>
 
-        val responseLogger: Client[IO] => Client[IO] = ResponseLogger.apply0[IO](logBody = true, logHeaders = true)
-        val requestLogger: Client[IO] => Client[IO] = RequestLogger.apply0[IO](logBody = false, logHeaders = true, redactHeadersWhen = _ => false)
+        val responseLogger: Client[IO] => Client[IO] = ResponseLogger[IO](logBody = true, logHeaders = true)
+        val requestLogger: Client[IO] => Client[IO] = RequestLogger[IO](logBody = false, logHeaders = true, redactHeadersWhen = _ => false)
         val loggingClient = responseLogger(requestLogger(client))
 
-        new S3[IO](loggingClient, CredentialsProvider.default[IO], region)
+        S3[IO](loggingClient, CredentialsProvider.default[IO], region)
       }
       .evalMap(f)
-      .compile.lastOrRethrow
+      .compile
+      .lastOrError
   }
 
 

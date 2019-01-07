@@ -41,8 +41,8 @@ object Dependencies {
     private val commsKafkaTestHelperVersion = "3.18"
     private val commsKafkaMessagesVersion = "1.79.3"
     private val commsTemplatesVersion = "0.32"
-    private val commsDockerTestkitVersion = "1.8.6"
-    private val commsAwsVersion = "0.1.10"
+    private val commsDockerTestkitVersion = "1.8.7"
+    private val commsAwsVersion = "0.2.2"
 
     lazy val kafkaSerializationCore = "com.ovoenergy" %% "kafka-serialization-core" % kafkaSerializationVersion
     lazy val kafkaSerializationAvro = "com.ovoenergy" %% "kafka-serialization-avro" % kafkaSerializationVersion
