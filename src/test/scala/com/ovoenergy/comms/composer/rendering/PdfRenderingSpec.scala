@@ -45,7 +45,7 @@ class PdfRenderingSpec
     })
 
     PdfRendering(httpClient, docRaptorConfig)
-      .render(printBody)
+      .render(printBody, false)
       .eitherValue
       .map(_.map(result => new String(result.fragment.content) shouldBe printBody.htmlBody))
   }
@@ -101,7 +101,7 @@ class PdfRenderingSpec
   def testFailure(httpClient: Client[IO], test: Throwable => Assertion) = {
     whenReady {
       PdfRendering(httpClient, docRaptorConfig)
-        .render(printBody)
+        .render(printBody, false)
         .unsafeToFuture
         .failed
     }(test)

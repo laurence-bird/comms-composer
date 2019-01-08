@@ -107,7 +107,7 @@ object Config {
           val docRaptor = DocRaptorConfig(
             docRaptorApiKey.value,
             Uri.uri("https://docraptor.com"),
-            isTest = false
+            isTest = environment == Uat
           )
 
           val storeBucket = Bucket(s"ovo-comms-rendered-content-${environment.toStringLowerCase}")

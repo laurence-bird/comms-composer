@@ -22,7 +22,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 trait PdfRendering[F[_]] {
-  def render(renderedPrintHtml: Print.HtmlBody): F[Print.RenderedPdf]
+  def render(renderedPrintHtml: Print.HtmlBody, isCanary: Boolean): F[Print.RenderedPdf]
 }
 
 object PdfRendering extends Logging {
@@ -74,11 +74,11 @@ object PdfRendering extends Logging {
       implicit val docRaptorRequestEntityEncoder: EntityEncoder[F, DocRaptorRequest] =
         jsonEncoderOf[F, DocRaptorRequest]
 
-      def render(renderedPrintHtml: Print.HtmlBody): F[Print.RenderedPdf] = {
+      def render(renderedPrintHtml: Print.HtmlBody, isCanary: Boolean): F[Print.RenderedPdf] = {
 
         val body: DocRaptorRequest = DocRaptorRequest(
           renderedPrintHtml.htmlBody,
-          docRaptorConfig.isTest,
+          docRaptorConfig.isTest || isCanary,
           "pdf",
           PrinceOptions("PDF/X-1a:2003")
         )
