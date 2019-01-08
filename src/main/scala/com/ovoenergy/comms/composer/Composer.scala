@@ -8,7 +8,7 @@ import http.{AdminRestApi, RenderRestApi}
 import kafka.Kafka
 import logic.{Email, Print, Sms}
 import rendering.{HandlebarsRendering, HandlebarsWrapper, PdfRendering, Rendering}
-import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import io.chrisdavenport.log4cats.noop.NoOpLogger
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.AmazonS3Client
 import com.ovoenergy.comms.aws.common.model.Region
@@ -18,12 +18,13 @@ import com.ovoenergy.comms.model.sms.{ComposedSMSV4, OrchestratedSMSV3}
 import com.ovoenergy.comms.templates.model.template.processed.CommTemplate
 import com.ovoenergy.comms.templates._
 import cache._
+import org.http4s.blaze.channel.{ChannelOptions, DefaultPoolSize}
 import s3._
 import retriever._
 import parsing.handlebars._
 import org.http4s.implicits._
 import org.http4s.client.blaze.BlazeClientBuilder
-import org.http4s.server.Router
+import org.http4s.server.{DefaultServiceErrorHandler, Router, defaults}
 import org.http4s.server.blaze.BlazeServerBuilder
 
 // This is to import avro custom format. Intellij does not spot it because they are used by the macro
@@ -39,7 +40,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import java.util.concurrent._
 
-object Composer extends IOApp with Logging {
+object Composer extends IOApp {
 
   def mainExecutionContextStream: Stream[IO, ExecutionContext] = {
     Stream
@@ -81,9 +82,9 @@ object Composer extends IOApp with Logging {
       mainEc <- mainExecutionContextStream
       httpClient <- httpClientStream(mainEc)
       amazonS3 <- s3ClientStream(config.store.s3Endpoint, config.store.region)
-      logger <- Stream.eval(Slf4jLogger.create[IO])
     } yield {
 
+      val logger = NoOpLogger.impl[IO]
       val loggingHttpClient: Client[IO] = RequestLogger[IO](true, true)(httpClient)
 
       implicit val ec = mainEc
@@ -112,18 +113,38 @@ object Composer extends IOApp with Logging {
       implicit val smsTemplates: Templates[IO, Templates.Sms] = Templates.sms[IO]
       implicit val printTemplates: Templates[IO, Templates.Print] = Templates.print[IO]
 
-      val router =
+      val routes =
         Router[IO](
           "/render" -> RenderRestApi[IO](Print.http[IO]).renderService,
           "/admin" -> AdminRestApi[IO].adminService
         ).orNotFound
 
-      val http: Stream[IO, ExitCode] =
-        BlazeServerBuilder[IO]
-          .withExecutionContext(ec)
-          .bindHttp(config.http.port, config.http.host)
-          .withHttpApp(router)
-          .serve
+      val http =
+        new BlazeServerBuilder[IO](
+          socketAddress = defaults.SocketAddress,
+          executionContext = ExecutionContext.global,
+          responseHeaderTimeout = 1.minute,
+          idleTimeout = defaults.IdleTimeout,
+          isNio2 = false,
+          connectorPoolSize = DefaultPoolSize,
+          bufferSize = 64 * 1024,
+          enableWebSockets = true,
+          sslBits = None,
+          isHttp2Enabled = false,
+          maxRequestLineLen = 4 * 1024,
+          maxHeadersLen = 40 * 1024,
+          httpApp = routes,
+          serviceErrorHandler = DefaultServiceErrorHandler[IO],
+          banner = defaults.Banner,
+          channelOptions = ChannelOptions(Vector.empty)
+        ).bindHttp(config.http.port, config.http.host).serve
+
+//        BlazeServerBuilder[IO]
+//          .withExecutionContext(ec)
+//          .bindHttp(config.http.port, config.http.host)
+//          .withHttpApp(router)
+//          .withHttpApp(AdminRestApi[IO].adminService.orNotFound)
+//          .serve
 
       val topics = config.kafka.topics
       val kafka = Kafka(config.kafka, time, logger)
@@ -142,9 +163,8 @@ object Composer extends IOApp with Logging {
         Print[IO](_))
 
       Stream(email, sms, print, http).parJoinUnbounded
-
     }
 
-    stream.compile.drain.as(ExitCode.Error)
+    stream.compile.drain.as(ExitCode.Success)
   }
 }

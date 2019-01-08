@@ -1,38 +1,29 @@
 package com.ovoenergy.comms.composer
 package servicetest
 
-import kafka.KafkaStream._
-
+import kafka.Kafka._
 import com.ovoenergy.comms.model._
 import email._
 import sms._
 import print._
-
 import com.ovoenergy.comms.aws.common.model._
 import com.ovoenergy.comms.aws.s3.S3
 import com.ovoenergy.comms.aws.s3.model._
 import com.ovoenergy.comms.dockertestkit._
 import com.ovoenergy.comms.aws.common.CredentialsProvider
-
-import com.ovoenergy.fs2.kafka._
 import com.ovoenergy.kafka.serialization.avro4s._
-
 import com.sksamuel.avro4s._
-
 import cats.implicits._
-import cats.effect.IO
-
+import cats.effect.{IO, Timer}
 import org.http4s._
 import client.Client
 import client.blaze.Http1Client
-
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
-
 import com.github.tomakehurst.wiremock.client._
-
+import fs2.kafka._
 import org.scalatest._
 import org.scalatest.concurrent.Eventually
 
@@ -58,7 +49,8 @@ abstract class ServiceSpec
   sys.props.put("logback.configurationFile", "logback-servicetest.xml")
 
   implicit val ec: ExecutionContext = ExecutionContext.global
-
+  implicit val contextShift = cats.effect.IO.contextShift(ec)
+  implicit val timer: Timer[IO] = IO.timer(ec)
   implicit val patience: PatienceConfig = PatienceConfig(scaled(25.seconds), 500.millis)
 
   override lazy val managedContainers: ManagedContainers = ManagedContainers(
@@ -112,11 +104,11 @@ abstract class ServiceSpec
   }
 
   def withHttpClient[A](f: Client[IO] => IO[A]): IO[A] = {
-    Http1Client.stream[IO]().evalMap(f).compile.lastOrRethrow
+    Http1Client.stream[IO]().evalMap(f).compile.lastOrError
   }
 
   def withS3[A](f: S3[IO] => IO[A]): IO[A] = withHttpClient { client =>
-    val s3 = new S3[IO](
+    val s3 = S3[IO](
       client,
       CredentialsProvider.default[IO],
       Region.`eu-west-1`
@@ -196,89 +188,87 @@ abstract class ServiceSpec
           AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaPublicEndpoint,
         ).asJava))
     fs2.Stream
-      .bracket(createClient)(c => fs2.Stream.emit(c), c => IO(c.close()))
+      .bracket(createClient)(c => IO(c.close()))
       .evalMap(f)
       .compile
-      .lastOrRethrow
+      .lastOrError
   }
 
-  def withProducerFor[A: SchemaFor: ToRecord, B](topic: Topic[A])(
-      f: Producer[String, A] => IO[B]): IO[B] = {
+  def withProducerAndConsumer[A: SchemaFor: ToRecord, B](from: Topic[A], to: Topic[B]) = {
+
+  }
+
+  def producerS[A: SchemaFor: ToRecord] = {
 
     val producerSettings = ProducerSettings(
-      Map(
-        ProducerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaPublicEndpoint,
-      )
-    )
+      new StringSerializer,
+      avroBinarySchemaIdSerializer[A](
+        schemaRegistryPublicEndpoint,
+        isKey = false,
+        includesFormatByte = true)
+    ).withBootstrapServers(kafkaPublicEndpoint)
 
-    producerStream[IO]
-      .apply(
-        producerSettings,
-        new StringSerializer,
-        avroBinarySchemaIdSerializer[A](
-          schemaRegistryPublicEndpoint,
-          isKey = false,
-          includesFormatByte = true),
-      )
-      .evalMap(f)
-      .compile
-      .lastOrRethrow
+    producerStream[IO].using(producerSettings)
   }
 
-  def withConsumerFor[A: SchemaFor: FromRecord, B](topic: Topic[A])(
-      f: Consumer[String, A] => IO[B]): IO[B] = {
+  def consumerS[A: SchemaFor: FromRecord] = {
 
     val consumerSettings = ConsumerSettings(
-      pollTimeout = 500.millis,
-      Int.MaxValue,
-      Map(
-        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaPublicEndpoint,
-        ConsumerConfig.GROUP_ID_CONFIG -> getClass.getName,
-        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
-      )
-    )
+      new StringDeserializer,
+      avroBinarySchemaIdWithReaderSchemaDeserializer[A](
+        schemaRegistryPublicEndpoint,
+        isKey = false,
+        includesFormatByte = true))
+      .withBootstrapServers(kafkaPublicEndpoint)
+      .withEnableAutoCommit(false)
+      .withAutoOffsetReset(AutoOffsetReset.Earliest)
+      .withGroupId(getClass.getName)
+      .withPollTimeout(500.millis)
 
     consumerStream[IO]
-      .apply(
-        new StringDeserializer,
-        avroBinarySchemaIdWithReaderSchemaDeserializer[A](
-          schemaRegistryPublicEndpoint,
-          isKey = false,
-          includesFormatByte = true),
-        consumerSettings
-      )
-      .evalMap { c => IO(c.subscribe(List(topic.name).asJava)).as(c)
-      }
-      .evalMap(f)
-      .compile
-      .lastOrRethrow
+      .using(consumerSettings)
+
+//      .apply(
+//        new StringDeserializer,
+//        avroBinarySchemaIdWithReaderSchemaDeserializer[A](
+//          schemaRegistryPublicEndpoint,
+//          isKey = false,
+//          includesFormatByte = true),
+//        consumerSettings
+//      )
+//      .evalMap { c => IO(c.subscribe(List(topic.name).asJava)).as(c)
+//      }
+//      .evalMap(f)
+//      .compile
+//      .lastOrRethrow
   }
 
-  def consume[A: SchemaFor: FromRecord, B](topic: Topic[A])(
-      f: ConsumerRecord[String, A] => IO[B]): fs2.Stream[IO, B] = {
-
-    val consumerSettings = ConsumerSettings(
-      pollTimeout = 500.millis,
-      Int.MaxValue,
-      Map(
-        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG -> kafkaPublicEndpoint,
-        ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG -> "false",
-        ConsumerConfig.GROUP_ID_CONFIG -> getClass.getName,
-        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG -> "earliest"
-      )
-    )
-
-    consumeProcessAndCommit[IO]
-      .apply(
-        Subscription.topics(topic.name),
-        new StringDeserializer,
-        avroBinarySchemaIdWithReaderSchemaDeserializer[A](
-          schemaRegistryPublicEndpoint,
-          isKey = false,
-          includesFormatByte = true),
-        consumerSettings
-      )(f)
-  }
+//  def consume[A: SchemaFor: FromRecord, B](topic: Topic[A])(
+//      f: ConsumerRecord[String, A] => IO[B]): fs2.Stream[IO, B] = {
+//
+//    val consumerSettings = ConsumerSettings(
+//      new StringDeserializer,
+//      avroBinarySchemaIdWithReaderSchemaDeserializer[A](
+//        schemaRegistryPublicEndpoint,
+//        isKey = false,
+//        includesFormatByte = true))
+//      .withBootstrapServers(kafkaPublicEndpoint)
+//      .withEnableAutoCommit(false)
+//      .withAutoOffsetReset(AutoOffsetReset.Earliest)
+//      .withGroupId(getClass.getName)
+//      .withPollTimeout(500.millis)
+//
+////    consumeProcessAndCommit[IO]
+////      .apply(
+////        Subscription.topics(topic.name),
+////        new StringDeserializer,
+////        avroBinarySchemaIdWithReaderSchemaDeserializer[A](
+////          schemaRegistryPublicEndpoint,
+////          isKey = false,
+////          includesFormatByte = true),
+////        consumerSettings
+////      )(f)
+//  }
 
   def producerRecord[A](topic: Topic[A])(message: A, key: A => String) =
     new ProducerRecord[String, A](topic.name, key(message), message)
@@ -290,7 +280,7 @@ abstract class ServiceSpec
     import fs2.io._
 
     val body: IO[Array[Byte]] =
-      readInputStream(IO(getClass.getResourceAsStream("/test.pdf")), chunkSize = 1024).compile
+      readInputStream(IO(getClass.getResourceAsStream("/test.pdf")), chunkSize = 1024, ec).compile
         .fold(Vector.empty[Byte])(_ :+ _)
         .map(_.toArray)
 

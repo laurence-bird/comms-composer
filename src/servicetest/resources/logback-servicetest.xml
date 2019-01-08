@@ -17,16 +17,26 @@
         </encoder>
     </appender>
 
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.out</target>
+        <encoder>
+            <pattern>%date{ISO8601} %-5level[%thread] %logger{0} %X{} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
     <logger name="akka" level="INFO" />
-    <logger name="org.apache" level="WARN" />
+    <logger name="org.apache" level="DEBUG" />
+    <logger name="fs2" level="DEBUG"/>
+    <logger name="org.http4s" level="DEBUG"/>
     <logger name="org.http4s.blaze.channel.ServerChannelGroup" level="WARN"/>
     <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="INFO" />
 
-    <logger name="DOCKER" level="INFO" additivity="false" >
+    <logger name="DOCKER" level="DEBUG" additivity="false" >
         <appender-ref ref="DOCKER"/>
     </logger>
 
-    <root level="INFO">
+    <root level="DEBUG">
+        <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </root>
 

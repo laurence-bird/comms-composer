@@ -15,9 +15,10 @@ class HttpServiceSpec extends ServiceSpec with Http4sClientDsl[IO] {
 
   "Composer" should {
     "reply ok to the healthcheck" in {
+      Thread.sleep(100000)
       withHttpClient { client =>
         for {
-          endpoint <- Uri.fromString(composerPublicEndpoint).fold(e => IO.raiseError(e), ok => ok.pure[IO])
+          endpoint <- Uri.fromString(otherComposerEndpoint).fold(e => IO.raiseError(e), ok => ok.pure[IO])
           req <- GET(endpoint / "admin" / "health")
           status <- client.status(req)
         } yield status
