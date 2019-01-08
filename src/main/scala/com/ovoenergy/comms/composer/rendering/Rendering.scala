@@ -36,7 +36,7 @@ trait Rendering[F[_]] {
       manifest: TemplateManifest,
       template: Templates.Print,
       printTemplateData: CommTemplateData): F[Print.HtmlBody]
-  def renderPrintPdf(html: Print.HtmlBody, isCanary: Boolean): F[Print.RenderedPdf]
+  def renderPrintPdf(html: Print.HtmlBody, toWatermark: Boolean): F[Print.RenderedPdf]
 }
 
 object Rendering {
@@ -118,8 +118,10 @@ object Rendering {
             .map(body => Print.HtmlBody(body))
         }.rethrow
 
-      override def renderPrintPdf(html: Print.HtmlBody, isCanary: Boolean): F[Print.RenderedPdf] =
-        pdfRendering.render(html, isCanary)
+      override def renderPrintPdf(
+          html: Print.HtmlBody,
+          toWatermark: Boolean): F[Print.RenderedPdf] =
+        pdfRendering.render(html, toWatermark)
 
     }
 }
