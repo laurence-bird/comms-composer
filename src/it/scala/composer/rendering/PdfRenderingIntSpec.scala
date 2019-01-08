@@ -46,7 +46,7 @@ class PdfRenderingIntSpec extends IntegrationSpec {
         """.stripMargin)
 
       withPdfRendering { pdfr =>
-        pdfr.render(body)
+        pdfr.render(body, toWatermark = true)
       }.attempt.futureValue shouldBe a[Right[_,_]]
     }
 

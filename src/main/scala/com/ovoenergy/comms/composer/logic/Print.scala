@@ -28,7 +28,7 @@ object Print {
         template,
         PrintTemplateData(event.templateData, event.customerProfile, event.address)
       )
-      renderedPdf <- rendering.renderPrintPdf(html)
+      renderedPdf <- rendering.renderPrintPdf(html, toWatermark = event.metadata.canary)
       pdfUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedPdf.fragment)
       hashedComm <- hash.apply(event)
     } yield
@@ -60,7 +60,7 @@ object Print {
         template,
         TemplateDataWrapper(data)
       )
-      renderedPdf <- rendering.renderPrintPdf(html)
+      renderedPdf <- rendering.renderPrintPdf(html, toWatermark = false) // even if we preview canaries, it's ok
     } yield renderedPdf
   }
 }

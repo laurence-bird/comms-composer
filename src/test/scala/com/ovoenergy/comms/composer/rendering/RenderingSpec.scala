@@ -35,7 +35,9 @@ class RenderingSpec
     with EitherValues {
 
   private val nopPdfRendering = new PdfRendering[IO] {
-    override def render(renderedPrintHtml: Print.HtmlBody): IO[Print.RenderedPdf] =
+    override def render(
+        renderedPrintHtml: Print.HtmlBody,
+        isCanary: Boolean): IO[Print.RenderedPdf] =
       IO.raiseError(new NotImplementedError())
   }
 
