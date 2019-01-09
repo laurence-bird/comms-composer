@@ -8,7 +8,7 @@ import http.{AdminRestApi, RenderRestApi}
 import kafka.Kafka
 import logic.{Email, Print, Sms}
 import rendering.{HandlebarsRendering, HandlebarsWrapper, PdfRendering, Rendering}
-import io.chrisdavenport.log4cats.noop.NoOpLogger
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.AmazonS3Client
 import com.ovoenergy.comms.aws.common.model.Region
@@ -77,14 +77,14 @@ object Composer extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] = {
 
-    val stream = for {
+    val stream: Stream[IO, Stream[IO, Any]] = for {
       config <- Stream.eval(Config.load[IO])
       mainEc <- mainExecutionContextStream
       httpClient <- httpClientStream(mainEc)
       amazonS3 <- s3ClientStream(config.store.s3Endpoint, config.store.region)
+      logger <- Stream.eval(Slf4jLogger.create[IO])
     } yield {
 
-      val logger = NoOpLogger.impl[IO]
       val loggingHttpClient: Client[IO] = RequestLogger[IO](true, true)(httpClient)
 
       implicit val ec = mainEc
@@ -165,6 +165,6 @@ object Composer extends IOApp {
       Stream(email, sms, print, http).parJoinUnbounded
     }
 
-    stream.compile.drain.as(ExitCode.Success)
+    stream.flatten.compile.drain.as(ExitCode.Success)
   }
 }

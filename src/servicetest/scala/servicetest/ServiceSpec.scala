@@ -14,7 +14,7 @@ import com.ovoenergy.comms.aws.common.CredentialsProvider
 import com.ovoenergy.kafka.serialization.avro4s._
 import com.sksamuel.avro4s._
 import cats.implicits._
-import cats.effect.{IO, Timer}
+import cats.effect.{IO, Resource, Timer}
 import org.http4s._
 import client.Client
 import client.blaze.Http1Client
@@ -23,7 +23,7 @@ import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.clients.producer._
 import com.github.tomakehurst.wiremock.client._
-import fs2.kafka._
+import fs2.kafka.{KafkaConsumer, KafkaProducer, _}
 import org.scalatest._
 import org.scalatest.concurrent.Eventually
 
@@ -51,7 +51,7 @@ abstract class ServiceSpec
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val contextShift = cats.effect.IO.contextShift(ec)
   implicit val timer: Timer[IO] = IO.timer(ec)
-  implicit val patience: PatienceConfig = PatienceConfig(scaled(25.seconds), 500.millis)
+  implicit val patience: PatienceConfig = PatienceConfig(scaled(100.seconds), 500.millis)
 
   override lazy val managedContainers: ManagedContainers = ManagedContainers(
     zookeeperContainer,
@@ -198,7 +198,7 @@ abstract class ServiceSpec
 
   }
 
-  def producerS[A: SchemaFor: ToRecord] = {
+  def producerS[A: SchemaFor: ToRecord]: fs2.Stream[IO, KafkaProducer[IO, String, A]] = {
 
     val producerSettings = ProducerSettings(
       new StringSerializer,
@@ -211,7 +211,7 @@ abstract class ServiceSpec
     producerStream[IO].using(producerSettings)
   }
 
-  def consumerS[A: SchemaFor: FromRecord] = {
+  def consumerS[A: SchemaFor: FromRecord]: fs2.Stream[IO, KafkaConsumer[IO, String, A]] = {
 
     val consumerSettings = ConsumerSettings(
       new StringDeserializer,
@@ -227,20 +227,6 @@ abstract class ServiceSpec
 
     consumerStream[IO]
       .using(consumerSettings)
-
-//      .apply(
-//        new StringDeserializer,
-//        avroBinarySchemaIdWithReaderSchemaDeserializer[A](
-//          schemaRegistryPublicEndpoint,
-//          isKey = false,
-//          includesFormatByte = true),
-//        consumerSettings
-//      )
-//      .evalMap { c => IO(c.subscribe(List(topic.name).asJava)).as(c)
-//      }
-//      .evalMap(f)
-//      .compile
-//      .lastOrRethrow
   }
 
 //  def consume[A: SchemaFor: FromRecord, B](topic: Topic[A])(

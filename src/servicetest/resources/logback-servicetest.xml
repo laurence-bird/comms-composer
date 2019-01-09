@@ -25,17 +25,17 @@
     </appender>
 
     <logger name="akka" level="INFO" />
-    <logger name="org.apache" level="DEBUG" />
-    <logger name="fs2" level="DEBUG"/>
-    <logger name="org.http4s" level="DEBUG"/>
+    <logger name="org.apache" level="WARN" />
+    <!--<logger name="fs2" level="DEBUG"/>-->
+    <!--<logger name="org.http4s" level="DEBUG"/>-->
     <logger name="org.http4s.blaze.channel.ServerChannelGroup" level="WARN"/>
     <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="INFO" />
 
-    <logger name="DOCKER" level="DEBUG" additivity="false" >
+    <logger name="DOCKER" level="INFO" additivity="false" >
         <appender-ref ref="DOCKER"/>
     </logger>
 
-    <root level="DEBUG">
+    <root level="INFO">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
     </root>

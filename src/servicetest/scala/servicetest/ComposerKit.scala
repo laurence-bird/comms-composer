@@ -53,9 +53,8 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
     .withExposedPorts(composerPort)
     .withVolumeBindings(
       List(HostConfig.Bind.from(s"""${sys.props("user.home")}/.aws""").to("/sbin/.aws").build()))
-//    .withReadyChecker(HttpResponseCode(port = composerPort, path = "/admin/health", code = 200)
-//      .looped(10, 5.seconds))
-    .withReadyChecker(LogLineContains("Processing logback.xml").looped(10, 200.milliseconds))
+    .withReadyChecker(HttpResponseCode(port = composerPort, path = "/admin/health", code = 200)
+      .looped(10, 5.seconds))
     .toContainer
 
 }

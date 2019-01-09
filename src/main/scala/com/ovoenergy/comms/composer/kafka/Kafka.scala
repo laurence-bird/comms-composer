@@ -173,7 +173,7 @@ object Kafka {
           .withAcks(Acks.All)
           .withProperties(config.sslProperties)
 
-      for {
+      val stream = for {
         executionContext <- consumerExecutionContextStream[F]
         consumer <- consumerStream[F]
           .using(consumerSettings(executionContext))
@@ -182,48 +182,48 @@ object Kafka {
         failedProducer <- producerStream[F].using(producerSettings[FailedV3])
         feedbackProducer <- producerStream[F].using(producerSettings[Feedback])
         _ <- consumer.stream
-          .mapAsync(25)(
-            (message: CommittableMessage[F, String, In]) =>
-              log.info(consumerRecordLoggable(message.record): _*)("Consumed Kafka message") *>
+          .mapAsync(25) { (message: CommittableMessage[F, String, In]) =>
+            val logConsumed =
+              log.info(consumerRecordLoggable(message.record): _*)("Consumed Kafka message")
 
-                process(message.record.value)
-                  .flatMap { result: Out =>
-                    val record = new ProducerRecord(out.name, message.record.key, result)
-                    val pm = ProducerMessage.single[Id].of(record, message.committableOffset)
-                    producer
-                      .produceBatched(pm)
-                      .map(_.map(_.passthrough)
-                        .flatMap { offset =>
-                          log
-                            .info(recordMetadataLoggable(offset): _*)(
-                              s"Sent record to Kafka ${offset.show}")
-                            .as(offset)
-                        })
-                  }
-                  .handleErrorWith { err =>
-                    val logFailure = F.delay(log.warn(consumerRecordLoggable(message.record): _*)(
-                      "Error processing Kafka record"))
+            val p = process(message.record.value)
+              .flatMap { result: Out =>
+                val record = new ProducerRecord(out.name, message.record.key, result)
+                val pm = ProducerMessage.single[Id].of(record, message.committableOffset)
+                producer
+                  .produceBatched(pm)
+                  .flatTap(_.flatTap(res =>
+                    log.info(s"Sent record to Kafka topic ${res.records._2}")))
+                  .map(_.map(_.passthrough))
+              }
+              .handleErrorWith { err =>
+                val logFailure = log.warn(consumerRecordLoggable(message.record): _*)(
+                  s"Error processing Kafka record. $err")
 
-                    val createFailed = failedEvent(message.record.value, composerError(err))
-                      .map(new ProducerRecord(config.topics.failed.name, message.record.key, _))
-                      .map(ProducerMessage.single[Id].of(_, message.committableOffset))
-                      .flatMap(failedProducer.produceBatched)
+                val createFailed = failedEvent(message.record.value, composerError(err))
+                  .map(new ProducerRecord(config.topics.failed.name, message.record.key, _))
+                  .map(ProducerMessage.single[Id].of(_, message.committableOffset))
+                  .flatMap(failedProducer.produceBatched)
 
-                    val createFeedback = feedbackEvent(message.record.value, composerError(err))
-                      .map(new ProducerRecord(config.topics.failed.name, message.record.key, _))
-                      .map(ProducerMessage.single[Id].of(_, message.committableOffset))
-                      .flatMap(feedbackProducer.produceBatched)
+                val createFeedback = feedbackEvent(message.record.value, composerError(err))
+                  .map(new ProducerRecord(config.topics.feedback.name, message.record.key, _))
+                  .map(ProducerMessage.single[Id].of(_, message.committableOffset))
+                  .flatMap(feedbackProducer.produceBatched)
 
-                    (logFailure *> createFailed *> createFeedback).map(_.map(_.passthrough)
-                      .flatMap { offset =>
-                        log
-                          .info(recordMetadataLoggable(offset): _*)(
-                            s"Sent record to Kafka ${offset.show}")
-                          .as(offset)
-                      })
-                })
+                val createFailedandFeedback = (createFailed, createFeedback)
+                  .mapN((a, b) => a)
+                  .map(_.map(_.passthrough))
+
+                logFailure *> createFailedandFeedback
+              }
+
+            logConsumed *> p
+
+          }
           .to(commitBatchWithinF(500, 15.seconds))
       } yield ()
+
+      stream
     }
   }
 }
