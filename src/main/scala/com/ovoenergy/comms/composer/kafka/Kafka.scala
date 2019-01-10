@@ -186,14 +186,15 @@ object Kafka {
             val logConsumed =
               log.info(consumerRecordLoggable(message.record): _*)("Consumed Kafka message")
 
-            val p = process(message.record.value)
+            val produce = process(message.record.value)
               .flatMap { result: Out =>
                 val record = new ProducerRecord(out.name, message.record.key, result)
                 val pm = ProducerMessage.single[Id].of(record, message.committableOffset)
                 producer
                   .produceBatched(pm)
                   .flatTap(_.flatTap(res =>
-                    log.info(s"Sent record to Kafka topic ${res.records._2}")))
+                    log.info(
+                      s"Sent record to Kafka topic ${res.records._2}, key ${message.record.key()}")))
                   .map(_.map(_.passthrough))
               }
               .handleErrorWith { err =>
@@ -217,7 +218,7 @@ object Kafka {
                 logFailure *> createFailedandFeedback
               }
 
-            logConsumed *> p
+            logConsumed *> produce
 
           }
           .to(commitBatchWithinF(500, 15.seconds))
