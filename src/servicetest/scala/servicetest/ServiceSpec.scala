@@ -18,7 +18,7 @@ import cats.implicits._
 import cats.effect.{IO, Resource, Timer}
 import org.http4s._
 import client.Client
-import client.blaze.Http1Client
+import client.blaze.{BlazeClientBuilder, Http1Client}
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer._
@@ -107,7 +107,7 @@ abstract class ServiceSpec
   }
 
   def withHttpClient[A](f: Client[IO] => IO[A]): IO[A] = {
-    Http1Client.stream[IO]().evalMap(f).compile.lastOrError
+    BlazeClientBuilder[IO](ec).stream.evalMap(f).compile.lastOrError
   }
 
   def withS3[A](f: S3[IO] => IO[A]): IO[A] = withHttpClient { client =>

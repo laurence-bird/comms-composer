@@ -12,7 +12,7 @@ import ciris.credstash.credstashF
 import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
-import org.http4s.client.blaze.{BlazeClientBuilder, Http1Client}
+import org.http4s.client.blaze.BlazeClientBuilder
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
