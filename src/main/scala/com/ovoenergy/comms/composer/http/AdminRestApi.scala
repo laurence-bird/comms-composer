@@ -9,13 +9,13 @@ import io.circe.literal._
 
 class AdminRestApi[F[_]: Sync] extends Http4sDsl[F] {
 
-  def adminService = HttpRoutes.of[F] {
+  def adminService: HttpRoutes[F] = HttpRoutes.of[F] {
     case GET -> Root / "ping" =>
       Ok()
     case GET -> Root / "health" =>
-      Ok(s"""{"status": "healthy"}""")
+      Ok(json"""{"status": "healthy"}""")
     case GET -> Root / "info" =>
-      Ok(s"""{"name": ${BuildInfo.name}, "version": ${BuildInfo.version}}""")
+      Ok(json"""{"name": ${BuildInfo.name}, "version": ${BuildInfo.version}}""")
 
   }
 

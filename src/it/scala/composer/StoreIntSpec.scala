@@ -90,16 +90,7 @@ class StoreIntSpec extends IntegrationSpec {
     implicit val timer: Timer[IO] = IO.timer(ec)
     implicit val concurrentEffect = IO.ioConcurrentEffect
 
-    BlazeClientBuilder[IO](ec)
-      .stream
-      .map { client =>
-
-        val responseLogger: Client[IO] => Client[IO] = ResponseLogger[IO](logBody = true, logHeaders = true)
-        val requestLogger: Client[IO] => Client[IO] = RequestLogger[IO](logBody = false, logHeaders = true, redactHeadersWhen = _ => false)
-        val loggingClient = responseLogger(requestLogger(client))
-
-        S3[IO](loggingClient, CredentialsProvider.default[IO], region)
-      }
+    Stream.resource(S3.resource[IO](CredentialsProvider.default[IO], region))
       .evalMap(f)
       .compile
       .lastOrError

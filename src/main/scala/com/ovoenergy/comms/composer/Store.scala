@@ -15,6 +15,8 @@ import org.http4s.Uri
 import org.http4s.client._
 import org.http4s.client.blaze._
 
+import scala.concurrent.ExecutionContext
+
 trait Store[F[_]] {
   def upload[A: Fragment](commId: CommId, traceToken: TraceToken, fragment: A): F[Uri]
 }
@@ -37,8 +39,8 @@ object Store {
     }
   }
 
-  def stream[F[_]: ConcurrentEffect](config: Config): Stream[F, Store[F]] = {
-    BlazeClientBuilder(???).stream
+  def stream[F[_]: ConcurrentEffect](config: Config, ec: ExecutionContext): Stream[F, Store[F]] = {
+    BlazeClientBuilder[F](ec).stream
       .map(httpClient => fromHttpClient(httpClient, config, new RandomSuffixKeys[F]))
   }
 

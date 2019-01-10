@@ -117,7 +117,7 @@ object RenderRestApi {
 
 class RenderRestApi[F[_]: Sync](render: Render[F]) extends Http4sDsl[F] {
 
-  def renderService = HttpRoutes.of[F] {
+  def renderService: HttpRoutes[F] = HttpRoutes.of[F] {
 
     case req @ POST -> Root / CommNamePath(commName) / CommVersionPath(commVersion) / CommTypePath(
           commType) / "print" =>

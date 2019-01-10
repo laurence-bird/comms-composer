@@ -97,16 +97,7 @@ object PdfRendering {
 
         for {
           docRaptorUri <- F.fromEither(Uri.fromString(s"${docRaptorConfig.url}/docs"))
-          request <- F.pure(
-            Request[F](
-              method = Method.POST,
-              uri = docRaptorUri,
-              body = bodyStream
-            ).withHeaders(
-              Authorization(credentials),
-              `Content-Type`(MediaType.application.json)
-            )
-          )
+          request <- POST(docRaptorBody.asJson, docRaptorUri, Authorization(credentials))
           result <- retryingClient.expectOr[Array[Byte]](request) { response =>
             response
               .as[String]

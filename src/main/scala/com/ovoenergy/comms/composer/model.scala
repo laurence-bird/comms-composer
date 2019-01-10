@@ -85,7 +85,7 @@ object model {
     def strings: Fragment[String] = new Fragment[String] {
       // can't reuse the nio charset in `http4s.Charset`, it's private
       def content(s: String): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(s.getBytes(nioUtf8)))
-      def contentType: ContentType = ContentType(plain).withCharset(utf8)
+      def contentType: ContentType = ContentType(MediaType.text.plain).withCharset(utf8)
       def contentLength(s: String): Long = s.getBytes(utf8.nioCharset).length
     }
 

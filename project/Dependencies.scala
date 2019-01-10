@@ -16,8 +16,8 @@ object Dependencies {
   lazy val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 
   object logging {
-    lazy val log4catsSlf4j = "io.chrisdavenport" %% "log4cats-slf4j" % "0.1.1"
-    lazy val log4catsNoop = "io.chrisdavenport" %% "log4cats-noop" % "0.1.1"
+    lazy val log4catsSlf4j = "io.chrisdavenport" %% "log4cats-slf4j" % "0.2.0"
+    lazy val log4catsNoop = "io.chrisdavenport" %% "log4cats-noop" % "0.2.0"
     lazy val loggingLog4cats = "com.ovoenergy.comms" %% "logging-log4cats" % "0.1.3"
     lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.2.3"
     lazy val logzIoLogbackAppender = "io.logz.logback" % "logzio-logback-appender" % "1.0.11"
@@ -58,7 +58,7 @@ object Dependencies {
   }
 
   object circe {
-    private val version = "0.9.3"
+    private val version = "0.11.0"
 
     lazy val core = "io.circe" %% "circe-core" % version
     lazy val generic = "io.circe" %% "circe-generic" % version

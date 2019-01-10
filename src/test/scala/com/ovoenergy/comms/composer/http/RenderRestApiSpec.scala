@@ -1,7 +1,6 @@
 package com.ovoenergy.comms.composer
 package http
 
-import java.net.URI
 import java.nio.charset.StandardCharsets
 
 import http.RenderRestApi.{Render, RenderRequest}
@@ -45,89 +44,79 @@ class RenderRestApiSpec
   private val successfulRender = buildRenderPrint(RenderedPdf(PdfBody("Hi".getBytes)))
 
   it should "return a valid response containing renderedPrintPDF if rendering is successful" in {
-    new RenderRestApi[IO](successfulRender).renderService.orNotFound
-      .run(
-        Request(
-          method = Method.POST,
-          uri = Uri.uri("/yolo/1.0/Service/print"),
-          body = getBody(Map("Foo" -> TemplateData.fromString("bar")))
-        ))
-      .futureValue
-      .status shouldBe Ok
+
+    val service = new RenderRestApi[IO](successfulRender).renderService.orNotFound
+
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status)
+      .futureValue shouldBe Ok
+
   }
 
   it should "return an appropriate error if invalid comm type is passed in URL" in {
-    new RenderRestApi[IO](successfulRender).renderService.orNotFound
-      .run(
-        Request(
-          method = POST,
-          uri = Uri.uri("/yolo/1.0/invalid/print"),
-          body = getBody(Map("Foo" -> TemplateData.fromString("bar")))
-        )
-      )
-      .futureValue
-      .status shouldBe NotFound
+    val service = new RenderRestApi[IO](successfulRender).renderService.orNotFound
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/invalid/print"))
+      response <- service.run(request)
+    } yield response.status)
+      .futureValue shouldBe NotFound
   }
 
   it should "return an appropriate error if JSON deserialisation fails" in {
-    new RenderRestApi[IO](successfulRender).renderService.orNotFound
-      .run(
-        Request(
-          method = Method.POST,
-          uri = Uri.uri("/yolo/1.0/Service/print"),
-          body = fs2.Stream
-            .emits("""{"invalidBody": "yooo"}""".getBytes(StandardCharsets.UTF_8).toSeq)
-            .covary[IO]
-        )
-      )
-      .futureValue
-      .status shouldBe BadRequest
+    val service = new RenderRestApi[IO](successfulRender).renderService.orNotFound
+    (for {
+      request <- POST(json"""{"invalidBody": "yooo"}""", Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status)
+      .futureValue shouldBe BadRequest
   }
 
   // TODO It should not really been NotFound if S3 is down for example
   it should "return NotFound if the template is missing" in {
-    new RenderRestApi[IO](buildRenderPrintF(IO.raiseError(
-      ComposerError("Template download failed", TemplateDownloadFailed)))).renderService.orNotFound
-      .run(
-        Request(
-          method = Method.POST,
-          uri = Uri.uri("/yolo/1.0/Service/print"),
-          body = getBody(Map("Foo" -> TemplateData.fromString("bar")))
-        )
-      )
-      .futureValue
-      .status shouldBe NotFound
+    val service = new RenderRestApi[IO](
+      buildRenderPrintF(IO.raiseError(
+        ComposerError("Template download failed", TemplateDownloadFailed)))).renderService
+      .orNotFound
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status)
+      .futureValue shouldBe NotFound
   }
 
   it should "return UnprocessableEntity if the template data is incomplete" in {
-    new RenderRestApi[IO](
+    val service = new RenderRestApi[IO](
       buildRenderPrintF(
         IO.raiseError(ComposerError(
           "Missing fields from template data: yo, lo",
           MissingTemplateData)))).renderService.orNotFound
-      .run(
-        Request(
-          method = Method.POST,
-          uri = Uri.uri("/yolo/1.0/Service/print"),
-          body = getBody(Map("Foo" -> TemplateData.fromString("bar")))
-        )
-      )
-      .futureValue
-      .status shouldBe UnprocessableEntity
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status).futureValue shouldBe UnprocessableEntity
   }
 
   it should "return InternalServerError if the template data is incomplete" in {
-    new RenderRestApi[IO](buildRenderPrintF(IO.raiseError(
-      ComposerError("Something really wrong", CompositionError)))).renderService.orNotFound
-      .run(
-        Request(
-          method = Method.POST,
-          uri = Uri.uri("/yolo/1.0/Service/print"),
-          body = getBody(Map("Foo" -> TemplateData.fromString("bar")))
-        )
-      )
-      .futureValue
-      .status shouldBe InternalServerError
+    val service = new RenderRestApi[IO](buildRenderPrintF(
+      IO.raiseError(ComposerError("Something really wrong", CompositionError)))).renderService
+      .orNotFound
+
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status).futureValue shouldBe InternalServerError
   }
 
 }

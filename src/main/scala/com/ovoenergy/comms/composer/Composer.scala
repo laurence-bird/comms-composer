@@ -64,9 +64,6 @@ object Composer extends IOApp {
       endpoint.foreach { uri =>
         builder
           .withEndpointConfiguration(new EndpointConfiguration(uri.renderString, region.value))
-          .withPathStyleAccessEnabled(true)
-          // TODO Setup this only if the endpoint is http
-          .withClientConfiguration(new ClientConfiguration().withProtocol(Protocol.HTTP))
       }
 
       builder.build().asInstanceOf[AmazonS3Client]
@@ -120,24 +117,12 @@ object Composer extends IOApp {
         ).orNotFound
 
       val http =
-        new BlazeServerBuilder[IO](
-          socketAddress = defaults.SocketAddress,
-          executionContext = ExecutionContext.global,
-          responseHeaderTimeout = 1.minute,
-          idleTimeout = defaults.IdleTimeout,
-          isNio2 = false,
-          connectorPoolSize = DefaultPoolSize,
-          bufferSize = 64 * 1024,
-          enableWebSockets = true,
-          sslBits = None,
-          isHttp2Enabled = false,
-          maxRequestLineLen = 4 * 1024,
-          maxHeadersLen = 40 * 1024,
-          httpApp = routes,
-          serviceErrorHandler = DefaultServiceErrorHandler[IO],
-          banner = defaults.Banner,
-          channelOptions = ChannelOptions(Vector.empty)
-        ).bindHttp(config.http.port, config.http.host).serve
+        BlazeServerBuilder[IO]
+          .withExecutionContext(mainEc)
+          .bindHttp(config.http.port, config.http.host)
+          .withHttpApp(routes)
+          .withHttpApp(AdminRestApi[IO].adminService.orNotFound)
+          .serve
 
       val topics = config.kafka.topics
       val kafka = Kafka(config.kafka, time, logger)

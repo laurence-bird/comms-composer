@@ -160,6 +160,7 @@ object Kafka {
           executionContext = executionContext
         ).withBootstrapServers(config.bootstrapServer)
           .withGroupId(config.groupId)
+          .withAutoOffsetReset(AutoOffsetReset.Earliest)
           .withProperties(config.sslProperties)
 
       def producerSettings[A: ToRecord] =

@@ -103,11 +103,6 @@ object Config {
             s"${environment.toStringLowerCase}.aiven.schema_registry.password"),
           credstashF[F, Secret[String]]()(s"${environment.toStringLowerCase}.docraptor.api_key")
         ) { (awsRegion, kafkaSSL, schemaRegistryPassword, docRaptorApiKey) =>
-          val test = environment match {
-            case Uat => true
-            case Prd => false
-          }
-
           val docRaptor = DocRaptorConfig(
             docRaptorApiKey.value,
             Uri.uri("https://docraptor.com"),
