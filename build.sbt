@@ -22,7 +22,6 @@ testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
 configs(ServiceTest, It)
 inConfig(It)(Defaults.testSettings)
 inConfig(ServiceTest)(Defaults.testSettings)
-inConfig(ServiceTest)(parallelExecution in test := false)
 ServiceTest / test := (ServiceTest / test).dependsOn(Docker / publishLocal).value
 ServiceTest / test / parallelExecution := false
 

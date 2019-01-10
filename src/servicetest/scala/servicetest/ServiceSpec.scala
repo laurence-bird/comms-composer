@@ -29,6 +29,7 @@ import fs2.Stream
 import fs2.kafka.{CommittableMessage, KafkaConsumer, KafkaProducer, _}
 import org.scalatest._
 import org.scalatest.concurrent.Eventually
+import org.scalatest.tools.Runner
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
@@ -294,5 +295,9 @@ abstract class ServiceSpec
           .willReturn(status(statusCode))
       )
     )
+  }
+
+  override def spanScaleFactor: Double = {
+    sys.env.get("TEST_TIME_SCALE_FACTOR").map(_.toDouble).getOrElse(super.spanScaleFactor)
   }
 }
