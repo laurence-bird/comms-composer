@@ -6,21 +6,6 @@ Parameters:
   EnvironmentLowerCase:
     Type: String
     AllowedValues: [ uat, prd ]
-  Environment:
-    Type: String
-    AllowedValues: [ UAT, PRD ]
-  VPC:
-    Type: AWS::EC2::VPC::Id
-  ECSInstancesSecurityGroup:
-    Type: AWS::EC2::SecurityGroup::Id
-    Description: The security group for the EC2 instances in the ECS cluster
-  LoadBalancerSubnets:
-    Description: Choose all the public subnets in the VPC
-    Type: List<AWS::EC2::Subnet::Id>
-  LoadBalancerCertificateArn:
-    Description: ARN of the ACM cert to use for the load balancer
-    Type: String
-
 
 
 Resources:
@@ -163,13 +148,15 @@ Resources:
           FromPort: '32768'
           ToPort: '61000'
           DestinationSecurityGroupId:
-            Ref: ECSInstancesSecurityGroup
+            Fn::ImportValue:
+              !Sub "${Environment}-Ecs-SecurityGroup-Id"
       Tags:
         - Key: Environment
           Value:
             Ref: Environment
       VpcId:
-        Ref: VPC
+        Fn::ImportValue:
+          !Sub "${Environment}-VPC-Id"
 
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
@@ -185,11 +172,12 @@ Resources:
       SecurityGroups:
         - Ref: LoadBalancerSecurityGroup
       Subnets:
-        Ref: LoadBalancerSubnets
-      Tags:
-        - Key: Environment
-          Value:
-            Ref: Environment
+      - Fn::ImportValue:
+          !Sub "${Environment}-VPC-PublicSubnet1-Id"
+      - Fn::ImportValue:
+          !Sub "${Environment}-VPC-PublicSubnet2-Id"
+      - Fn::ImportValue:
+          !Sub "${Environment}-VPC-PublicSubnet3-Id"
 
   ECSTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -201,12 +189,9 @@ Resources:
       TargetGroupAttributes:
         - Key: deregistration_delay.timeout_seconds
           Value: 30
-      Tags:
-        - Key: Environment
-          Value:
-            Ref: Environment
       VpcId:
-        Ref: VPC
+        Fn::ImportValue:
+          !Sub "${Environment}-VPC-Id"
 
   ALBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -218,7 +203,9 @@ Resources:
       Port: '443'
       Protocol: HTTPS
       Certificates:
-        - CertificateArn: !Ref 'LoadBalancerCertificateArn'
+      - CertificateArn:
+          Fn::ImportValue:
+            !Sub "${Environment}-Certificate-Arn"
 
   ECSALBListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
