@@ -139,13 +139,6 @@ object Composer extends IOApp {
           channelOptions = ChannelOptions(Vector.empty)
         ).bindHttp(config.http.port, config.http.host).serve
 
-//        BlazeServerBuilder[IO]
-//          .withExecutionContext(ec)
-//          .bindHttp(config.http.port, config.http.host)
-//          .withHttpApp(router)
-//          .withHttpApp(AdminRestApi[IO].adminService.orNotFound)
-//          .serve
-
       val topics = config.kafka.topics
       val kafka = Kafka(config.kafka, time, logger)
 
