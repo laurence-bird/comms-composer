@@ -3,12 +3,11 @@ package com.ovoenergy.comms.composer
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.Id
 import cats.implicits._
-import com.amazonaws.{ClientConfiguration, Protocol}
 import http.{AdminRestApi, RenderRestApi}
-import kafka.Kafka
 import logic.{Email, Print, Sms}
 import rendering.{HandlebarsRendering, HandlebarsWrapper, PdfRendering, Rendering}
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
+import io.chrisdavenport.log4cats.SelfAwareStructuredLogger
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3.AmazonS3Client
 import com.ovoenergy.comms.aws.common.model.Region
@@ -18,13 +17,13 @@ import com.ovoenergy.comms.model.sms.{ComposedSMSV4, OrchestratedSMSV3}
 import com.ovoenergy.comms.templates.model.template.processed.CommTemplate
 import com.ovoenergy.comms.templates._
 import cache._
-import org.http4s.blaze.channel.{ChannelOptions, DefaultPoolSize}
+import com.ovoenergy.comms.composer.kafka.Kafka
 import s3._
 import retriever._
 import parsing.handlebars._
 import org.http4s.implicits._
 import org.http4s.client.blaze.BlazeClientBuilder
-import org.http4s.server.{DefaultServiceErrorHandler, Router, defaults}
+import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
 
 // This is to import avro custom format. Intellij does not spot it because they are used by the macro
@@ -40,7 +39,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import java.util.concurrent._
 
-object Composer extends IOApp {
+object Main extends IOApp {
 
   def mainExecutionContextStream: Stream[IO, ExecutionContext] = {
     Stream
@@ -72,77 +71,83 @@ object Composer extends IOApp {
     Stream.bracket(buildClient)(c => IO(c.shutdown()))
   }
 
+  def buildStream(
+      config: Config,
+      mainEc: ExecutionContext,
+      httpClient: Client[IO],
+      amazonS3: AmazonS3Client,
+      logger: SelfAwareStructuredLogger[IO]) = {
+    val loggingHttpClient: Client[IO] = RequestLogger[IO](true, true)(httpClient)
+
+    implicit val ec = mainEc
+    implicit val hash: Hash[IO] = Hash[IO]
+    implicit val time: Time[IO] = Time[IO]
+
+    implicit val rendering: Rendering[IO] =
+      Rendering[IO](
+        HandlebarsRendering(HandlebarsWrapper.apply),
+        PdfRendering[IO](loggingHttpClient, config.docRaptor))
+
+    implicit val store: Store[IO] =
+      Store.fromHttpClient(loggingHttpClient, config.store, new Store.RandomSuffixKeys)
+
+    implicit val templatesContext: TemplatesContext = {
+      val s3Client = new AmazonS3ClientWrapper(amazonS3, config.templates.bucket.name)
+      TemplatesContext(
+        templatesRetriever = new TemplatesS3Retriever(s3Client),
+        parser = new HandlebarsParsing(new PartialsS3Retriever(s3Client)),
+        cachingStrategy = CachingStrategy
+          .caffeine[TemplateManifest, ErrorsOr[CommTemplate[Id]]](maximumSize = 100)
+      )
+    }
+
+    implicit val emailTemplates: Templates[IO, Templates.Email] = Templates.email[IO]
+    implicit val smsTemplates: Templates[IO, Templates.Sms] = Templates.sms[IO]
+    implicit val printTemplates: Templates[IO, Templates.Print] = Templates.print[IO]
+
+    val routes =
+      Router[IO](
+        "/render" -> RenderRestApi[IO](Print.http[IO]).renderService,
+        "/admin" -> AdminRestApi[IO].adminService
+      ).orNotFound
+
+    val http: Stream[IO, ExitCode] =
+      BlazeServerBuilder[IO]
+        .withExecutionContext(mainEc)
+        .bindHttp(config.http.port, config.http.host)
+        .withHttpApp(routes)
+        .serve
+
+    val topics = config.kafka.topics
+    val kafka = Kafka(config.kafka, time, logger)
+
+    val email: Stream[IO, Unit] = kafka.stream[OrchestratedEmailV4, ComposedEmailV4](
+      topics.orchestratedEmail,
+      topics.composedEmail,
+      Email[IO](_))
+    val sms = kafka.stream[OrchestratedSMSV3, ComposedSMSV4](
+      topics.orchestratedSms,
+      topics.composedSms,
+      Sms[IO](_))
+    val print = kafka.stream[OrchestratedPrintV2, ComposedPrintV2](
+      topics.orchestratedPrint,
+      topics.composedPrint,
+      Print[IO](_))
+
+    Stream(email.drain, sms.drain, print.drain, http).parJoinUnbounded
+  }
+
   override def run(args: List[String]): IO[ExitCode] = {
 
-    val stream: Stream[IO, Stream[IO, Any]] = for {
+    val stream: Stream[IO, ExitCode] = for {
       config <- Stream.eval(Config.load[IO])
       mainEc <- mainExecutionContextStream
       httpClient <- httpClientStream(mainEc)
       amazonS3 <- s3ClientStream(config.store.s3Endpoint, config.store.region)
       logger <- Stream.eval(Slf4jLogger.create[IO])
-    } yield {
+      result <- buildStream(config, mainEc, httpClient, amazonS3, logger)
+    } yield result
 
-      val loggingHttpClient: Client[IO] = RequestLogger[IO](true, true)(httpClient)
-
-      implicit val ec = mainEc
-      implicit val hash: Hash[IO] = Hash[IO]
-      implicit val time: Time[IO] = Time[IO]
-
-      implicit val rendering: Rendering[IO] =
-        Rendering[IO](
-          HandlebarsRendering(HandlebarsWrapper.apply),
-          PdfRendering[IO](loggingHttpClient, config.docRaptor))
-
-      implicit val store: Store[IO] =
-        Store.fromHttpClient(loggingHttpClient, config.store, new Store.RandomSuffixKeys)
-
-      implicit val templatesContext: TemplatesContext = {
-        val s3Client = new AmazonS3ClientWrapper(amazonS3, config.templates.bucket.name)
-        TemplatesContext(
-          templatesRetriever = new TemplatesS3Retriever(s3Client),
-          parser = new HandlebarsParsing(new PartialsS3Retriever(s3Client)),
-          cachingStrategy = CachingStrategy
-            .caffeine[TemplateManifest, ErrorsOr[CommTemplate[Id]]](maximumSize = 100)
-        )
-      }
-
-      implicit val emailTemplates: Templates[IO, Templates.Email] = Templates.email[IO]
-      implicit val smsTemplates: Templates[IO, Templates.Sms] = Templates.sms[IO]
-      implicit val printTemplates: Templates[IO, Templates.Print] = Templates.print[IO]
-
-      val routes =
-        Router[IO](
-          "/render" -> RenderRestApi[IO](Print.http[IO]).renderService,
-          "/admin" -> AdminRestApi[IO].adminService
-        ).orNotFound
-
-      val http =
-        BlazeServerBuilder[IO]
-          .withExecutionContext(mainEc)
-          .bindHttp(config.http.port, config.http.host)
-          .withHttpApp(routes)
-          .withHttpApp(AdminRestApi[IO].adminService.orNotFound)
-          .serve
-
-      val topics = config.kafka.topics
-      val kafka = Kafka(config.kafka, time, logger)
-
-      val email = kafka.stream[OrchestratedEmailV4, ComposedEmailV4](
-        topics.orchestratedEmail,
-        topics.composedEmail,
-        Email[IO](_))
-      val sms = kafka.stream[OrchestratedSMSV3, ComposedSMSV4](
-        topics.orchestratedSms,
-        topics.composedSms,
-        Sms[IO](_))
-      val print = kafka.stream[OrchestratedPrintV2, ComposedPrintV2](
-        topics.orchestratedPrint,
-        topics.composedPrint,
-        Print[IO](_))
-
-      Stream(email, sms, print, http).parJoinUnbounded
-    }
-
-    stream.flatten.compile.drain.as(ExitCode.Success)
+    stream.compile.drain.as(ExitCode.Success)
   }
 }

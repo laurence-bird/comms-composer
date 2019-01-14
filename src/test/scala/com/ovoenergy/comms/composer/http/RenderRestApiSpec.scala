@@ -52,8 +52,7 @@ class RenderRestApiSpec
         RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
         Uri.uri("/yolo/1.0/Service/print"))
       response <- service.run(request)
-    } yield response.status)
-      .futureValue shouldBe Ok
+    } yield response.status).futureValue shouldBe Ok
 
   }
 
@@ -64,8 +63,7 @@ class RenderRestApiSpec
         RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
         Uri.uri("/yolo/1.0/invalid/print"))
       response <- service.run(request)
-    } yield response.status)
-      .futureValue shouldBe NotFound
+    } yield response.status).futureValue shouldBe NotFound
   }
 
   it should "return an appropriate error if JSON deserialisation fails" in {
@@ -73,8 +71,7 @@ class RenderRestApiSpec
     (for {
       request <- POST(json"""{"invalidBody": "yooo"}""", Uri.uri("/yolo/1.0/Service/print"))
       response <- service.run(request)
-    } yield response.status)
-      .futureValue shouldBe BadRequest
+    } yield response.status).futureValue shouldBe BadRequest
   }
 
   // TODO It should not really been NotFound if S3 is down for example
@@ -88,8 +85,7 @@ class RenderRestApiSpec
         RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
         Uri.uri("/yolo/1.0/Service/print"))
       response <- service.run(request)
-    } yield response.status)
-      .futureValue shouldBe NotFound
+    } yield response.status).futureValue shouldBe NotFound
   }
 
   it should "return UnprocessableEntity if the template data is incomplete" in {
