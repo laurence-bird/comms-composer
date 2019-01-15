@@ -77,7 +77,7 @@ object Main extends IOApp {
       httpClient: Client[IO],
       amazonS3: AmazonS3Client,
       logger: SelfAwareStructuredLogger[IO]) = {
-    val loggingHttpClient: Client[IO] = RequestLogger[IO](true, true)(httpClient)
+    val loggingHttpClient: Client[IO] = RequestLogger[IO](false, false)(httpClient)
 
     implicit val ec = mainEc
     implicit val hash: Hash[IO] = Hash[IO]
