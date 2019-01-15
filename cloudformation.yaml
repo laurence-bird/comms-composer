@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: ECS task role and other resources for the comms composer service
 
 Parameters:
-  EnvironmentLowerCase:
+  Environment:
     Type: String
     AllowedValues: [ uat, prd ]
 
@@ -43,8 +43,8 @@ Resources:
               Action:
                 - 's3:Put*'
               Resource:
-                - !Sub 'arn:aws:s3:::${EnvironmentLowerCase}-ovo-comms-pdfs'
-                - !Sub 'arn:aws:s3:::${EnvironmentLowerCase}-ovo-comms-pdfs/*'
+                - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs'
+                - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs/*'
 
         -
           PolicyName: write-rendered-content-bucket
