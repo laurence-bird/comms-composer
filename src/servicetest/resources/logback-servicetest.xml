@@ -19,8 +19,12 @@
 
     <logger name="akka" level="INFO" />
     <logger name="org.apache" level="WARN" />
-    <logger name="org.http4s.blaze.channel.ServerChannelGroup" level="WARN"/>
-    <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="INFO" />
+    <logger name="org.http4s.blaze.channel.ServerChannelGroup" level="WARN" />
+    <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="OFF" />
+    <logger name="io.confluent.kafka.serializers.KafkaAvroSerializerConfig" level="OFF" />
+    <logger name="io.confluent.kafka.serializers.KafkaAvroDeserializerConfig" level="OFF" />
+    <logger name="com.ovoenergy.comms.dockertestkit.DockerContainerManager" level="OFF" />
+    <logger name="com.spotify.docker.client.DefaultDockerClient" level="OFF" />
 
     <logger name="DOCKER" level="INFO" additivity="false" >
         <appender-ref ref="DOCKER"/>

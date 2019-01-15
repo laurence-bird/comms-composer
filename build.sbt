@@ -22,12 +22,12 @@ testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
 configs(ServiceTest, It)
 inConfig(It)(Defaults.testSettings)
 inConfig(ServiceTest)(Defaults.testSettings)
-
 ServiceTest / test := (ServiceTest / test).dependsOn(Docker / publishLocal).value
 ServiceTest / test / parallelExecution := false
 
 resolvers ++= Seq(
   Resolver.bintrayRepo("ovotech", "maven"),
+  Resolver.bintrayRepo("cakesolutions", "maven"),
   "confluent-release" at "http://packages.confluent.io/maven/"
 )
 
@@ -74,6 +74,9 @@ libraryDependencies ++= Seq(
   logging.logbackClassic,
   logging.logzIoLogbackAppender,
   logging.logbackGelf,
+  logging.log4catsSlf4j,
+  logging.log4catsNoop,
+  logging.loggingLog4cats,
   http4s.blazeClient % Test,
   scalacheck.shapeless % Test,
   scalacheck.toolboxDatetime % Test,

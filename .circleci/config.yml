@@ -153,6 +153,7 @@ jobs:
       enabled: true
 
     environment:
+      TEST_TIME_SCALE_FACTOR: 3
       JAVA_OPTS: "-Xms1024m -Xmx1024m -XX:MaxMetaspaceSize=512m"
 
     steps:

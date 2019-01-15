@@ -1,23 +1,22 @@
 package com.ovoenergy.comms.composer
 package http
 
+import java.nio.charset.StandardCharsets
+
 import http.RenderRestApi.{Render, RenderRequest}
 import model.ComposerError
-import model.Print.{RenderedPdf, PdfBody}
-
+import model.Print.{PdfBody, RenderedPdf}
 import com.ovoenergy.comms.model._
-
 import io.circe.syntax._
 import io.circe.parser._
 import io.circe.literal._
 import cats.implicits._
 import cats.effect.IO
-
 import org.http4s._
+import org.http4s.implicits._
 import org.http4s.circe._
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
-
 import org.scalatest.{FlatSpec, Matchers}
 
 class RenderRestApiSpec
@@ -36,106 +35,84 @@ class RenderRestApiSpec
     buildRenderPrintF(response.pure[IO])
   }
 
+  def getBody(fields: Map[String, TemplateData]) =
+    fs2.Stream
+      .emit(RenderRequest(fields).asJson)
+      .flatMap(json => fs2.Stream.emits(json.noSpaces.getBytes(StandardCharsets.UTF_8).toSeq))
+      .covary[IO]
+
   private val successfulRender = buildRenderPrint(RenderedPdf(PdfBody("Hi".getBytes)))
 
   it should "return a valid response containing renderedPrintPDF if rendering is successful" in {
 
     val service = new RenderRestApi[IO](successfulRender).renderService.orNotFound
 
-    val req: IO[Request[IO]] = POST(
-      uri("/yolo/1.0/Service/print"),
-      RenderRequest(
-        Map("Foo" -> TemplateData.fromString("bar"))
-      ).asJson
-    )
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status).futureValue shouldBe Ok
 
-    val response = req.flatMap(service.apply).futureValue
-    response.status shouldBe Ok
   }
 
   it should "return an appropriate error if invalid comm type is passed in URL" in {
-
     val service = new RenderRestApi[IO](successfulRender).renderService.orNotFound
-
-    val req: IO[Request[IO]] = POST(
-      uri("/yolo/1.0/invalid/print"),
-      RenderRequest(
-        Map("Foo" -> TemplateData.fromString("bar"))
-      ).asJson
-    )
-
-    val response = req.flatMap(service.apply).futureValue
-    response.status shouldBe NotFound
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/invalid/print"))
+      response <- service.run(request)
+    } yield response.status).futureValue shouldBe NotFound
   }
 
   it should "return an appropriate error if JSON deserialisation fails" in {
-
     val service = new RenderRestApi[IO](successfulRender).renderService.orNotFound
-
-    val invalidJson = parse("""{
-      |"invalidBody": "yooo"
-      |}
-    """.stripMargin).right.get
-
-    val req: IO[Request[IO]] = POST(
-      uri("/yolo/1.0/Service/print"),
-      json"""{"invalidBody": "yooo"}"""
-    )
-
-    val response = req.flatMap(service.apply).futureValue
-    response.status shouldBe BadRequest
+    (for {
+      request <- POST(json"""{"invalidBody": "yooo"}""", Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status).futureValue shouldBe BadRequest
   }
 
   // TODO It should not really been NotFound if S3 is down for example
   it should "return NotFound if the template is missing" in {
-
-    val service = new RenderRestApi[IO](buildRenderPrintF(IO.raiseError(
-      ComposerError("Template download failed", TemplateDownloadFailed)))).renderService.orNotFound
-
-    val req: IO[Request[IO]] = POST(
-      uri("/yolo/1.0/Service/print"),
-      RenderRequest(
-        Map("Foo" -> TemplateData.fromString("bar"))
-      ).asJson
-    )
-
-    val response = req.flatMap(service.apply).futureValue
-    response.status shouldBe NotFound
+    val service = new RenderRestApi[IO](
+      buildRenderPrintF(IO.raiseError(
+        ComposerError("Template download failed", TemplateDownloadFailed)))).renderService
+      .orNotFound
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status).futureValue shouldBe NotFound
   }
 
   it should "return UnprocessableEntity if the template data is incomplete" in {
-
     val service = new RenderRestApi[IO](
       buildRenderPrintF(
         IO.raiseError(ComposerError(
           "Missing fields from template data: yo, lo",
           MissingTemplateData)))).renderService.orNotFound
-
-    val req: IO[Request[IO]] = POST(
-      uri("/yolo/1.0/Service/print"),
-      RenderRequest(
-        Map("Foo" -> TemplateData.fromString("bar"))
-      ).asJson
-    )
-
-    val response = req.flatMap(service.apply).futureValue
-    response.status shouldBe UnprocessableEntity
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status).futureValue shouldBe UnprocessableEntity
   }
 
   it should "return InternalServerError if the template data is incomplete" in {
+    val service = new RenderRestApi[IO](buildRenderPrintF(
+      IO.raiseError(ComposerError("Something really wrong", CompositionError)))).renderService
+      .orNotFound
 
-    val service = new RenderRestApi[IO](buildRenderPrintF(IO.raiseError(
-      ComposerError("Something really wrong", CompositionError)))).renderService.orNotFound
-
-    val req: IO[Request[IO]] = POST(
-      uri("/yolo/1.0/Service/print"),
-      RenderRequest(
-        Map("Foo" -> TemplateData.fromString("bar"))
-      ).asJson
-    )
-
-    val response = req.flatMap(service.apply).futureValue
-    response.status shouldBe InternalServerError
+    (for {
+      request <- POST(
+        RenderRequest(Map("Foo" -> TemplateData.fromString("bar"))).asJson,
+        Uri.uri("/yolo/1.0/Service/print"))
+      response <- service.run(request)
+    } yield response.status).futureValue shouldBe InternalServerError
   }
 
 }

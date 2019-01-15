@@ -16,30 +16,33 @@ object Dependencies {
   lazy val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 
   object logging {
+    lazy val log4catsSlf4j = "io.chrisdavenport" %% "log4cats-slf4j" % "0.2.0"
+    lazy val log4catsNoop = "io.chrisdavenport" %% "log4cats-noop" % "0.2.0"
+    lazy val loggingLog4cats = "com.ovoenergy.comms" %% "logging-log4cats" % "0.1.3"
     lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.2.3"
     lazy val logzIoLogbackAppender = "io.logz.logback" % "logzio-logback-appender" % "1.0.11"
     lazy val logbackGelf = "me.moocar" % "logback-gelf" % "0.2"
   }
 
   object fs2 {
-    private val fs2Version = "0.10.6"
-    private val fs2KafkaClientVersion = "0.1.19"
+    private val fs2Version = "1.0.2"
+    private val fs2KafkaVersion = "0.18.1"
 
     lazy val core = "co.fs2" %% "fs2-core" % fs2Version
     lazy val io = "co.fs2" %% "fs2-io" % fs2Version
 
-    lazy val kafkaClient = "com.ovoenergy" %% "fs2-kafka-client" % fs2KafkaClientVersion
+    lazy val kafkaClient = "com.ovoenergy" %% "fs2-kafka" % fs2KafkaVersion
   }
   
 
   object ovoEnergy {
 
-    private val kafkaSerializationVersion = "0.3.11"
-    private val commsKafkaTestHelperVersion = "3.18"
-    private val commsKafkaMessagesVersion = "1.79.3"
+    private val kafkaSerializationVersion = "0.3.19"
+    private val commsKafkaTestHelperVersion = "3.21"
+    private val commsKafkaMessagesVersion = "1.79.4"
     private val commsTemplatesVersion = "0.32"
-    private val commsDockerTestkitVersion = "1.8.6"
-    private val commsAwsVersion = "0.1.10"
+    private val commsDockerTestkitVersion = "1.8.8"
+    private val commsAwsVersion = "0.2.2"
 
     lazy val kafkaSerializationCore = "com.ovoenergy" %% "kafka-serialization-core" % kafkaSerializationVersion
     lazy val kafkaSerializationAvro = "com.ovoenergy" %% "kafka-serialization-avro" % kafkaSerializationVersion
@@ -55,7 +58,7 @@ object Dependencies {
   }
 
   object circe {
-    private val version = "0.9.3"
+    private val version = "0.11.0"
 
     lazy val core = "io.circe" %% "circe-core" % version
     lazy val generic = "io.circe" %% "circe-generic" % version
@@ -66,7 +69,7 @@ object Dependencies {
 
   object http4s {
 
-    private val version = "0.18.19"
+    private val version = "0.20.0-M4"
 
     lazy val core = "org.http4s" %% "http4s-core" % version
     lazy val client = "org.http4s" %% "http4s-client" % version
@@ -79,7 +82,7 @@ object Dependencies {
 
   object ciris {
 
-    private val cirisVersion = "0.10.2"
+    private val cirisVersion = "0.12.1"
     private val cirisCredstashVersion = "0.6"
     private val cirisKafkaVersion = "0.10"
 

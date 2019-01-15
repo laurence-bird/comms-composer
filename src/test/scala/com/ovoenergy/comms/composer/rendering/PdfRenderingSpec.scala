@@ -1,18 +1,17 @@
 package com.ovoenergy.comms.composer.rendering
 
-import fs2._
-import cats.effect.IO
+import cats.effect.{IO, Timer}
 import com.ovoenergy.comms.composer.IOFutures
 import com.ovoenergy.comms.composer.model.Print
 import com.ovoenergy.comms.composer.rendering.PdfRendering.DocRaptorConfig
 import org.http4s.client.Client
 import org.scalatest._
-import org.http4s.{Challenge, Uri, HttpService}
+import org.http4s.{Challenge, HttpService, Uri}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.headers.`WWW-Authenticate`
 import org.scalatest.concurrent.ScalaFutures
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 
 class PdfRenderingSpec
     extends FlatSpec
@@ -37,7 +36,9 @@ class PdfRenderingSpec
   val dsl = Http4sDsl[IO]
   import dsl._
 
-  implicit val (scheduler, shutdown) = Scheduler.allocate[IO](1).unsafeRunSync()
+  implicit val ec = ExecutionContext.global
+  implicit val contextShift = cats.effect.IO.contextShift(ec)
+  implicit val timer: Timer[IO] = IO.timer(ec)
 
   it should "successfully render rendered print html" in {
     val httpClient = Client.fromHttpService(HttpService[IO] {
@@ -108,7 +109,6 @@ class PdfRenderingSpec
   }
 
   override protected def afterAll(): Unit = {
-    shutdown.unsafeRunSync()
     super.afterAll()
   }
 

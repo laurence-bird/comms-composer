@@ -1,7 +1,7 @@
 package com.ovoenergy.comms.composer
 package servicetest
 
-import com.ovoenergy.comms.dockertestkit.DockerReadyChecker.HttpResponseCode
+import com.ovoenergy.comms.dockertestkit.DockerReadyChecker.{HttpResponseCode, LogLineContains}
 import com.ovoenergy.comms.dockertestkit._
 import com.spotify.docker.client.messages.HostConfig
 import org.scalatest.Suite

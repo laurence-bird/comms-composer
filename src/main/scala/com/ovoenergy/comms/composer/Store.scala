@@ -1,22 +1,21 @@
 package com.ovoenergy.comms.composer
 
 import model._
-
 import com.ovoenergy.comms.aws._
 import common.CredentialsProvider
 import common.model._
 import s3.S3
 import s3.model._
-
 import java.util.UUID
 
 import cats.implicits._
-import cats.effect.{Sync, Effect}
+import cats.effect.{ConcurrentEffect, Sync}
 import fs2._
-
 import org.http4s.Uri
 import org.http4s.client._
 import org.http4s.client.blaze._
+
+import scala.concurrent.ExecutionContext
 
 trait Store[F[_]] {
   def upload[A: Fragment](commId: CommId, traceToken: TraceToken, fragment: A): F[Uri]
@@ -40,14 +39,13 @@ object Store {
     }
   }
 
-  def stream[F[_]: Effect](config: Config): Stream[F, Store[F]] = {
-    Http1Client
-      .stream[F]()
+  def stream[F[_]: ConcurrentEffect](config: Config, ec: ExecutionContext): Stream[F, Store[F]] = {
+    BlazeClientBuilder[F](ec).stream
       .map(httpClient => fromHttpClient(httpClient, config, new RandomSuffixKeys[F]))
   }
 
   def fromHttpClient[F[_]: Sync](httpclient: Client[F], config: Config, keys: Keys[F]): Store[F] =
-    apply[F](new S3[F](httpclient, CredentialsProvider.default[F], config.region), config, keys)
+    apply[F](S3[F](httpclient, CredentialsProvider.default[F], config.region), config, keys)
 
   def apply[F[_]: Sync](s3: S3[F], config: Config, keys: Keys[F]): Store[F] = new Store[F] {
 
