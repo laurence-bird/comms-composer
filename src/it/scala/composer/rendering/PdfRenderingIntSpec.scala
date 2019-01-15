@@ -50,10 +50,9 @@ class PdfRenderingIntSpec extends IntegrationSpec {
 
   def withPdfRendering[A](f: PdfRendering[IO] => IO[A]): IO[A] = {
 
-    val ec = ExecutionContext.Implicits.global
+    val ec = ExecutionContext.global
     implicit val contextShift = IO.contextShift(ec)
     implicit val timer: Timer[IO] = IO.timer(ec)
-    implicit val concurrentEffect = IO.ioConcurrentEffect
 
     BlazeClientBuilder[IO](ec)
       .stream

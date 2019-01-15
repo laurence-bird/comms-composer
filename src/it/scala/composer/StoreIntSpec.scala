@@ -85,15 +85,11 @@ class StoreIntSpec extends IntegrationSpec {
 
   def withS3[A](f: S3[IO] => IO[A]): IO[A] = {
 
-    implicit val ec = ExecutionContext.Implicits.global
+    implicit val ec = ExecutionContext.global
     implicit val contextShift = cats.effect.IO.contextShift(ec)
     implicit val timer: Timer[IO] = IO.timer(ec)
-    implicit val concurrentEffect = IO.ioConcurrentEffect
 
-    Stream.resource(S3.resource[IO](CredentialsProvider.default[IO], region))
-      .evalMap(f)
-      .compile
-      .lastOrError
+    S3.resource[IO](CredentialsProvider.default[IO], region).use(f)
   }
 
 

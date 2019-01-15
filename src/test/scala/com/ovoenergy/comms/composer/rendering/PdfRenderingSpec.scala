@@ -36,7 +36,7 @@ class PdfRenderingSpec
   val dsl = Http4sDsl[IO]
   import dsl._
 
-  implicit val ec = ExecutionContext.Implicits.global
+  implicit val ec = ExecutionContext.global
   implicit val contextShift = cats.effect.IO.contextShift(ec)
   implicit val timer: Timer[IO] = IO.timer(ec)
 
