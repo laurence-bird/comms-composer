@@ -1,13 +1,18 @@
 package com.ovoenergy.comms.composer
 package servicetest
 
-
+import cats._
 import cats.implicits._
 import cats.effect.IO
+import fs2._
+import fs2.kafka._
+
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.producer.ProducerRecord
+
 
 import com.ovoenergy.comms.model._
 import print._
-import com.ovoenergy.fs2.kafka
 
 class PrintServiceSpec extends ServiceSpec with TestGenerators {
 
