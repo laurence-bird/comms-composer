@@ -7,24 +7,29 @@ import http.RenderRestApi.{Render, RenderRequest}
 import model.ComposerError
 import model.Print.{PdfBody, RenderedPdf}
 import com.ovoenergy.comms.model._
+
 import io.circe.syntax._
 import io.circe.parser._
 import io.circe.literal._
+
 import cats.implicits._
 import cats.effect.IO
+
 import org.http4s._
 import org.http4s.implicits._
 import org.http4s.circe._
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
+
 import org.scalatest.{FlatSpec, Matchers}
 
-class RenderRestApiSpec
-    extends FlatSpec
-    with Matchers
-    with Http4sDsl[IO]
-    with Http4sClientDsl[IO]
-    with IOFutures {
+import com.ovoenergy.comms.model._
+
+import RenderRestApi.{Render, RenderRequest}
+import model.ComposerError
+import model.Print.{RenderedPdf, PdfBody}
+
+class RenderRestApiSpec extends UnitSpec with Http4sDsl[IO] with Http4sClientDsl[IO] {
 
   def buildRenderPrintF(response: IO[RenderedPdf]): Render[IO] = {
     (_: TemplateManifest, _: Map[String, TemplateData]) =>

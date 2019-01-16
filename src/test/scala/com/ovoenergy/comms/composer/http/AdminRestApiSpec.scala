@@ -3,19 +3,12 @@ package http
 
 import cats.effect.IO
 
-import org.scalatest.{FlatSpec, Matchers}
-
 import org.http4s._
 import org.http4s.implicits._
 import org.http4s.client.dsl.Http4sClientDsl
 import org.http4s.dsl.Http4sDsl
 
-class AdminRestApiSpec
-    extends FlatSpec
-    with Matchers
-    with IOFutures
-    with Http4sDsl[IO]
-    with Http4sClientDsl[IO] {
+class AdminRestApiSpec extends UnitSpec with Http4sDsl[IO] with Http4sClientDsl[IO] {
 
   private val service = AdminRestApi[IO].adminService
 

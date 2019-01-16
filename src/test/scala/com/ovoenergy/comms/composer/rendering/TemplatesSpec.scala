@@ -1,6 +1,12 @@
 package com.ovoenergy.comms.composer
 package rendering
 
+import scala.concurrent.ExecutionContext
+
+import cats.Id
+import cats.data.Validated.Valid
+import cats.effect.{IO, Effect}
+
 import com.ovoenergy.comms.model.{SMS, Print, Email, TemplateManifest}
 import com.ovoenergy.comms.templates
 import templates.retriever.{PartialsRetriever, TemplatesRetriever}
@@ -15,15 +21,10 @@ import template.files.sms.SMSTemplateFiles
 import template.processed.email.EmailTemplate
 import template.processed.print.PrintTemplate
 import template.processed.sms.SMSTemplate
-import cats.Id
-import cats.data.Validated.Valid
-import cats.effect.{IO, Effect}
-import com.ovoenergy.comms.composer.model.ComposerError
-import org.scalatest.{FlatSpec, Matchers}
 
-import scala.concurrent.ExecutionContext
+import model.ComposerError
 
-class TemplatesSpec extends FlatSpec with Matchers with IOFutures {
+class TemplatesSpec extends UnitSpec {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
 

@@ -7,10 +7,8 @@ import com.ovoenergy.comms.model.Arbitraries
 import com.ovoenergy.comms.model.email.OrchestratedEmailV4
 import com.ovoenergy.comms.model.print.OrchestratedPrintV2
 import com.ovoenergy.comms.model.sms.OrchestratedSMSV3
-import org.scalatest.prop.GeneratorDrivenPropertyChecks
-import org.scalatest.{FlatSpec, Matchers}
 
-class HashSpec extends FlatSpec with Matchers with GeneratorDrivenPropertyChecks with Arbitraries {
+class HashSpec extends UnitSpec {
 
   val algorithm = "MD5"
   val hash: Hash[IO] = Hash[IO]

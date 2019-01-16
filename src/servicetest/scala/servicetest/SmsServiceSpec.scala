@@ -1,9 +1,11 @@
 package com.ovoenergy.comms.composer
 package servicetest
 
+import cats.implicits._
+import cats.effect._
+
 import com.ovoenergy.comms.model._
 import sms._
-import cats.implicits._
 
 class SmsServiceSpec extends ServiceSpec with TestGenerators {
 

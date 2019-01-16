@@ -1,18 +1,20 @@
 package com.ovoenergy.comms.composer
 package servicetest
 
+import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+
 import cats.Id
 import kafka.Kafka._
-import com.ovoenergy.comms.model.{Feedback, _}
-import email._
-import sms._
-import print._
+
 import com.ovoenergy.comms.aws.common.model._
 import com.ovoenergy.comms.aws.s3.S3
 import com.ovoenergy.comms.aws.s3.model._
 import com.ovoenergy.comms.dockertestkit._
 import com.ovoenergy.comms.aws.common.CredentialsProvider
 import com.ovoenergy.kafka.serialization.avro4s._
+
 import com.sksamuel.avro4s._
 import cats.implicits._
 import cats.effect.{IO, Resource, Timer}
@@ -31,9 +33,21 @@ import org.scalatest._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.tools.Runner
 
-import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
+import com.ovoenergy.comms.aws.common.model._
+import com.ovoenergy.comms.aws.s3.S3
+import com.ovoenergy.comms.aws.s3.model._
+import com.ovoenergy.comms.dockertestkit._
+import com.ovoenergy.comms.aws.common.CredentialsProvider
+
+import com.ovoenergy.fs2.kafka._
+import com.ovoenergy.kafka.serialization.avro4s._
+
+import com.ovoenergy.comms.model._
+import email._
+import sms._
+import print._
+
+import kafka.KafkaStream._
 
 abstract class ServiceSpec
     extends WordSpec
@@ -298,6 +312,8 @@ abstract class ServiceSpec
   }
 
   override def spanScaleFactor: Double = {
-    sys.env.get("TEST_TIME_SCALE_FACTOR").map(_.toDouble).getOrElse(super.spanScaleFactor)
+    sys.env.get("TEST_TIME_SCALE_FACTOR")
+      .map(_.toDouble)
+      .getOrElse(super.spanScaleFactor)
   }
 }

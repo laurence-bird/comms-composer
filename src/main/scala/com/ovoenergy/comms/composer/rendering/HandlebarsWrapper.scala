@@ -25,10 +25,12 @@ object HandlebarsWrapper {
 
   def javize(x: AnyRef): AnyRef = x match {
     case map: Map[String, AnyRef] =>
+      // TODO map + asJava ?
       val jmap = new JHashMap[String, AnyRef](map.size)
       map.foreach { case (k, v) => jmap.put(k, javize(v)) }
       jmap
     case seq: Seq[AnyRef] =>
+      // TODO map + asJava ?
       val jlist: JList[AnyRef] = new JLinkedList[AnyRef]()
       seq.foreach { x =>
         jlist.add(javize(x))

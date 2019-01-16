@@ -3,6 +3,7 @@ package servicetest
 
 import cats.implicits._
 import cats.effect.IO
+
 import org.http4s.Method._
 import org.http4s.Status.Ok
 import org.http4s.Uri

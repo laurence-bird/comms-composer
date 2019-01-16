@@ -1,4 +1,5 @@
-package com.ovoenergy.comms.composer.rendering
+package com.ovoenergy.comms.composer
+package rendering
 
 import java.time.ZonedDateTime
 
@@ -6,9 +7,9 @@ import com.ovoenergy.comms.composer.rendering.templating.EmailTemplateData
 import com.ovoenergy.comms.model.{CustomerProfile, Arbitraries, TemplateData}
 import com.ovoenergy.comms.templates.model.{RequiredTemplateData, HandlebarsTemplate}
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{OptionValues, FlatSpec, Matchers}
+import org.scalatest.OptionValues
 
-class HandlebarsRenderingSpec extends FlatSpec with Matchers with Arbitraries with OptionValues {
+class HandlebarsRenderingSpec extends UnitSpec with OptionValues {
 
   behavior of "HtmlRendering"
 
