@@ -1,0 +1,282 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Composer service
+
+Parameters:
+  Version:
+    Type: String
+  Environment:
+    Type: String
+    AllowedValues: [ uat, prd ]
+
+Conditions: 
+
+  IsPrd: !Equals [ !Ref Environment, prd ]
+
+  IsUat: !Equals [ !Ref Environment, uat ]
+
+Resources:
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ecs-tasks.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: read-templates-bucket
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - 's3:Get*'
+            - 's3:List*'
+            Resource:
+            - 'arn:aws:s3:::ovo-comms-templates'
+            - 'arn:aws:s3:::ovo-comms-templates/*'
+        - PolicyName: write-pdf-bucket
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 's3:Put*'
+              Resource:
+              - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs'
+              - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs/*'
+
+        - PolicyName: write-rendered-content-bucket
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 's3:PutObject'
+
+              Resource:
+              - Fn::ImportValue:
+                  !Sub "${Environment}-RenderedContent-Arn"
+              - Fn::Sub:
+                - "${BucketArn}/*"
+                - BucketArn:
+                    Fn::ImportValue:
+                      !Sub "${Environment}-RenderedContent-Arn"
+
+        - PolicyName: read-credstash
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 'kms:Decrypt'
+              Resource:
+              - !Sub "arn:aws:kms:eu-west-1:${AWS::AccountId}:key/*"
+            - Effect: Allow
+              Action:
+              - 'dynamodb:GetItem'
+              - 'dynamodb:Query'
+              Resource:
+              - !Sub "arn:aws:dynamodb:eu-west-1:${AWS::AccountId}:table/credential-store"
+        - PolicyName: read-aiven-bucket
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 's3:Get*'
+              - 's3:List*'
+              Resource:
+              - 'arn:aws:s3:::ovo-comms-aiven'
+              - 'arn:aws:s3:::ovo-comms-aiven/*'
+
+  Task:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "composer-${Environment}"
+      TaskRoleArn: !Ref TaskRole
+      ContainerDefinitions:
+      - MemoryReservation: 500
+        DockerLabels:
+          Service: composer
+          Version: !Ref Version
+        Environment:
+        - Name: ENV
+          Value: !Ref Environment
+        Essential: True
+        Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/composer:${Version}"
+        Name: composer
+        PortMappings:
+        - ContainerPort: 8080
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - ECSALBListenerRule
+    Properties:
+      Cluster:
+        Fn::ImportValue:
+          !Sub "${Environment}-Cluster-Arn"
+      DesiredCount: 2
+      TaskDefinition: !Ref Task
+      LaunchType: EC2
+      SchedulingStrategy: REPLICA
+      ServiceName: composer
+      LoadBalancers:
+      - ContainerName: composer
+        ContainerPort: 8080
+        TargetGroupArn: !Ref ECSTargetGroup
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: 'Open port 443 to OVO IP range'
+
+      # All the CIDR blocks for the various OVO offices and VPNs
+      # Based on https://ovotech.atlassian.net/wiki/pages/viewpage.action?pageId=40435724
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 137.221.132.180/32 # Bristol Rivergate
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 137.221.132.196/32 # Bristol Rivergate again
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 137.221.132.212/32 # NGD
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 137.221.132.228/32 # NGD again
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 109.232.58.84/32 # London Astley House
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 109.232.60.4/32 # London Astley House again
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 137.221.142.4/32 # Bristol Templeback
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 137.221.142.20/32 # Bristol Templeback again
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 137.221.144.116/32 # London Kensington Church Street
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 137.221.144.132/32 # London Kensington Church Street again
+      - IpProtocol: tcp
+        FromPort: '443'
+        ToPort: '443'
+        CidrIp: 84.246.176.192/27 # BCP site
+
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: '32768'
+        ToPort: '61000'
+        DestinationSecurityGroupId:
+          Fn::ImportValue:
+            !Sub "${Environment}-Ecs-SecurityGroup-Id"
+      Tags:
+      - Key: Environment
+        Value: !Ref "Environment"
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${Environment}-VPC-Id"
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+      - Key: access_logs.s3.enabled
+        Value: true
+      - Key: access_logs.s3.bucket
+        Value: ovo-comms-logs
+      - Key: access_logs.s3.prefix
+        Value: !Sub "composer/${Environment}/loadbalancer"
+      Scheme: internet-facing
+      SecurityGroups:
+      - Ref: LoadBalancerSecurityGroup
+      Subnets:
+      - Fn::ImportValue:
+          !Sub "${Environment}-VPC-PublicSubnet1-Id"
+      - Fn::ImportValue:
+          !Sub "${Environment}-VPC-PublicSubnet2-Id"
+      - Fn::ImportValue:
+          !Sub "${Environment}-VPC-PublicSubnet3-Id"
+
+  ECSTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckPath: '/admin/health'
+      HealthCheckProtocol: HTTP
+      Port: 80
+      Protocol: HTTP
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: 30
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${Environment}-VPC-Id"
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref 'ECSTargetGroup'
+      LoadBalancerArn: !Ref 'LoadBalancer'
+      Port: '443'
+      Protocol: HTTPS
+      Certificates:
+      - CertificateArn:
+          Fn::ImportValue:
+            !Sub "${Environment}-Certificate-Arn"
+
+  ECSALBListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+      - Type: forward
+        TargetGroupArn: !Ref 'ECSTargetGroup'
+      Conditions:
+      - Field: path-pattern
+        Values: [/]
+      ListenerArn: !Ref 'ALBListener'
+      Priority: 1
+
+
+  UatDNSEntry:
+    Type: AWS::Route53::RecordSet
+    Condition: IsUat
+    Properties: 
+      AliasTarget: 
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+      Comment: "DNS Entry for the composer uat"
+      HostedZoneId: Z39VTI08KH0YR6
+      Name: composer.ovo-comms-uat.co.uk.
+      Type: A
+
+  PrdDNSEntry:
+    Type: AWS::Route53::RecordSet
+    Condition: IsPrd
+    Properties: 
+      AliasTarget: 
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+      Comment: "DNS Entry for the composer prd"
+      HostedZoneId: Z351JU32OMPJW3
+      Name: composer.ovo-comms.co.uk.
+      Type: A

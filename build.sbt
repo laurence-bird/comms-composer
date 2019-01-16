@@ -96,12 +96,11 @@ lazy val composer = (project in file("."))
       ovoEnergy.commsMessagesTests % Test,
       wiremock % ServiceTest,
       ovoEnergy.commsTestHelpers % ServiceTest,
-    ).map(_.exclude("log4j","log4j")),
+    ).map(_.exclude("log4j", "log4j")),
 
     scalafmtOnCompile := true,
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
     buildInfoPackage := "com.ovoenergy.comms.composer",
-
 
     dockerBaseImage := "openjdk:8-alpine",
     // TODO as we use ECR plugin this is not necessary anymore, the docker repository can be omitted
