@@ -1,7 +1,6 @@
 version: 2.1
 
 defaults:
-
 - &restore-cache
   restore_cache:
     keys:
@@ -75,7 +74,7 @@ executors:
 jobs:
   build:
 
-     executor: docker
+    executor: docker
 
     steps:
 
@@ -172,12 +171,7 @@ jobs:
 
   service_test:
 
-    machine:
-      enabled: true
-
-    environment:
-      TEST_TIME_SCALE_FACTOR: 3
-      JAVA_OPTS: "-Xms1024m -Xmx1024m -XX:MaxMetaspaceSize=512m"
+    executor: machine
 
     steps:
 
@@ -217,7 +211,7 @@ jobs:
 
   tag:
 
-    <<: *defaults
+    executor: docker
 
     steps:
 
@@ -242,7 +236,7 @@ jobs:
 
   publish:
 
-    <<: *defaults
+    executor: docker
 
     steps:
 
@@ -270,10 +264,7 @@ jobs:
 
   deploy-to-uat:
 
-    <<: *defaults
-
-    environment:
-      AWS_REGION: "eu-west-1"
+    executor: docker
 
     steps:
 
@@ -296,7 +287,7 @@ jobs:
 
   e2e_test:
 
-    <<: *defaults
+    executor: docker
 
     steps:
 
@@ -316,10 +307,7 @@ jobs:
 
   deploy-to-prd:
 
-    <<: *defaults
-
-    environment:
-      AWS_REGION: "eu-west-1"
+    executor: docker
 
     steps:
 
