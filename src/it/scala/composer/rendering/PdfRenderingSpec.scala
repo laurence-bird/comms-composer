@@ -18,7 +18,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class PdfRenderingIntSpec extends IntegrationSpec {
+class PdfRenderingSpec extends IntegrationSpec {
 
   override implicit val patience: PatienceConfig = PatienceConfig(scaled(15.seconds), 500.millis)
 

@@ -18,7 +18,7 @@ import java.util.UUID
 
 import scala.concurrent.ExecutionContext
 
-class StoreIntSpec extends IntegrationSpec {
+class StoreSpec extends IntegrationSpec {
 
   private val existingBucket = Bucket("ovo-comms-test")
   private val region = Region.`eu-west-1`

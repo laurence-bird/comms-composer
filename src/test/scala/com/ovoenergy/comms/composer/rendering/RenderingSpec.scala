@@ -1,13 +1,15 @@
 package com.ovoenergy.comms.composer
 package rendering
 
-import model._
-import rendering.templating.{
-  CommTemplateData,
-  EmailTemplateData,
-  SMSTemplateData,
-  PrintTemplateData
-}
+import java.time.ZonedDateTime
+import scala.collection.mutable
+
+import cats.Id
+import cats.implicits._
+import cats.effect.IO
+
+import org.scalacheck.{Arbitrary, Gen}
+import org.scalatest.EitherValues
 
 import com.ovoenergy.comms.model.{Email => _, SMS => _, Print => _, _}
 
@@ -16,23 +18,15 @@ import template.processed.email.EmailTemplate
 import template.processed.print.PrintTemplate
 import template.processed.sms.SMSTemplate
 
-import cats.Id
-import cats.implicits._
-import cats.effect.IO
+import model._
+import rendering.templating.{
+  CommTemplateData,
+  EmailTemplateData,
+  SMSTemplateData,
+  PrintTemplateData
+}
 
-import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.{FlatSpec, EitherValues, Matchers}
-
-import scala.collection.mutable
-
-import java.time.ZonedDateTime
-
-class RenderingSpec
-    extends FlatSpec
-    with Matchers
-    with Arbitraries
-    with TestGenerators
-    with EitherValues {
+class RenderingSpec extends UnitSpec with Arbitraries with TestGenerators with EitherValues {
 
   private val nopPdfRendering = new PdfRendering[IO] {
     override def render(

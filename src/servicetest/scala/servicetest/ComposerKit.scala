@@ -1,12 +1,14 @@
 package com.ovoenergy.comms.composer
 package servicetest
 
-import com.ovoenergy.comms.dockertestkit.DockerReadyChecker.{HttpResponseCode, LogLineContains}
-import com.ovoenergy.comms.dockertestkit._
-import com.spotify.docker.client.messages.HostConfig
+import scala.concurrent.duration._
+
 import org.scalatest.Suite
 
-import scala.concurrent.duration._
+import com.spotify.docker.client.messages.HostConfig
+
+import com.ovoenergy.comms.dockertestkit.DockerReadyChecker.HttpResponseCode
+import com.ovoenergy.comms.dockertestkit._
 
 object ComposerKit extends DockerContainerNamer
 

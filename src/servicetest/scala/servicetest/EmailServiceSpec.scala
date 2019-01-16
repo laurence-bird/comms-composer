@@ -1,10 +1,11 @@
 package com.ovoenergy.comms.composer
 package servicetest
 
+import cats.implicits._
+import cats.effect.IO
+
 import com.ovoenergy.comms.model._
 import email._
-
-import cats.implicits._
 
 class EmailServiceSpec extends ServiceSpec with TestGenerators {
 

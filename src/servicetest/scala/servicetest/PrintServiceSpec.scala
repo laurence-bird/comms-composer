@@ -1,19 +1,15 @@
 package com.ovoenergy.comms.composer
 package servicetest
 
-import cats.Id
+
+import cats.implicits._
 import cats.effect.IO
+
 import com.ovoenergy.comms.model._
 import print._
-import cats.implicits._
-import fs2.{Chunk, Stream}
-import fs2.kafka.{CommittableMessage, KafkaConsumer, ProducerMessage}
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.scalatest.concurrent.Eventually
+import com.ovoenergy.fs2.kafka
 
-import scala.concurrent.duration._
-
-class PrintServiceSpec extends ServiceSpec with TestGenerators with Eventually {
+class PrintServiceSpec extends ServiceSpec with TestGenerators {
 
   "Composer" should {
     "process orchestrated print message successfully" in {
