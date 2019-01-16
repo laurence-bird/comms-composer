@@ -1,16 +1,19 @@
-version: 2
+version: 2.1
 
 defaults:
-- &defaults
-  docker:
-  - image: circleci/openjdk:8-jdk
 
 - &restore-cache
   restore_cache:
     keys:
-    - dependencies-{{ .Branch }}-{{ checksum "build.sbt" }}
-    - dependencies-{{ .Branch }}
+    - dependencies-{{ checksum "build.sbt" }}
     - dependencies
+
+- &save-cache
+  save_cache:
+    key: dependencies-{{ checksum "build.sbt" }}
+    paths:
+    - /home/circleci/.ivy2
+    - /home/circleci/.sbt
 
 - &install-python-pip
   run:
@@ -24,7 +27,7 @@ defaults:
 
 - &create-aws-credentials
   run:
-    name: Login to AWS as circleci seems to ignore the setting
+    name: Create the AWS credentials file so that it will be available in the docker image
     command: |
       mkdir ~/.aws
       echo "[default]" >> ~/.aws/credentials
@@ -51,10 +54,28 @@ defaults:
       git config user.name ovo-comms-circleci
       git config user.email "hello.comms@ovoenergy.com"
 
+executors:
+  docker:
+    docker:
+    - image: circleci/openjdk:8-jdk
+    environment:
+      JAVA_OPTS: "-Xmx1g -XX:MaxMetaspaceSize=1g -XX:MetaspaceSize=1g -XX:+CMSClassUnloadingEnabled"
+      AWS_REGION: "eu-west-1"
+      AWS_DEFAULT_REGION: "eu-west-1"
+      TEST_TIME_SCALE_FACTOR: 3
+  machine:
+    machine:
+      enabled: true
+    environment:
+      JAVA_OPTS: "-Xmx1g -XX:MaxMetaspaceSize=1g -XX:MetaspaceSize=1g -XX:+CMSClassUnloadingEnabled"
+      AWS_REGION: "eu-west-1"
+      AWS_DEFAULT_REGION: "eu-west-1"
+      TEST_TIME_SCALE_FACTOR: 3
+
 jobs:
   build:
 
-    <<: *defaults
+     executor: docker
 
     steps:
 
@@ -72,20 +93,26 @@ jobs:
         - /home/circleci/.ivy2
         - /home/circleci/.sbt
 
-    - run:
-        command: sbt compile
-        no_output_timeout: 20m
+    - run: sbt scalafmtCheck
+    - run: sbt test:scalafmtCheck
+    - run: sbt it:scalafmtCheck
+    - run: sbt servicetest:scalafmtCheck
+
+    - run: sbt test:compile
+    - run: sbt it:compile
+    - run: sbt servicetest:compile
 
     - persist_to_workspace:
         root: .
         paths:
         - project/target
+        - project/project
         - target
 
 
   unit_test:
 
-    <<: *defaults
+    executor: docker
 
     steps:
 
@@ -113,11 +140,7 @@ jobs:
 
   integration_test:
 
-    machine:
-      enabled: true
-
-    environment:
-      JAVA_OPTS: "-Xms1024m -Xmx1024m -XX:MaxMetaspaceSize=512m"
+    executor: machine
 
     steps:
 
@@ -320,9 +343,7 @@ jobs:
 
 workflows:
 
-  version: 2
-
-  build_test_release:
+  main:
     jobs:
     - build:
         filters:
@@ -401,11 +422,5 @@ workflows:
         requires:
         - deploy-to-uat
 
-
-experimental:
-  notify:
-    branches:
-      only:
-      - master
 
 

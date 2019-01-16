@@ -20,11 +20,6 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
     with SchemaRegistryKit
     with ZookeeperKit =>
 
-  val awsAccountId: String = sys.env.getOrElse(
-    "AWS_ACCOUNT_ID",
-    throw new IllegalStateException("AWS_ACCOUNT_ID environment variable is needed")
-  )
-
   def composerPort: Int = 8080
   def composerPublicPort: Int = composerContainer.mappedPort(composerPort)
 
@@ -42,7 +37,7 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
     s"852955754882.dkr.ecr.eu-west-1.amazonaws.com/composer:${BuildInfo.version}",
     composerContainerName)
     .withEnv(
-      // Kafka need to be connected on the public endpoint
+      "JAVA_OPTS=-Dlogback.configurationFile=logback-local.xml",
       s"KAFKA_BOOTSTRAP_SERVERS=$kafkaPublicEndpoint",
       s"SCHEMA_REGISTRY_ENDPOINT=http://$schemaRegistryContainerName:$schemaRegistryPort",
       s"TEMPLATES_S3_BUCKET=$composerTemplatesS3Bucket",
