@@ -272,18 +272,11 @@ jobs:
 
     - *restore-cache
 
-    - *install-python-pip
-
-    - *install-awscli-credstash
-
-    - *create-aws-credentials
-
     - attach_workspace:
         at: .
 
     - run:
-        command: |
-          build/deploy_to_ecs.sh -s composer -c ecs-cluster-UATv2 UAT `git describe --abbrev=0 --tags | cut -c2-` aws/container-definition.json
+        command: sbt staging/deploy
 
   e2e_test:
 
@@ -325,8 +318,7 @@ jobs:
         at: .
 
     - run:
-        command: |
-          build/deploy_to_ecs.sh -s composer -c ecs-cluster-PRDv2 PRD `git describe --abbrev=0 --tags | cut -c2-` aws/container-definition.json
+        command: sbt production/deploy
 
 
 workflows:
@@ -336,7 +328,9 @@ workflows:
     - build:
         filters:
           branches:
-            ignore: deploy-to-uat
+            ignore: 
+            - deploy-to-uat
+            - deploy-to-uat-no-tests
 
     - unit_test:
         requires:
@@ -409,6 +403,24 @@ workflows:
     - e2e_test:
         requires:
         - deploy-to-uat
+
+  deploy-to-uat-no-tests:
+    jobs:
+
+    - build:
+        filters:
+          branches:
+            only: deploy-to-uat-no-tests
+
+
+    - publish:
+        requires:
+        - build
+
+    - deploy-to-uat:
+        requires:
+        - publish
+
 
 
 
