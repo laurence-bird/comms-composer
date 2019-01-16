@@ -77,6 +77,7 @@ libraryDependencies ++= Seq(
   logging.log4catsSlf4j,
   logging.log4catsNoop,
   logging.loggingLog4cats,
+  logging.log4jOverSlf4j,
   http4s.blazeClient % Test,
   scalacheck.shapeless % Test,
   scalacheck.toolboxDatetime % Test,
@@ -86,7 +87,7 @@ libraryDependencies ++= Seq(
   ovoEnergy.commsMessagesTests % Test,
   wiremock % ServiceTest,
   ovoEnergy.commsTestHelpers % ServiceTest,
-)
+).map(_.exclude("log4j","log4j"))
 
 addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.7")
 enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, DockerPlugin)
