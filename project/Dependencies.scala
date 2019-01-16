@@ -22,6 +22,7 @@ object Dependencies {
     lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.2.3"
     lazy val logzIoLogbackAppender = "io.logz.logback" % "logzio-logback-appender" % "1.0.11"
     lazy val logbackGelf = "me.moocar" % "logback-gelf" % "0.2"
+    lazy val log4jOverSlf4j = "org.slf4j" % "log4j-over-slf4j" % "1.7.25"
   }
 
   object fs2 {

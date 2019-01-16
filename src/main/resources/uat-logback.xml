@@ -22,8 +22,9 @@
     <logger name="org.http4s.blaze.channel.ServerChannelGroup" level="WARN"/>
     <logger name="org.apache.kafka.clients.consumer.ConsumerConfig" level="INFO" />
     <logger name="org.apache" level="WARN"/>
+    <logger name="org.apache.kafka" level="DEBUG" />
+
     <root level="INFO">
         <appender-ref ref="LogzioLogbackAppender"/>
-        <appender-ref ref="GELF UDP APPENDER"/>
     </root>
 </configuration>
