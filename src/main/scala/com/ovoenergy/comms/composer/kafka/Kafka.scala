@@ -1,5 +1,7 @@
 package com.ovoenergy.comms.composer.kafka
 
+import java.util.concurrent._
+
 import cats.{Id, Show}
 import cats.data.NonEmptyList
 import cats.effect.{ConcurrentEffect, ContextShift, Timer}
@@ -176,6 +178,9 @@ object Kafka {
 
       val stream = for {
         executionContext <- consumerExecutionContextStream[F]
+        processEc <- Stream
+          .bracket(F.delay(new ForkJoinPool(16)))(ex => F.delay(ex.shutdown()))
+          .map(ExecutionContext.fromExecutorService)
         consumer <- consumerStream[F]
           .using(consumerSettings(executionContext))
           .evalTap(_.subscribeTo(in.name))
@@ -219,7 +224,7 @@ object Kafka {
                 logFailure *> createFailedandFeedback
               }
 
-            logConsumed *> produce
+            logConsumed *> cs.evalOn(processEc)(produce)
 
           }
           .to(commitBatchWithinF(500, 15.seconds))
