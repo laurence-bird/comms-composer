@@ -39,7 +39,6 @@ import com.ovoenergy.comms.aws.s3.model._
 import com.ovoenergy.comms.dockertestkit._
 import com.ovoenergy.comms.aws.common.CredentialsProvider
 
-import com.ovoenergy.fs2.kafka._
 import com.ovoenergy.kafka.serialization.avro4s._
 
 import com.ovoenergy.comms.model._
@@ -47,7 +46,6 @@ import email._
 import sms._
 import print._
 
-import kafka.KafkaStream._
 
 abstract class ServiceSpec
     extends WordSpec
