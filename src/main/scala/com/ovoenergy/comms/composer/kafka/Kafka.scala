@@ -187,7 +187,7 @@ object Kafka {
         producer <- producerStream[F].using(producerSettings[Out])
         failedProducer <- producerStream[F].using(producerSettings[FailedV3])
         feedbackProducer <- producerStream[F].using(producerSettings[Feedback])
-        _ <- consumer.stream
+        _ <- consumer.partitionedStream.parJoinUnbounded
           .mapAsync(25) { (message: CommittableMessage[F, String, In]) =>
             val logConsumed =
               log.info(consumerRecordLoggable(message.record): _*)("Consumed Kafka message")
