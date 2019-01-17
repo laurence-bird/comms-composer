@@ -38,6 +38,7 @@ dependencyOverrides ++= Seq(
   "com.amazonaws" % "aws-java-sdk-s3" % awsJavaSdkVersion,
   "com.amazonaws" % "aws-java-sdk-dynamodb" % awsJavaSdkVersion,
   "com.amazonaws" % "aws-java-sdk-kms" % awsJavaSdkVersion,
+  "org.apache.kafka" % "kafka-clients" % "2.0.1"
 )
 
 
