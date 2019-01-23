@@ -17,7 +17,7 @@ Conditions:
 
 Resources:
 
-  ECSTaskRole:
+  TaskRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
