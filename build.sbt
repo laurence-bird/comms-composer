@@ -114,6 +114,9 @@ lazy val composer = (project in file("."))
     Ecr / login := ((Ecr / login) dependsOn (Ecr / createRepository)).value,
     Ecr / push := ((Ecr / push) dependsOn (Docker / publishLocal, Ecr / login)).value,
 
+    publishLocal := (publishLocal in Docker).value,
+    publish := (Ecr / push).value,
+
     stackTemplateFile := (templatesSourceFolder.value / "composer.yml"),
     stackRegion := "eu-west-1",
     stackCapabilities ++= Seq(
