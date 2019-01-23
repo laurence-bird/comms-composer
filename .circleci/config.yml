@@ -276,7 +276,7 @@ jobs:
         at: .
 
     - run:
-        command: sbt staging/deploy
+        command: sbt staging:deploy
 
   e2e_test:
 
@@ -318,7 +318,7 @@ jobs:
         at: .
 
     - run:
-        command: sbt production/deploy
+        command: sbt production:deploy
 
 
 workflows:
