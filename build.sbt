@@ -35,7 +35,7 @@ lazy val composer = (project in file("."))
     ServiceTest / test / parallelExecution := false,
     publish := (Docker / publish).value,
     publishLocal := (Docker / publishLocal).value,
-    
+
     resolvers ++= Seq(
       Resolver.bintrayRepo("ovotech", "maven"),
       Resolver.bintrayRepo("cakesolutions", "maven"),
@@ -51,8 +51,15 @@ lazy val composer = (project in file("."))
     ),
 
     libraryDependencies ++= Seq(
+      apache.avro,
+      apache.kafkaClients,
+      avro4sMacros,
+      aws.javaSdkCore,
       fs2.core,
       fs2.kafkaClient,
+      cats.core,
+      cats.effect,
+      cats.kernel,
       ciris.core,
       ciris.cats,
       ciris.catsEffect,
@@ -70,6 +77,7 @@ lazy val composer = (project in file("."))
       http4s.blazeServer,
       http4s.client,
       http4s.blazeClient,
+      jCredstash,
       ovoEnergy.kafkaSerializationCore,
       ovoEnergy.kafkaSerializationCats,
       ovoEnergy.kafkaSerializationAvro,
@@ -77,16 +85,22 @@ lazy val composer = (project in file("."))
       ovoEnergy.commsMessages,
       ovoEnergy.commsTemplates,
       ovoEnergy.commsAwsS3,
+      ovoEnergy.commsAwsCommon,
       handlebars,
       s3Sdk,
       shapeless,
+      jCredstash,
       logging.logbackClassic,
-      logging.logzIoLogbackAppender,
+      logging.logbackCore,
       logging.logbackGelf,
+      logging.logzIoLogbackAppender,
       logging.log4catsSlf4j,
       logging.log4catsNoop,
+      logging.log4catsCore,
       logging.loggingLog4cats,
       logging.log4jOverSlf4j,
+      logging.sl4jApi,
+      scalaReflect,
       http4s.blazeClient % Test,
       scalacheck.shapeless % Test,
       scalacheck.toolboxDatetime % Test,
@@ -129,7 +143,7 @@ lazy val composer = (project in file("."))
     ),
     Staging / stackTags := Map(
       "Team" -> "comms",
-      "Environment" -> "uat", 
+      "Environment" -> "uat",
       "service" -> name.value
     ),
     Staging / deploy := deployOnConfiguration(Staging).value,
@@ -139,7 +153,7 @@ lazy val composer = (project in file("."))
       "Version" -> version.value
     ),
     Production / stackTags := Map(
-      "Team" -> "comms",  
+      "Team" -> "comms",
       "Environment" -> "prd",
        "service" -> name.value
     ),

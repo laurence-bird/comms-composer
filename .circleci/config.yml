@@ -100,6 +100,7 @@ jobs:
     - run: sbt test:compile
     - run: sbt it:compile
     - run: sbt servicetest:compile
+    - run: sbt undeclaredCompileDependenciesTest
 
     - persist_to_workspace:
         root: .
@@ -330,7 +331,7 @@ workflows:
     - build:
         filters:
           branches:
-            ignore: 
+            ignore:
             - deploy-to-uat
             - deploy-to-uat-no-tests
 

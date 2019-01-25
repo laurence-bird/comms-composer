@@ -7,22 +7,37 @@ object Dependencies {
   lazy val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
   lazy val wiremock = "com.github.tomakehurst" % "wiremock-standalone" % "2.19.0"
 
+  lazy val avro4sMacros = "com.sksamuel.avro4s" %% "avro4s-macros" % "1.8.3"
+
+  object apache {
+    lazy val avro = "org.apache.avro" % "avro" % "1.8.2"
+    lazy val kafkaClients = "org.apache.kafka" % "kafka-clients" % "2.0.1"
+  }
+
+  object aws {
+    lazy val javaSdkCore = "com.amazonaws" % "aws-java-sdk-core" % "1.11.419"
+  }
+
   object scalacheck {
     lazy val shapeless = "com.github.alexarchambault" %% "scalacheck-shapeless_1.13" % "1.1.4"
     lazy val toolboxDatetime = "com.fortysevendeg" %% "scalacheck-toolbox-datetime" % "0.2.1"
     lazy val scalacheck = "org.scalacheck" %% "scalacheck" % "1.13.5"
   }
 
+  lazy val scalaReflect = "org.scala-lang" % "scala-reflect" % "2.12.8"
   lazy val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 
   object logging {
     lazy val log4catsSlf4j = "io.chrisdavenport" %% "log4cats-slf4j" % "0.2.0"
-    lazy val log4catsNoop = "io.chrisdavenport" %% "log4cats-noop" % "0.2.0"
+    lazy val log4catsCore  = "io.chrisdavenport" %% "log4cats-core" % "0.2.0"
+    lazy val log4catsNoop  = "io.chrisdavenport" %% "log4cats-noop" % "0.2.0"
     lazy val loggingLog4cats = "com.ovoenergy.comms" %% "logging-log4cats" % "0.1.3"
     lazy val logbackClassic = "ch.qos.logback" % "logback-classic" % "1.2.3"
+    lazy val logbackCore = "ch.qos.logback" % "logback-core" % "1.2.3"
     lazy val logzIoLogbackAppender = "io.logz.logback" % "logzio-logback-appender" % "1.0.11"
     lazy val logbackGelf = "me.moocar" % "logback-gelf" % "0.2"
     lazy val log4jOverSlf4j = "org.slf4j" % "log4j-over-slf4j" % "1.7.25"
+    lazy val sl4jApi = "org.slf4j" % "slf4j-api" % "1.7.25"
   }
 
   object fs2 {
@@ -34,7 +49,7 @@ object Dependencies {
 
     lazy val kafkaClient = "com.ovoenergy" %% "fs2-kafka" % fs2KafkaVersion
   }
-  
+
 
   object ovoEnergy {
 
@@ -56,6 +71,7 @@ object Dependencies {
     lazy val commsTestHelpers = "com.ovoenergy" %% "comms-kafka-test-helpers" % commsKafkaTestHelperVersion
     lazy val commsDockerKit = "com.ovoenergy" %% "comms-docker-testkit" % commsDockerTestkitVersion
     lazy val commsAwsS3 = "com.ovoenergy.comms" %% "comms-aws-s3" % commsAwsVersion
+    lazy val commsAwsCommon = "com.ovoenergy.comms" %% "comms-aws-common" % commsAwsVersion
   }
 
   object circe {
@@ -67,6 +83,16 @@ object Dependencies {
     lazy val literal = "io.circe" %% "circe-literal" % version
   }
 
+  object cats {
+    private val version = "1.5.0"
+
+    lazy val core = "org.typelevel" %% "cats-core" % version
+    lazy val kernel = "org.typelevel" %% "cats-kernel" % version
+    lazy val effect = "org.typelevel" %% "cats-effect" % "1.1.0"
+  }
+
+
+  val jCredstash = "co.wrisk.jcredstash" % "jcredstash" % "0.0.4"
 
   object http4s {
 
