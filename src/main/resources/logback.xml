@@ -1,37 +1,11 @@
 <configuration>
     <shutdownHook class="ch.qos.logback.core.hook.DelayingShutdownHook"/>
     
-    <define name="lowercase_env" class="com.ovoenergy.comms.composer.LowercasePropertyDefiner">
-        <value>${ENV}</value>
-    </define>
-
-    <define name="logzio_token" class="com.ovoenergy.comms.composer.CredstashPropertyDefiner">
-        <credential>${lowercase_env}.logzio_token</credential>
-    </define>
-    
-    <define name="graylog_host" class="com.ovoenergy.comms.composer.CredstashPropertyDefiner">
-        <credential>${lowercase_env}.graylog_host</credential>
-    </define>
-
     <appender name="Logzio" class="io.logz.logback.LogzioLogbackAppender">
-        <token>${logzio_token}</token>
+        <token>${LOGZIO_TOKEN}</token>
         <logzioType>java</logzioType>
         <addHostname>true</addHostname>
         <additionalFields>service=communication-api;environment=${ENV}</additionalFields>
-    </appender>
-
-    <appender name="Graylog" class="me.moocar.logbackgelf.GelfUDPAppender">
-        <remoteHost>${graylog_host}</remoteHost>
-        <port>12201</port>
-        <encoder class="me.moocar.logbackgelf.GZIPEncoder">
-            <layout class="me.moocar.logbackgelf.GelfLayout">
-                <staticAdditionalField>service:comms-communication-api</staticAdditionalField>
-                <staticAdditionalField>team:comms</staticAdditionalField>
-                <host>${HOSTNAME}</host>
-                <useThreadName>true</useThreadName>
-                <includeFullMDC>true</includeFullMDC>
-            </layout>
-        </encoder>
     </appender>
 
     <logger name="org.http4s.blaze.channel.ServerChannelGroup" level="WARN"/>
@@ -40,6 +14,5 @@
     
     <root level="INFO">
         <appender-ref ref="Logzio"/>
-        <appender-ref ref="Graylog"/>
     </root>
 </configuration>

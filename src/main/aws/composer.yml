@@ -105,6 +105,13 @@ Resources:
         Environment:
         - Name: ENV
           Value: !Ref Environment
+        - Name: LOGZIO_TOKEN
+        Value:
+          'Fn::Transform':
+           - Name: 'fetch-secret'
+             Parameters:
+               ssm_key: logzio_token
+               env: !Ref Environment
         Essential: True
         Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/composer:${Version}"
         Name: composer
