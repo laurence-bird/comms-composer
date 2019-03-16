@@ -50,6 +50,12 @@ lazy val composer = (project in file("."))
       "org.apache.kafka" % "kafka-clients" % "2.0.1",
     ),
 
+    excludeDependencies ++= Seq(
+      ExclusionRule("commons-logging", "commons-logging"),
+      ExclusionRule("org.slf4j", "slf4j-log4j12"),
+      ExclusionRule("log4j", "log4j")
+    ),
+
     libraryDependencies ++= Seq(
       fs2.core,
       fs2.kafkaClient,
@@ -77,6 +83,7 @@ lazy val composer = (project in file("."))
       ovoEnergy.commsMessages,
       ovoEnergy.commsTemplates,
       ovoEnergy.commsAwsS3,
+      ovoEnergy.commsDeduplication,
       handlebars,
       s3Sdk,
       shapeless,
@@ -87,16 +94,18 @@ lazy val composer = (project in file("."))
       logging.log4catsNoop,
       logging.loggingLog4cats,
       logging.log4jOverSlf4j,
+      logging.jclOverSlf4j,
       http4s.blazeClient % Test,
       scalacheck.shapeless % Test,
       scalacheck.toolboxDatetime % Test,
       scalacheck.scalacheck % Test,
       scalatest % Test,
-      ovoEnergy.commsDockerKit % Test,
+      ovoEnergy.commsDockerKitCore % Test,
+      ovoEnergy.commsDockerKitClients % Test,
       ovoEnergy.commsMessagesTests % Test,
       wiremock % ServiceTest,
       ovoEnergy.commsTestHelpers % ServiceTest,
-    ).map(_.exclude("log4j", "log4j")),
+    ),
 
     scalafmtOnCompile := true,
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),

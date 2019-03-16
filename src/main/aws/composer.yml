@@ -91,6 +91,33 @@ Resources:
             Resource:
             - 'arn:aws:s3:::ovo-comms-aiven'
             - 'arn:aws:s3:::ovo-comms-aiven/*'
+      - PolicyName: read-write-deduplication-table
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:Put*'
+              - 'dynamodb:Update*'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'dynamodb:Get*'
+              - 'dynamodb:List*'
+              - 'dynamodb:BatchGetItem'
+              - 'dynamodb:DescribeTable'
+            Resource:
+              - Fn::ImportValue:
+                  !Sub "${Environment}-Deduplication-TableArn"
+              - Fn::Sub:
+                - "${TableArn}/*"
+                - TableArn:
+                    Fn::ImportValue:
+                      !Sub "${Environment}-Deduplication-TableArn"
+
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      RetentionInDays: 30
 
   Task:
     Type: AWS::ECS::TaskDefinition
@@ -106,17 +133,28 @@ Resources:
         - Name: ENV
           Value: !Ref Environment
         - Name: LOGZIO_TOKEN
-        Value:
-          'Fn::Transform':
-           - Name: 'fetch-secret'
-             Parameters:
-               ssm_key: logzio_token
-               env: !Ref Environment
+          Value:
+            Fn::Transform:
+            - Name: 'fetch-secret'
+              Parameters:
+                ssm_key: logzio_token
+                env: !Ref Environment
+        - Name: DEDUPLICATION_TABLE
+          Value:
+            Fn::ImportValue:
+              !Sub "${Environment}-Deduplication-TableName"
         Essential: True
         Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/composer:${Version}"
         Name: composer
         PortMappings:
         - ContainerPort: 8080
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-region: !Sub "${AWS::Region}"
+            awslogs-group: !Ref LogGroup
+            awslogs-stream-prefix: "composer"
+            awslogs-datetime-format: "%Y-%m-%d %H:%M:%S"
 
   Service:
     Type: AWS::ECS::Service
