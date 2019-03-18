@@ -1,5 +1,6 @@
 import Dependencies._
 import com.amazonaws.regions.{Region, Regions}
+import com.amazonaws.services.cloudformation.model._
 
 lazy val ServiceTest = config("servicetest") extend Test
 lazy val IT = config("it") extend Test
@@ -7,7 +8,7 @@ lazy val IT = config("it") extend Test
 lazy val awsJavaSdkVersion = "1.11.419"
 
 lazy val composer = (project in file("."))
-  .enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, AshScriptPlugin, DockerPlugin, EcrPlugin)
+  .enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, AshScriptPlugin, DockerPlugin, EcrPlugin, CloudFormationPlugin)
   .configs(ServiceTest, IT)
   .settings(
     addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9"),
@@ -126,63 +127,17 @@ lazy val composer = (project in file("."))
     publishLocal := (publishLocal in Docker).value,
     publish := (Ecr / push).value,
 
-    stackTemplateFile := (templatesSourceFolder.value / "composer.yml"),
-    stackRegion := "eu-west-1",
-    stackCapabilities ++= Seq(
-      "CAPABILITY_IAM"
+    cloudFormationCapabilities := Seq(
+      Capability.CAPABILITY_IAM
     ),
-    Staging / stackName := { stackName.value ++ "-" ++ "uat" },
-    Staging / stackParams := Map(
+
+    Uat / cloudFormationStackParams := Map(
       "Environment" -> "uat",
       "Version" -> version.value
     ),
-    Staging / stackTags := Map(
-      "Team" -> "comms",
-      "Environment" -> "uat", 
-      "service" -> name.value
-    ),
-    Staging / deploy := deployOnConfiguration(Staging).value,
-    Production / stackName := { stackName.value ++ "-" ++ "prd" },
-    Production / stackParams := Map(
-      "Environment" -> "prd",
+
+    Prd / cloudFormationStackParams := Map(
+      "Environment" -> "uat",
       "Version" -> version.value
-    ),
-    Production / stackTags := Map(
-      "Team" -> "comms",  
-      "Environment" -> "prd",
-       "service" -> name.value
-    ),
-    Production / deploy := deployOnConfiguration(Production).value,
-  )
-
-val deploy = taskKey[Unit]("Deploy the service")
-
-def deployOnConfiguration(s: Configuration): Def.Initialize[Task[Unit]] = {
-  Def
-    .sequential(
-      Def.taskDyn {
-        val stackExists = (s / stackDescribe).value.nonEmpty
-        if (stackExists) {
-          s / stackUpdate
-        } else {
-          s / stackCreate
-        }
-      },
-      s / stackWait,
-      Def.task {
-        val log = streams.value.log
-        (s / stackDescribe).value.fold(
-          throw new RuntimeException("CloudFormation stack not found")
-        )(
-          stack =>
-            if (!Set("UPDATE_COMPLETE", "CREATE_COMPLETE").contains(stack.getStackStatus))
-              throw new RuntimeException(
-                s"CloudFormation Deployment failed to complete ${stack.getStackStatus}")
-            else
-              log.info(
-                s"Stack ${stack.getStackName} (${stack.getStackId}) create or updated correctly: ${stack.getStackStatus}")
-        )
-      }
     )
-}
-
+  )
