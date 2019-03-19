@@ -155,7 +155,8 @@ object Config {
             DeduplicationConfig(
               tableName = DeduplicationConfig.TableName(deduplicationTable),
               processorId = "composer",
-              ttl = 60.seconds,
+              maxProcessingTime = 5.seconds,
+              ttl = 35.days,
             ),
             None
           )
@@ -223,7 +224,8 @@ object Config {
               DeduplicationConfig(
                 tableName = DeduplicationConfig.TableName(deduplicationTable),
                 processorId = "composer",
-                ttl = 60.seconds,
+                maxProcessingTime = 5.seconds,
+                ttl = 35.days,
               ),
               deduplicationDynamoDbEndpointOpt
             )
