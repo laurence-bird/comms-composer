@@ -137,7 +137,7 @@ lazy val composer = (project in file("."))
     ),
 
     Prd / cloudFormationStackParams := Map(
-      "Environment" -> "uat",
+      "Environment" -> "prd",
       "Version" -> version.value
     )
   )
