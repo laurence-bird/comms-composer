@@ -218,7 +218,7 @@ object Kafka {
                   message.record.value.metadata.eventId,
                   handleMessage,
                   log.warn("eventId" -> message.record.value.metadata.eventId)(
-                    "Skip duplicate event: ${message.record.value.metadata.eventId}") *> message.committableOffset
+                    s"Skip duplicate event: ${message.record.value.metadata.eventId}") *> message.committableOffset
                     .pure[F]
                     .pure[F]
                 )
