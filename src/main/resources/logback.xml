@@ -5,7 +5,7 @@
         <token>${LOGZIO_TOKEN}</token>
         <logzioType>java</logzioType>
         <addHostname>true</addHostname>
-        <additionalFields>service=communication-api;environment=${ENV}</additionalFields>
+        <additionalFields>service=composer;environment=${ENV}</additionalFields>
     </appender>
 
     <logger name="org.http4s.blaze.channel.ServerChannelGroup" level="WARN"/>
