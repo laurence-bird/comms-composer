@@ -19,7 +19,11 @@ class SmsServiceSpec extends ServiceSpec with TestGenerators {
           templateData = Map("amount"->TemplateData.fromString("10000"))
         )
       }
+
       positiveTest[OrchestratedSMSV3, ComposedSMSV4](sourceMessage, topics.orchestratedSms, topics.composedSms){message =>
+
+        note(s"Sent message: ${sourceMessage} Received message: ${message}")
+
         message.record.key() shouldBe sourceMessage.metadata.commId
         message.record.value().metadata.commId shouldBe sourceMessage.metadata.commId
         message.record.value().recipient shouldBe sourceMessage.recipientPhoneNumber
@@ -34,7 +38,11 @@ class SmsServiceSpec extends ServiceSpec with TestGenerators {
           templateData = Map("amount"->TemplateData.fromString("10000"))
         )
       }
+
       negativeTest[OrchestratedSMSV3](sourceMessage, topics.orchestratedSms){(failed, feedback) =>
+
+        note(s"Sent message: ${sourceMessage} Received messages: ${failed} ${feedback}")
+
         failed.record.value().metadata.commId shouldBe sourceMessage.metadata.commId
         failed.record.value().errorCode shouldBe InvalidTemplate
 

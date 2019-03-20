@@ -21,6 +21,7 @@ import com.ovoenergy.comms.composer.kafka.Kafka
 import com.ovoenergy.comms.composer.kafka.Kafka.{Topic, Topics}
 import org.http4s.Uri
 import fs2.kafka._
+import com.ovoenergy.comms.deduplication.{Config => DeduplicationConfig}
 
 import scala.concurrent.duration._
 import scala.util.Try
@@ -32,7 +33,9 @@ case class Config(
     kafka: Kafka.Config,
     store: Store.Config,
     templates: TemplatesConfig,
-    docRaptor: DocRaptorConfig
+    docRaptor: DocRaptorConfig,
+    deduplication: DeduplicationConfig[String],
+    deduplicationDynamoDbEndpoint: Option[Uri] // TODO Add endpoint override indeduplication
 )
 
 object Config {
@@ -101,8 +104,9 @@ object Config {
           ),
           credstashF[F, Secret[String]]()(
             s"${environment.toStringLowerCase}.aiven.schema_registry.password"),
-          credstashF[F, Secret[String]]()(s"${environment.toStringLowerCase}.docraptor.api_key")
-        ) { (awsRegion, kafkaSSL, schemaRegistryPassword, docRaptorApiKey) =>
+          credstashF[F, Secret[String]]()(s"${environment.toStringLowerCase}.docraptor.api_key"),
+          envF[F, String]("DEDUPLICATION_TABLE")
+        ) { (awsRegion, kafkaSSL, schemaRegistryPassword, docRaptorApiKey, deduplicationTable) =>
           val docRaptor = DocRaptorConfig(
             docRaptorApiKey.value,
             Uri.uri("https://docraptor.com"),
@@ -147,7 +151,14 @@ object Config {
             kafka,
             store,
             templates,
-            docRaptor
+            docRaptor,
+            DeduplicationConfig(
+              tableName = DeduplicationConfig.TableName(deduplicationTable),
+              processorId = "composer",
+              maxProcessingTime = 5.seconds,
+              ttl = 35.days,
+            ),
+            None
           )
         }
 
@@ -162,7 +173,9 @@ object Config {
           envF[F, Option[Uri]]("DOCRAPTOR_ENDPOINT")
             .mapValue(_.getOrElse(Uri.uri("https://docraptor.com"))),
           envF[F, Secret[String]]("DOCRAPTOR_API_KEY"),
-          envF[F, Option[Boolean]]("DOCRAPTOR_IS_TEST").mapValue(_.getOrElse(true))
+          envF[F, Option[Boolean]]("DOCRAPTOR_IS_TEST").mapValue(_.getOrElse(true)),
+          envF[F, String]("DEDUPLICATION_TABLE"),
+          envF[F, Option[Uri]]("DEDUPLICATION_DYNAMO_DB_ENDPOINT")
         ) {
           (
               awsRegion,
@@ -174,6 +187,8 @@ object Config {
               docraptorEndpoint,
               docraptorApiKey,
               docraptorIsTest,
+              deduplicationTable,
+              deduplicationDynamoDbEndpointOpt
           ) =>
             val docraptor = DocRaptorConfig(
               url = docraptorEndpoint,
@@ -205,7 +220,14 @@ object Config {
               kafka,
               store,
               templates,
-              docraptor
+              docraptor,
+              DeduplicationConfig(
+                tableName = DeduplicationConfig.TableName(deduplicationTable),
+                processorId = "composer",
+                maxProcessingTime = 5.seconds,
+                ttl = 35.days,
+              ),
+              deduplicationDynamoDbEndpointOpt
             )
         }
     }.orRaiseThrowable

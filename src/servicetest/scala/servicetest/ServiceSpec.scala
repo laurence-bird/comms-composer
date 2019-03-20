@@ -6,46 +6,48 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 import cats.Id
-import kafka.Kafka._
 
-import com.ovoenergy.comms.aws.common.model._
-import com.ovoenergy.comms.aws.s3.S3
-import com.ovoenergy.comms.aws.s3.model._
-import com.ovoenergy.comms.dockertestkit._
-import com.ovoenergy.comms.aws.common.CredentialsProvider
+import com.amazonaws.services.dynamodbv2.model._
+import com.amazonaws.services.dynamodbv2._
+
 import com.ovoenergy.kafka.serialization.avro4s._
 
 import com.sksamuel.avro4s._
 import cats.implicits._
 import cats.effect.{IO, Resource, Timer}
+
+import fs2.Stream
+import fs2.kafka.{CommittableMessage, KafkaConsumer, KafkaProducer, _}
+
 import org.http4s._
 import client.Client
 import client.blaze.{BlazeClientBuilder, Http1Client}
+
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.clients.admin._
 import org.apache.kafka.clients.consumer._
-import org.apache.kafka.clients.producer._
+
 import com.github.tomakehurst.wiremock.client._
-import com.ovoenergy.comms.model.types.{ComposedEventV3, OrchestratedEventV3}
-import fs2.Stream
-import fs2.kafka.{CommittableMessage, KafkaConsumer, KafkaProducer, _}
 import org.scalatest._
 import org.scalatest.concurrent.Eventually
 import org.scalatest.tools.Runner
+
+import com.ovoenergy.kafka.serialization.avro4s._
 
 import com.ovoenergy.comms.aws.common.model._
 import com.ovoenergy.comms.aws.s3.S3
 import com.ovoenergy.comms.aws.s3.model._
 import com.ovoenergy.comms.dockertestkit._
+import com.ovoenergy.comms.dockertestkit.dynamoDb._
 import com.ovoenergy.comms.aws.common.CredentialsProvider
-
-import com.ovoenergy.kafka.serialization.avro4s._
-
+import com.ovoenergy.comms.aws.common.model._
+import com.ovoenergy.comms.model.types.{ComposedEventV3, OrchestratedEventV3}
 import com.ovoenergy.comms.model._
 import email._
 import sms._
 import print._
 
+import kafka.Kafka._
 
 abstract class ServiceSpec
     extends WordSpec
@@ -55,6 +57,7 @@ abstract class ServiceSpec
     with KafkaKit
     with SchemaRegistryKit
     with DynamoDbKit
+    with DynamoDbClient
     with WiremockKit
     with ComposerKit
     with BeforeAndAfterAll
@@ -110,6 +113,15 @@ abstract class ServiceSpec
           new NewTopic(topics.failed.name, 1, 1),
           new NewTopic(topics.feedback.name, 1, 1),
         ).asJava))
+    }.futureValue
+
+    dynamoDbClientResource[IO]().use { dynamoDb =>
+      IO(dynamoDb.createTable(
+        List(new AttributeDefinition("id", ScalarAttributeType.S), new AttributeDefinition("processorId", ScalarAttributeType.S)).asJava,
+        composerDeduplicationTable,
+        List(new KeySchemaElement("id", KeyType.HASH), new KeySchemaElement("processorId", KeyType.RANGE)).asJava,
+        new ProvisionedThroughput(1L, 1L),
+      ))
     }.futureValue
   }
 
@@ -243,8 +255,8 @@ abstract class ServiceSpec
 
   def positiveTest[A <: OrchestratedEventV3: SchemaFor: ToRecord, B <: ComposedEventV3: SchemaFor: FromRecord](sourceMessage: A, topicA: Topic[A], topicB: Topic[B])(assertions: CommittableMessage[IO, String, B] => Assertion) = {
 
-    val record = new ProducerRecord(topicA.name, sourceMessage.metadata.commId, sourceMessage)
-    val pm = ProducerMessage.single[Id].of(record)
+    val record = ProducerRecord(topicA.name, sourceMessage.metadata.commId, sourceMessage)
+    val pm = ProducerMessage.one(record)
 
     val message: CommittableMessage[IO, String, B] = (for {
       _        <- Stream.eval(uploadTemplateToS3(sourceMessage.metadata.templateManifest))
@@ -259,8 +271,8 @@ abstract class ServiceSpec
 
   def negativeTest[A <: OrchestratedEventV3: SchemaFor: ToRecord](sourceMessage: A, topicA: Topic[A])(assertions: (CommittableMessage[IO, String, FailedV3], CommittableMessage[IO, String, Feedback]) => Assertion) = {
 
-    val record = new ProducerRecord(topicA.name, sourceMessage.metadata.commId, sourceMessage)
-    val pm = ProducerMessage.single[Id].of(record)
+    val record = ProducerRecord(topicA.name, sourceMessage.metadata.commId, sourceMessage)
+    val pm = ProducerMessage.one(record)
 
     val (failed, feedback) = (for {
       producer <- producerS[A]
@@ -275,7 +287,7 @@ abstract class ServiceSpec
   }
 
   def producerRecord[A](topic: Topic[A])(message: A, key: A => String) =
-    new ProducerRecord[String, A](topic.name, key(message), message)
+    ProducerRecord(topic.name, key(message), message)
 
   def givenDocRaptorSucceeds: IO[Array[Byte]] = {
     import WireMock._

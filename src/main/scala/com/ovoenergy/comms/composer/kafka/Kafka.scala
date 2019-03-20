@@ -24,6 +24,9 @@ import com.ovoenergy.comms.model.{
 }
 import com.ovoenergy.kafka.common.event.EventMetadata
 import com.ovoenergy.kafka.serialization._
+import com.ovoenergy.comms.deduplication.ProcessingStore
+import com.ovoenergy.comms.logging._
+
 import avro._
 import avro4s._
 import com.ovoenergy.comms.model._
@@ -33,7 +36,6 @@ import fs2.Stream
 import fs2.kafka._
 import io.chrisdavenport.log4cats.StructuredLogger
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 
 import scala.concurrent.ExecutionContext
@@ -68,7 +70,11 @@ object Kafka {
       groupId: String,
       topics: Topics)
 
-  def apply[F[_]](config: Config, time: Time[F], log: StructuredLogger[F])(
+  def apply[F[_]](
+      config: Config,
+      time: Time[F],
+      deduplication: ProcessingStore[F, String],
+      log: StructuredLogger[F])(
       implicit F: ConcurrentEffect[F],
       cs: ContextShift[F],
       timer: Timer[F]): Kafka[F] = new Kafka[F] {
@@ -192,42 +198,56 @@ object Kafka {
             val logConsumed =
               log.info(consumerRecordLoggable(message.record): _*)("Consumed Kafka message")
 
-            val produce = process(message.record.value)
-              .flatMap { result: Out =>
-                val record = new ProducerRecord(out.name, message.record.key, result)
-                val pm = ProducerMessage.single[Id].of(record, message.committableOffset)
-                producer
-                  .produceBatched(pm)
-                  .flatTap(_.flatTap(res =>
-                    log.info(
-                      s"Sent record to Kafka topic ${res.records._2}, key ${message.record.key()}")))
-                  .map(_.map(_.passthrough))
-              }
-              .handleErrorWith { err =>
-                val logFailure = log.warn(consumerRecordLoggable(message.record): _*)(
-                  s"Error processing Kafka record. $err")
+            val produce = {
 
-                val createFailed = failedEvent(message.record.value, composerError(err))
-                  .map(new ProducerRecord(config.topics.failed.name, message.record.key, _))
-                  .map(ProducerMessage.single[Id].of(_, message.committableOffset))
-                  .flatMap(failedProducer.produceBatched)
+              val handleMessage: F[F[fs2.kafka.CommittableOffset[F]]] =
+                process(message.record.value)
+                  .flatMap { result: Out =>
+                    val record = ProducerRecord(out.name, message.record.key, result)
+                    val pm = ProducerMessage.one(record, message.committableOffset)
+                    producer
+                      .produce(pm)
+                      .flatTap(_.flatTap(res =>
+                        log.info(
+                          s"Sent record to Kafka topic ${res.records._2}, key ${message.record.key()}")))
+                      .map(_.map(_.passthrough))
+                  }
 
-                val createFeedback = feedbackEvent(message.record.value, composerError(err))
-                  .map(new ProducerRecord(config.topics.feedback.name, message.record.key, _))
-                  .map(ProducerMessage.single[Id].of(_, message.committableOffset))
-                  .flatMap(feedbackProducer.produceBatched)
+              deduplication
+                .protect(
+                  message.record.value.metadata.eventId,
+                  handleMessage,
+                  log.warn("eventId" -> message.record.value.metadata.eventId)(
+                    "Skip duplicate event: ${message.record.value.metadata.eventId}") *> message.committableOffset
+                    .pure[F]
+                    .pure[F]
+                )
+                .handleErrorWith { err =>
+                  val logFailure = log.warn(consumerRecordLoggable(message.record): _*)(
+                    s"Error processing Kafka record. $err")
 
-                val createFailedandFeedback = (createFailed, createFeedback)
-                  .mapN((a, b) => a)
-                  .map(_.map(_.passthrough))
+                  val createFailed = failedEvent(message.record.value, composerError(err))
+                    .map(ProducerRecord(config.topics.failed.name, message.record.key, _))
+                    .map(ProducerMessage.one(_, message.committableOffset))
+                    .flatMap(failedProducer.produce)
 
-                logFailure *> createFailedandFeedback
-              }
+                  val createFeedback = feedbackEvent(message.record.value, composerError(err))
+                    .map(ProducerRecord(config.topics.feedback.name, message.record.key, _))
+                    .map(ProducerMessage.one(_, message.committableOffset))
+                    .flatMap(feedbackProducer.produce)
+
+                  val createFailedandFeedback = (createFailed, createFeedback)
+                    .mapN((a, b) => a)
+                    .map(_.map(_.passthrough))
+
+                  logFailure *> createFailedandFeedback
+                }
+            }
 
             logConsumed *> cs.evalOn(processEc)(produce)
 
           }
-          .to(commitBatchWithinF(500, 15.seconds))
+          .through(commitBatchWithinF(500, 15.seconds))
       } yield ()
 
       stream

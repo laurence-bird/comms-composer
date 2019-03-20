@@ -19,7 +19,10 @@ class EmailServiceSpec extends ServiceSpec with TestGenerators {
           templateData = Map("amount"->TemplateData.fromString("10000"))
         )
       }
-      positiveTest[OrchestratedEmailV4, ComposedEmailV4](sourceMessage, topics.orchestratedEmail, topics.composedEmail){message =>
+      positiveTest[OrchestratedEmailV4, ComposedEmailV4](sourceMessage, topics.orchestratedEmail, topics.composedEmail){ message =>
+
+        note(s"Sent message: ${sourceMessage} Received message: ${message}")
+
         message.record.key() shouldBe sourceMessage.metadata.commId
         message.record.value().metadata.commId shouldBe sourceMessage.metadata.commId
         message.record.value().recipient shouldBe sourceMessage.recipientEmailAddress
@@ -34,7 +37,10 @@ class EmailServiceSpec extends ServiceSpec with TestGenerators {
           templateData = Map("amount"->TemplateData.fromString("10000"))
         )
       }
-      negativeTest[OrchestratedEmailV4](sourceMessage, topics.orchestratedEmail){(failed, feedback) =>
+      negativeTest[OrchestratedEmailV4](sourceMessage, topics.orchestratedEmail){ (failed, feedback) =>
+
+        note(s"Sent message: ${sourceMessage} Received messages: ${failed} ${feedback}")
+
         failed.record.value().metadata.commId shouldBe sourceMessage.metadata.commId
         failed.record.value().errorCode shouldBe InvalidTemplate
 

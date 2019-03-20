@@ -8,7 +8,6 @@ import fs2._
 import fs2.kafka._
 
 import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.producer.ProducerRecord
 
 
 import com.ovoenergy.comms.model._
@@ -26,8 +25,8 @@ class PrintServiceSpec extends ServiceSpec with TestGenerators {
         )
       }
 
-      val record = new ProducerRecord(topics.orchestratedPrint.name, sourceMessage.metadata.commId, sourceMessage)
-      val pm = ProducerMessage.single[Id].of(record)
+      val record = ProducerRecord(topics.orchestratedPrint.name, sourceMessage.metadata.commId, sourceMessage)
+      val pm = ProducerMessage.one(record)
 
       val message = (for {
         _        <- Stream.eval(uploadTemplateToS3(sourceMessage.metadata.templateManifest))
@@ -53,8 +52,8 @@ class PrintServiceSpec extends ServiceSpec with TestGenerators {
         )
       }
 
-      val record = new ProducerRecord(topics.orchestratedPrint.name, sourceMessage.metadata.commId, sourceMessage)
-      val pm = ProducerMessage.single[Id].of(record)
+      val record = ProducerRecord(topics.orchestratedPrint.name, sourceMessage.metadata.commId, sourceMessage)
+      val pm = ProducerMessage.one(record)
 
       val (failed, feedback) = (for {
         producer <- producerS[OrchestratedPrintV2]
@@ -84,8 +83,8 @@ class PrintServiceSpec extends ServiceSpec with TestGenerators {
         )
       }
 
-      val record = new ProducerRecord(topics.orchestratedPrint.name, sourceMessage.metadata.commId, sourceMessage)
-      val pm = ProducerMessage.single[Id].of(record)
+      val record = ProducerRecord(topics.orchestratedPrint.name, sourceMessage.metadata.commId, sourceMessage)
+      val pm = ProducerMessage.one(record)
 
       val (failed, feedback) = (for {
         _        <- Stream.eval(uploadTemplateToS3(sourceMessage.metadata.templateManifest))

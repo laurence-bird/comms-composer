@@ -26,9 +26,10 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
   def composerEndpoint: String = s"http://$composerContainerName:$composerPort"
   def composerPublicEndpoint: String = s"http://$dockerHostIp:$composerPublicPort"
 
-  def composerTemplatesS3Bucket: String = s"ovo-comms-test"
-  def composerRenderedS3Bucket: String = s"ovo-comms-test"
-
+  def composerTemplatesS3Bucket: String = "ovo-comms-test"
+  def composerRenderedS3Bucket: String = "ovo-comms-test"
+  def composerDeduplicationTable: String = "deduplication"
+  
   def composerDocraptorEndpoint: String = s"http://$wiremockContainerName:$wiremockHttpPort/docraptor"
 
   lazy val composerContainerName: String = ComposerKit.nextContainerName("composer")
@@ -37,6 +38,8 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
     s"852955754882.dkr.ecr.eu-west-1.amazonaws.com/composer:${BuildInfo.version}",
     composerContainerName)
     .withEnv(
+      s"DEDUPLICATION_TABLE=$composerDeduplicationTable",
+      s"DEDUPLICATION_DYNAMO_DB_ENDPOINT=http://$dynamoDbContainerName:$dynamoDbPort",
       "JAVA_OPTS=-Dlogback.configurationFile=logback-local.xml",
       s"KAFKA_BOOTSTRAP_SERVERS=$kafkaPublicEndpoint",
       s"SCHEMA_REGISTRY_ENDPOINT=http://$schemaRegistryContainerName:$schemaRegistryPort",
@@ -52,6 +55,7 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
       List(HostConfig.Bind.from(s"""${sys.props("user.home")}/.aws""").to("/sbin/.aws").build()))
     .withReadyChecker(HttpResponseCode(port = composerPort, path = "/admin/health", code = 200)
       .looped(10, 5.seconds))
+    .withDependencies(zookeeperContainer, kafkaContainer, schemaRegistryContainer, dynamoDbContainer)
     .toContainer
 
 }
