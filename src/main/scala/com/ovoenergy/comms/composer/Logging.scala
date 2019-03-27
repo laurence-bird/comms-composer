@@ -1,14 +1,18 @@
 package com.ovoenergy.comms.composer
 
+import fs2.kafka._
 import cats.{Contravariant, Show, Traverse}
 import cats.syntax.all._
-import com.ovoenergy.comms.model.{CommManifest, LoggableEvent, TemplateManifest}
+
 import org.slf4j.{Logger, LoggerFactory, MDC}
 
-import ch.qos.logback.core.PropertyDefinerBase
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.producer.RecordMetadata
+
 import com.amazonaws.auth.{AWSCredentialsProvider, DefaultAWSCredentialsProviderChain}
 import com.amazonaws.regions.{AwsRegionProvider, DefaultAwsRegionProviderChain}
 
+import com.ovoenergy.comms.model.{CommManifest, LoggableEvent, TemplateManifest}
 trait Logging {
 
   val log: Logger = LoggerFactory.getLogger(getClass)
@@ -83,6 +87,23 @@ object Loggable {
   case class Prefixed[A](prefix: String, nested: A)
 
   case class Capitalized[A](nested: A)
+
+  def logContext[A](a: A)(implicit la: Loggable[A]): Seq[(String, String)] = {
+    la.mdcMap(a).toSeq
+  }
+
+  def logContext[A1, A2](a1: A1, a2: A2)(
+      implicit la1: Loggable[A1],
+      la2: Loggable[A2]): Seq[(String, String)] = {
+    (la1.mdcMap(a1) ++ la2.mdcMap(a2)).toSeq
+  }
+
+  def logContext[A1, A2, A3](a1: A1, a2: A2, a3: A3)(
+      implicit la1: Loggable[A1],
+      la2: Loggable[A2],
+      la3: Loggable[A3]): Seq[(String, String)] = {
+    (la1.mdcMap(a1) ++ la2.mdcMap(a2) ++ la3.mdcMap(a3)).toSeq
+  }
 
   /**
     * Prefix the logged keys with the given prefix.
@@ -234,6 +255,30 @@ object Loggable {
       "templateId" -> tm.id,
       "templateVersion" -> tm.version
     )
+  }
+
+  implicit def loggableRecord[K, V](
+      implicit valueLoggable: Loggable[V]): Loggable[ConsumerRecord[K, V]] =
+    Loggable.instance[ConsumerRecord[K, V]] { consumerRecord =>
+      Map(
+        "kafkaTopic" -> consumerRecord.topic(),
+        "kafkaPartition" -> consumerRecord.partition().toString,
+        "kafkaOffset" -> consumerRecord.offset().toString
+      ) ++ valueLoggable.mdcMap(consumerRecord.value)
+    }
+
+  implicit def loggableRecordMetadata: Loggable[RecordMetadata] =
+    Loggable.instance[RecordMetadata] { recordMetadata =>
+      Map(
+        "kafkaTopic" -> recordMetadata.topic(),
+        "kafkaPartition" -> recordMetadata.partition().toString,
+        "kafkaOffset" -> recordMetadata.offset().toString
+      )
+    }
+
+  implicit def loggableProducerRecord[K, V](
+      implicit vl: Loggable[V]): Loggable[ProducerRecord[K, V]] = Loggable.instance { pr =>
+    vl.mdcMap(pr.value)
   }
 
 }

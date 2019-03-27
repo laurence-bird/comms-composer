@@ -1,4 +1,5 @@
-package com.ovoenergy.comms.composer.kafka
+package com.ovoenergy.comms.composer
+package kafka
 
 import java.util.concurrent._
 
@@ -40,10 +41,14 @@ import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializ
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.reflect.ClassTag
+
+import Loggable._
+import ShowInstances._
 
 trait Kafka[F[_]] {
-  def stream[In <: OrchestratedEventV3: SchemaFor: FromRecord: ClassTag, Out: ToRecord](
+  def stream[
+      In <: OrchestratedEventV3: SchemaFor: FromRecord: Loggable: Show,
+      Out: ToRecord: Loggable](
       in: Topic[In],
       out: Topic[Out],
       process: In => F[Out]): Stream[F, Unit]
@@ -79,29 +84,12 @@ object Kafka {
       cs: ContextShift[F],
       timer: Timer[F]): Kafka[F] = new Kafka[F] {
 
-    override def stream[In <: OrchestratedEventV3: SchemaFor: FromRecord: ClassTag, Out: ToRecord](
+    override def stream[
+        In <: OrchestratedEventV3: SchemaFor: FromRecord: Loggable: Show,
+        Out: ToRecord: Loggable](
         in: Topic[In],
         out: Topic[Out],
         process: In => F[Out]): Stream[F, Unit] = {
-
-      def consumerRecordLoggable[K, V](a: ConsumerRecord[K, V]) =
-        Map(
-          "kafkaTopic" -> a.topic(),
-          "kafkaPartition" -> a.partition().toString,
-          "kafkaOffset" -> a.offset().toString
-        ).toSeq
-
-      def recordMetadataLoggable(co: CommittableOffset[F]) =
-        Map(
-          "kafkaTopic" -> co.topicPartition.topic(),
-          "kafkaPartition" -> co.topicPartition.partition().toString,
-          "kafkaOffset" -> co.offsetAndMetadata.offset().toString
-        ).toSeq
-
-      implicit def committableOffsetShow: Show[CommittableOffset[F]] =
-        (t: CommittableOffset[F]) =>
-          s"topic=${t.topicPartition.topic()} partition=${t.topicPartition
-            .partition()} offset=${t.offsetAndMetadata.offset()}"
 
       def composerError(t: Throwable): ComposerError = t match {
         case ce: ComposerError => ce
@@ -196,7 +184,8 @@ object Kafka {
         _ <- consumer.partitionedStream.parJoinUnbounded
           .mapAsync(25) { (message: CommittableMessage[F, String, In]) =>
             val logConsumed =
-              log.info(consumerRecordLoggable(message.record): _*)("Consumed Kafka message")
+              log.info(logContext(message.record): _*)(
+                s"Consumed Kafka message ${message.record.show}")
 
             val produce = {
 
@@ -207,9 +196,11 @@ object Kafka {
                     val pm = ProducerMessage.one(record, message.committableOffset)
                     producer
                       .produce(pm)
-                      .flatTap(_.flatTap(res =>
-                        log.info(
-                          s"Sent record to Kafka topic ${res.records._2}, key ${message.record.key()}")))
+                      .flatTap(
+                        _.flatTap(res =>
+                          log.info(logContext(res.records._1, res.records._2): _*)(
+                            s"Sent record to Kafka topic ${res.records._2.show}"
+                        )))
                       .map(_.map(_.passthrough))
                   }
 
@@ -217,14 +208,14 @@ object Kafka {
                 .protect(
                   message.record.value.metadata.eventId,
                   handleMessage,
-                  log.warn("eventId" -> message.record.value.metadata.eventId)(
+                  log.warn(logContext(message.record): _*)(
                     s"Skip duplicate event: ${message.record.value.metadata.eventId}") *> message.committableOffset
                     .pure[F]
                     .pure[F]
                 )
                 .handleErrorWith { err =>
-                  val logFailure = log.warn(consumerRecordLoggable(message.record): _*)(
-                    s"Error processing Kafka record. $err")
+                  val logFailure =
+                    log.warn(logContext(message.record): _*)(s"Error processing Kafka record. $err")
 
                   val createFailed = failedEvent(message.record.value, composerError(err))
                     .map(ProducerRecord(config.topics.failed.name, message.record.key, _))

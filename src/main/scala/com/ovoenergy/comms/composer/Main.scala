@@ -46,6 +46,7 @@ import http.{AdminRestApi, RenderRestApi}
 import logic.{Email, Print, Sms}
 import rendering.{HandlebarsRendering, HandlebarsWrapper, PdfRendering, Rendering}
 
+import ShowInstances._
 object Main extends IOApp {
 
   def mainExecutionContextStream: Stream[IO, ExecutionContext] = {
