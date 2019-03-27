@@ -6,21 +6,11 @@ Composes a comms payload given information about what template to use and some c
 
 Currently composes email and SMS.  The intention is that as other flavours of comms are added (e.g. letters, push notifications), all the templating goes on here.
 
-## Running it locally
-
-The following environment variables are required to run the service locally:
-* KAFKA_HOSTS
-  * Hosts in the format host1:9092,host2:9092
-
-You can run the service directly with SBT via `sbt run` or by running the docker image:
-* `sbt docker:publishLocal`
-* `docker-compose up`
-
 ## Tests
 
 `sbt test` to run the unit tests.
 
-`sbt dockerComposeTest` to run the service tests. These involve running the service and its dependencies (Kafka, ZooKeeper and a fake S3 API) using docker-compose.
+`sbt servicetest:test` to run the service tests. These involve running the service and its dependencies (Kafka, ZooKeeper and a fake S3 API) using docker-compose.
 
 ## Deployment
 
