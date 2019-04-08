@@ -117,6 +117,15 @@ lazy val composer = (project in file("."))
     dockerRepository := Some("852955754882.dkr.ecr.eu-west-1.amazonaws.com"),
     dockerUpdateLatest := true,
 
+    javaOptions in Universal ++= Seq(
+      "-Dcom.sun.management.jmxremote",
+      "-Dcom.sun.management.jmxremote.port=9999",
+      "-Dcom.sun.management.jmxremote.rmi.port=9999",
+      "-Dcom.sun.management.jmxremote.local.only=false",
+      "-Dcom.sun.management.jmxremote.authenticate=false",
+      "-Dcom.sun.management.jmxremote.ssl=false"
+    ),
+
     Ecr / region := Region.getRegion(Regions.EU_WEST_1),
     Ecr / repositoryName := (Docker / packageName).value,
     Ecr / repositoryTags ++= Seq(version.value),
