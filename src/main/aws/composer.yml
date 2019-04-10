@@ -159,8 +159,8 @@ Resources:
       NetworkMode: awsvpc
       RequiresCompatibilities:
       - FARGATE
-      Cpu: 512
-      Memory: 1GB
+      Cpu: 2048
+      Memory: 4GB
       ContainerDefinitions:
       - Name: composer
         Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/composer:${Version}"

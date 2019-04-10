@@ -31,7 +31,7 @@ object Dependencies {
 
   object fs2 {
     private val fs2Version = "1.0.4"
-    private val fs2KafkaVersion = "0.19.4"
+    private val fs2KafkaVersion = "0.19.9"
 
     lazy val core = "co.fs2" %% "fs2-core" % fs2Version
     lazy val io = "co.fs2" %% "fs2-io" % fs2Version
@@ -47,8 +47,8 @@ object Dependencies {
     private val commsKafkaMessagesVersion = "1.79.4"
     private val commsTemplatesVersion = "0.33"
     private val commsDockerTestkitVersion = "1.8.11"
-    private val commsAwsVersion = "0.2.7"
-    private val commsDeduplicationVersion = "0.1.7"
+    private val commsAwsVersion = "0.2.12"
+    private val commsDeduplicationVersion = "0.1.9"
 
     lazy val kafkaSerializationCore = "com.ovoenergy" %% "kafka-serialization-core" % kafkaSerializationVersion
     lazy val kafkaSerializationAvro = "com.ovoenergy" %% "kafka-serialization-avro" % kafkaSerializationVersion
@@ -77,7 +77,7 @@ object Dependencies {
 
   object http4s {
 
-    private val version = "0.20.0-M6"
+    private val version = "0.20.0-RC1"
 
     lazy val core = "org.http4s" %% "http4s-core" % version
     lazy val client = "org.http4s" %% "http4s-client" % version

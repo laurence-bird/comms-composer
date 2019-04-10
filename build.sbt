@@ -5,13 +5,13 @@ import com.amazonaws.services.cloudformation.model._
 lazy val ServiceTest = config("servicetest") extend Test
 lazy val IT = config("it") extend Test
 
-lazy val awsJavaSdkVersion = "1.11.419"
+lazy val awsJavaSdkVersion = "1.11.534"
 
 lazy val composer = (project in file("."))
   .enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, AshScriptPlugin, DockerPlugin, EcrPlugin, CloudFormationPlugin)
   .configs(ServiceTest, IT)
   .settings(
-    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.9"),
+    addCompilerPlugin("org.spire-math" %% "kind-projector" % "0.9.10"),
 
     name := "composer",
     organization := "com.ovoenergy.comms",

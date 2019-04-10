@@ -103,7 +103,6 @@ object Main extends IOApp {
       amazonS3: AmazonS3Client,
       logger: SelfAwareStructuredLogger[IO],
       deduplication: ProcessingStore[IO, String]) = {
-    val loggingHttpClient: Client[IO] = RequestLogger[IO](false, false)(httpClient)
 
     implicit val ec = mainEc
     implicit val hash: Hash[IO] = Hash[IO]
@@ -112,10 +111,10 @@ object Main extends IOApp {
     implicit val rendering: Rendering[IO] =
       Rendering[IO](
         HandlebarsRendering(HandlebarsWrapper.apply),
-        PdfRendering[IO](loggingHttpClient, config.docRaptor))
+        PdfRendering[IO](httpClient, config.docRaptor))
 
     implicit val store: Store[IO] =
-      Store.fromHttpClient(loggingHttpClient, config.store, new Store.RandomSuffixKeys)
+      Store.fromHttpClient(httpClient, config.store, new Store.RandomSuffixKeys)
 
     implicit val templatesContext: TemplatesContext = {
       val s3Client = new AmazonS3ClientWrapper(amazonS3, config.templates.bucket.name)
