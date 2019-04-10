@@ -60,6 +60,8 @@ object Main extends IOApp {
       .withUserAgent(
         `User-Agent`(AgentProduct(s"ovo-energy/comms/${BuildInfo.name}", Some(BuildInfo.version))))
       .withResponseHeaderTimeout(60.seconds)
+      .withMaxTotalConnections(256)
+      .withMaxConnectionsPerRequestKey(_ => 256)
       .stream
   }
 
