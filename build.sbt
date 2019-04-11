@@ -48,7 +48,6 @@ lazy val composer = (project in file("."))
       "com.amazonaws" % "aws-java-sdk-s3" % awsJavaSdkVersion,
       "com.amazonaws" % "aws-java-sdk-dynamodb" % awsJavaSdkVersion,
       "com.amazonaws" % "aws-java-sdk-kms" % awsJavaSdkVersion,
-      "org.apache.kafka" % "kafka-clients" % "2.0.1",
     ),
 
     excludeDependencies ++= Seq(
@@ -81,6 +80,7 @@ lazy val composer = (project in file("."))
       ovoEnergy.kafkaSerializationCats,
       ovoEnergy.kafkaSerializationAvro,
       ovoEnergy.kafkaSerializationAvro4s,
+      kafkaClients,
       ovoEnergy.commsMessages,
       ovoEnergy.commsTemplates,
       ovoEnergy.commsAwsS3,

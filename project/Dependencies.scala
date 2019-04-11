@@ -6,6 +6,7 @@ object Dependencies {
   lazy val s3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % "1.11.519"
   lazy val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
   lazy val wiremock = "com.github.tomakehurst" % "wiremock-standalone" % "2.19.0"
+  lazy val kafkaClients = "org.apache.kafka" % "kafka-clients" % "2.2.0"
 
   object scalacheck {
     lazy val shapeless = "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % "1.2.0"
@@ -42,7 +43,7 @@ object Dependencies {
 
   object ovoEnergy {
 
-    private val kafkaSerializationVersion = "0.4.1"
+    private val kafkaSerializationVersion = "0.5.0"
     private val commsKafkaTestHelperVersion = "3.21"
     private val commsKafkaMessagesVersion = "1.79.4"
     private val commsTemplatesVersion = "0.33"
