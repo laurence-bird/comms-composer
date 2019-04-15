@@ -31,7 +31,7 @@ object model {
     def chooseSender(template: Templates.Email): EmailSender =
       template.sender.getOrElse(defaultSender)
 
-    val defaultSender = EmailSender("Ovo Energy", "no-reply@ovoenergy.com")
+    val defaultSender = EmailSender("OVO Energy", "no-reply@ovoenergy.com")
 
     case class Subject(content: String)
     case class HtmlBody(content: String)
