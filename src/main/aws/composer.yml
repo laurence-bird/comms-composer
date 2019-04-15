@@ -49,14 +49,12 @@ Resources:
             Resource:
             - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs'
             - !Sub 'arn:aws:s3:::${Environment}-ovo-comms-pdfs/*'
-
       - PolicyName: write-rendered-content-bucket
         PolicyDocument:
           Statement:
           - Effect: Allow
             Action:
             - 's3:PutObject'
-
             Resource:
             - Fn::ImportValue:
                 !Sub "${Environment}-RenderedContent-Arn"
@@ -65,7 +63,6 @@ Resources:
               - BucketArn:
                   Fn::ImportValue:
                     !Sub "${Environment}-RenderedContent-Arn"
-
       - PolicyName: read-credstash
         PolicyDocument:
           Statement:
@@ -80,6 +77,19 @@ Resources:
             - 'dynamodb:Query'
             Resource:
             - !Sub "arn:aws:dynamodb:eu-west-1:${AWS::AccountId}:table/credential-store"
+      - PolicyName: read-ssm-secrets
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'ssm:Describe*'
+            - 'ssm:List*'
+            Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:*"
+          - Effect: Allow
+            Action:
+            - 'ssm:Get*'
+            Resource:
+            - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/*"
 
       - PolicyName: read-aiven-bucket
         PolicyDocument:

@@ -2,11 +2,16 @@ package com.ovoenergy.comms.composer
 package kafka
 
 import java.util.concurrent._
+import java.time.{Duration => JtDuration}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 import cats.{Id, Show}
 import cats.data.NonEmptyList
-import cats.effect.{ConcurrentEffect, ContextShift, Timer}
 import cats.implicits._
+import cats.effect._
+import cats.effect.implicits._
+
 import com.ovoenergy.comms.composer.Time
 import com.ovoenergy.comms.composer.kafka.Kafka.Topic
 import com.ovoenergy.comms.composer.model.ComposerError
@@ -31,7 +36,7 @@ import com.ovoenergy.comms.logging._
 import avro._
 import avro4s._
 import com.ovoenergy.comms.model._
-import types.OrchestratedEventV3
+import types.{OrchestratedEventV3, ComposedEventV3}
 import com.sksamuel.avro4s.{FromRecord, SchemaFor, ToRecord}
 import fs2.Stream
 import fs2.kafka._
@@ -39,8 +44,7 @@ import io.chrisdavenport.log4cats.StructuredLogger
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
+import metrics.Reporter
 
 import Loggable._
 import ShowInstances._
@@ -48,7 +52,7 @@ import ShowInstances._
 trait Kafka[F[_]] {
   def stream[
       In <: OrchestratedEventV3: SchemaFor: FromRecord: Loggable: Show,
-      Out: ToRecord: Loggable](
+      Out <: ComposedEventV3: ToRecord: Loggable](
       in: Topic[In],
       out: Topic[Out],
       process: In => F[Out]): Stream[F, Unit]
@@ -75,7 +79,7 @@ object Kafka {
       groupId: String,
       topics: Topics)
 
-  def apply[F[_]](
+  def apply[F[_]: Reporter](
       config: Config,
       time: Time[F],
       deduplication: ProcessingStore[F, String],
@@ -86,7 +90,7 @@ object Kafka {
 
     override def stream[
         In <: OrchestratedEventV3: SchemaFor: FromRecord: Loggable: Show,
-        Out: ToRecord: Loggable](
+        Out <: ComposedEventV3: ToRecord: Loggable](
         in: Topic[In],
         out: Topic[Out],
         process: In => F[Out]): Stream[F, Unit] = {
@@ -183,26 +187,76 @@ object Kafka {
         feedbackProducer <- producerStream[F].using(producerSettings[Feedback])
         _ <- consumer.partitionedStream.parJoinUnbounded
           .mapAsync(128) { (message: CommittableMessage[F, String, In]) =>
+            val orchestrated: OrchestratedEventV3 = message.record.value
+
+            val channel = orchestrated match {
+              case _: OrchestratedEmailV4 => Email.some
+              case _: OrchestratedSMSV3 => SMS.some
+              case _: OrchestratedPrintV2 => Print.some
+            }
+
+            val metricsTags = Map(
+              "template-id" -> orchestrated.metadata.templateManifest.id,
+              "template-version" -> orchestrated.metadata.templateManifest.version,
+              "channel" -> channel.toString.toLowerCase
+            )
+
             val logConsumed =
               log.info(logContext(message.record): _*)(
                 s"Consumed Kafka message ${message.record.show}")
 
             val produce = {
 
-              val handleMessage: F[F[fs2.kafka.CommittableOffset[F]]] =
-                process(message.record.value)
+              val recordConsumptionLatency: F[Unit] =
+                (
+                  time.now.map(now => JtDuration.between(orchestrated.metadata.createdAt, now)),
+                  Reporter[F].timer(
+                    "consumption-latency",
+                    metricsTags
+                  )
+                ).mapN((duration, timer) => timer.record(duration)).flatten
+
+              def recordProcessingTime[A](fa: F[A]): F[A] =
+                time.now
+                  .bracket(_ => fa) { start =>
+                    (
+                      time.now.map(now => JtDuration.between(orchestrated.metadata.createdAt, now)),
+                      Reporter[F].timer(
+                        "processing-time",
+                        metricsTags
+                      )
+                    ).mapN((duration, timer) => timer.record(duration)).flatten
+                  }
+
+              def recordTimeToNextmessage[A](nextMessage: Out): F[Unit] = {
+                val duration = JtDuration.between(
+                  orchestrated.metadata.createdAt,
+                  nextMessage.metadata.createdAt
+                )
+
+                Reporter[F]
+                  .timer(
+                    "time-to-next-message",
+                    metricsTags
+                  )
+                  .flatMap(_.record(duration))
+              }
+
+              val handleMessage: F[F[fs2.kafka.CommittableOffset[F]]] = {
+                recordConsumptionLatency *> recordProcessingTime(process(message.record.value))
                   .flatMap { result: Out =>
                     val record = ProducerRecord(out.name, message.record.key, result)
                     val pm = ProducerMessage.one(record, message.committableOffset)
-                    producer
+
+                    recordTimeToNextmessage(result) *> producer
                       .produce(pm)
-                      .flatTap(
-                        _.flatTap(res =>
-                          log.info(logContext(res.records._1, res.records._2): _*)(
-                            s"Sent record to Kafka topic ${res.records._2.show}"
-                        )))
+                      .flatTap(_.flatTap(res =>
+                        log.info(logContext(res.records._1, res.records._2): _*)(
+                          s"Sent record to Kafka topic ${res.records._2.show}"
+                      )))
                       .map(_.map(_.passthrough))
                   }
+              }
 
               deduplication
                 .protect(

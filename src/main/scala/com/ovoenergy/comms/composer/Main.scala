@@ -34,6 +34,7 @@ import com.ovoenergy.comms.templates._
 import com.ovoenergy.comms.deduplication.ProcessingStore
 import com.ovoenergy.comms.composer.kafka.Kafka
 
+import metrics._
 import cache._
 import s3._
 import retriever._
@@ -102,9 +103,11 @@ object Main extends IOApp {
       httpClient: Client[IO],
       amazonS3: AmazonS3Client,
       logger: SelfAwareStructuredLogger[IO],
-      deduplication: ProcessingStore[IO, String]) = {
+      deduplication: ProcessingStore[IO, String],
+      reporter: Reporter[IO]) = {
 
     implicit val ec = mainEc
+    implicit val implicitReporter: Reporter[IO] = reporter
     implicit val hash: Hash[IO] = Hash[IO]
     implicit val time: Time[IO] = Time[IO]
 
@@ -169,6 +172,7 @@ object Main extends IOApp {
 
     implicit val ec = ExecutionContext.global
 
+    import scala.reflect.internal.Reporter
     val stream: Stream[IO, ExitCode] = for {
       config <- Stream.eval(Config.load[IO])
       mainEc <- mainExecutionContextStream
@@ -177,8 +181,9 @@ object Main extends IOApp {
       logger <- Stream.eval(Slf4jLogger.create[IO])
       dynamoDb <- dynamoDbStream(config.deduplicationDynamoDbEndpoint, config.store.region)
       deduplication = ProcessingStore[IO, String, String](config.deduplication, dynamoDb)
+      reporter <- Stream.resource(Reporter.create[IO](config.datadog))
       _ <- Stream.eval(logger.info(s"Config: ${config}"))
-      result <- buildStream(config, mainEc, httpClient, amazonS3, logger, deduplication)
+      result <- buildStream(config, mainEc, httpClient, amazonS3, logger, deduplication, reporter)
     } yield result
 
     stream.compile.drain.as(ExitCode.Success)

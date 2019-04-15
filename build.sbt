@@ -57,6 +57,8 @@ lazy val composer = (project in file("."))
     ),
 
     libraryDependencies ++= Seq(
+      catsTime,
+      scalaJava8Compat,
       fs2.core,
       fs2.kafkaClient,
       ciris.core,
@@ -64,7 +66,7 @@ lazy val composer = (project in file("."))
       ciris.catsEffect,
       ciris.credstash,
       ciris.kafka,
-      ciris.kafka,
+      ciris.awsSsm,
       circe.core,
       circe.generic,
       circe.parser,
@@ -96,6 +98,8 @@ lazy val composer = (project in file("."))
       logging.loggingLog4cats,
       logging.log4jOverSlf4j,
       logging.jclOverSlf4j,
+      micrometer.core,
+      micrometer.registryDatadog,
       http4s.blazeClient % Test,
       scalacheck.shapeless % Test,
       scalacheck.toolboxDatetime % Test,

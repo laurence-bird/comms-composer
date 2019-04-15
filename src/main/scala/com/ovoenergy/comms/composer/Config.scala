@@ -15,6 +15,7 @@ import cats.effect.Sync
 import ciris._
 import ciris.cats.effect._
 import ciris.credstash.credstashF
+import ciris.aws.ssm
 import ciris.aiven.kafka.aivenKafkaSetup
 import CirisAws._
 import com.ovoenergy.comms.composer.kafka.Kafka
@@ -35,7 +36,8 @@ case class Config(
     templates: TemplatesConfig,
     docRaptor: DocRaptorConfig,
     deduplication: DeduplicationConfig[String],
-    deduplicationDynamoDbEndpoint: Option[Uri] // TODO Add endpoint override indeduplication
+    deduplicationDynamoDbEndpoint: Option[Uri], // TODO Add endpoint override indeduplication
+    datadog: Config.Datadog
 )
 
 object Config {
@@ -69,6 +71,52 @@ object Config {
 
     implicit val configDecoder: ConfigDecoder[String, Env] =
       ConfigDecoder.fromOption("ENV")(fromString)
+  }
+
+  case class Datadog(
+      prefix: String = "",
+      tags: Map[String, String] = Map.empty,
+      rate: FiniteDuration = 10.seconds,
+      endpoint: Uri = Uri(),
+      apiKey: String = "",
+      applicationKey: String = ""
+  )
+  object Datadog {
+
+    def load[F[_]: Sync](envOpt: Option[Env]) = {
+      val loadFromUnknownEnvironment = loadConfig(
+        envF[F, String](s"DATADOG_API_KEY"),
+        envF[F, String](s"DATADOG_APPLICATION_KEY"),
+      ) { (apiKey, applicationKey) =>
+        Datadog(
+          "comms.service.composer.",
+          Map("team" -> "comms", "environment" -> "unknown", "service" -> "composer"),
+          10.seconds,
+          Uri.uri("https://app.datadoghq.com"),
+          apiKey,
+          applicationKey
+        )
+      }
+
+      def loadFromKnownEnvironment(env: Env) = {
+        val e = env.toStringLowerCase
+        loadConfig(
+          ssm.paramF[F, String](s"$e.datadog_api_key"),
+          ssm.paramF[F, String](s"$e.datadog_application_key")
+        ) { (apiKey, applicationKey) =>
+          Datadog(
+            "comms.service.composer.",
+            Map("team" -> "comms", "environment" -> e, "service" -> "composer"),
+            10.seconds,
+            Uri.uri("https://app.datadoghq.com"),
+            apiKey,
+            applicationKey
+          )
+        }
+      }
+
+      envOpt.fold(loadFromUnknownEnvironment)(loadFromKnownEnvironment)
+    }
   }
 
   def load[F[_]: Sync]: F[Config] = {
@@ -105,61 +153,70 @@ object Config {
           credstashF[F, Secret[String]]()(
             s"${environment.toStringLowerCase}.aiven.schema_registry.password"),
           credstashF[F, Secret[String]]()(s"${environment.toStringLowerCase}.docraptor.api_key"),
-          envF[F, String]("DEDUPLICATION_TABLE")
-        ) { (awsRegion, kafkaSSL, schemaRegistryPassword, docRaptorApiKey, deduplicationTable) =>
-          val docRaptor = DocRaptorConfig(
-            docRaptorApiKey.value,
-            Uri.uri("https://docraptor.com"),
-            isTest = environment == Uat
-          )
-
-          val storeBucket = Bucket(s"ovo-comms-rendered-content-${environment.toStringLowerCase}")
-          val store = Store.Config(storeBucket, awsRegion)
-
-          val templatesBucket = Bucket("ovo-comms-templates")
-          val templates = TemplatesConfig(templatesBucket)
-
-          val kafka = {
-
-            val kafkaBootstrapServers = environment match {
-              case Uat => "kafka-uat.ovo-uat.aivencloud.com:13581"
-              case Prd => "kafka-prd.ovo-prd.aivencloud.com:21556"
-            }
-
-            val schemaRegistryEndpoint = environment match {
-              case Uat => "https://kafka-uat.ovo-uat.aivencloud.com:13584"
-              case Prd => "https://kafka-prd.ovo-prd.aivencloud.com:21559"
-            }
-
-            val schemaRegistry = SchemaRegistryClientSettings(
-              schemaRegistryEndpoint,
-              "comms-platform-service-user",
-              schemaRegistryPassword.value
+          envF[F, String]("DEDUPLICATION_TABLE"),
+          Config.Datadog.load[F](Some(environment))
+        ) {
+          (
+              awsRegion,
+              kafkaSSL,
+              schemaRegistryPassword,
+              docRaptorApiKey,
+              deduplicationTable,
+              datadog) =>
+            val docRaptor = DocRaptorConfig(
+              docRaptorApiKey.value,
+              Uri.uri("https://docraptor.com"),
+              isTest = environment == Uat
             )
 
-            Kafka.Config(
-              kafkaSSL.properties,
-              schemaRegistry,
-              kafkaBootstrapServers,
-              groupId,
-              topics
-            )
-          }
+            val storeBucket = Bucket(s"ovo-comms-rendered-content-${environment.toStringLowerCase}")
+            val store = Store.Config(storeBucket, awsRegion)
 
-          Config(
-            http,
-            kafka,
-            store,
-            templates,
-            docRaptor,
-            DeduplicationConfig(
-              tableName = DeduplicationConfig.TableName(deduplicationTable),
-              processorId = "composer",
-              maxProcessingTime = 5.seconds,
-              ttl = 35.days,
-            ),
-            None
-          )
+            val templatesBucket = Bucket("ovo-comms-templates")
+            val templates = TemplatesConfig(templatesBucket)
+
+            val kafka = {
+
+              val kafkaBootstrapServers = environment match {
+                case Uat => "kafka-uat.ovo-uat.aivencloud.com:13581"
+                case Prd => "kafka-prd.ovo-prd.aivencloud.com:21556"
+              }
+
+              val schemaRegistryEndpoint = environment match {
+                case Uat => "https://kafka-uat.ovo-uat.aivencloud.com:13584"
+                case Prd => "https://kafka-prd.ovo-prd.aivencloud.com:21559"
+              }
+
+              val schemaRegistry = SchemaRegistryClientSettings(
+                schemaRegistryEndpoint,
+                "comms-platform-service-user",
+                schemaRegistryPassword.value
+              )
+
+              Kafka.Config(
+                kafkaSSL.properties,
+                schemaRegistry,
+                kafkaBootstrapServers,
+                groupId,
+                topics
+              )
+            }
+
+            Config(
+              http,
+              kafka,
+              store,
+              templates,
+              docRaptor,
+              DeduplicationConfig(
+                tableName = DeduplicationConfig.TableName(deduplicationTable),
+                processorId = "composer",
+                maxProcessingTime = 5.seconds,
+                ttl = 35.days,
+              ),
+              None,
+              datadog,
+            )
         }
 
       case _ =>
@@ -175,7 +232,8 @@ object Config {
           envF[F, Secret[String]]("DOCRAPTOR_API_KEY"),
           envF[F, Option[Boolean]]("DOCRAPTOR_IS_TEST").mapValue(_.getOrElse(true)),
           envF[F, String]("DEDUPLICATION_TABLE"),
-          envF[F, Option[Uri]]("DEDUPLICATION_DYNAMO_DB_ENDPOINT")
+          envF[F, Option[Uri]]("DEDUPLICATION_DYNAMO_DB_ENDPOINT"),
+          Config.Datadog.load[F](None)
         ) {
           (
               awsRegion,
@@ -188,7 +246,8 @@ object Config {
               docraptorApiKey,
               docraptorIsTest,
               deduplicationTable,
-              deduplicationDynamoDbEndpointOpt
+              deduplicationDynamoDbEndpointOpt,
+              datadog
           ) =>
             val docraptor = DocRaptorConfig(
               url = docraptorEndpoint,
@@ -227,7 +286,8 @@ object Config {
                 maxProcessingTime = 5.seconds,
                 ttl = 35.days,
               ),
-              deduplicationDynamoDbEndpointOpt
+              deduplicationDynamoDbEndpointOpt,
+              datadog
             )
         }
     }.orRaiseThrowable
