@@ -220,7 +220,7 @@ object Kafka {
                 time.now
                   .bracket(_ => fa) { start =>
                     (
-                      time.now.map(now => JtDuration.between(orchestrated.metadata.createdAt, now)),
+                      time.now.map(now => JtDuration.between(start, now)),
                       Reporter[F].timer(
                         "processing-time",
                         metricsTags
