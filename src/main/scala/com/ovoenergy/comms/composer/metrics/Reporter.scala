@@ -34,37 +34,11 @@ object Reporter {
 
   def apply[F[_]](implicit ev: Reporter[F]): Reporter[F] = ev
 
-  def create[F[_]: Sync](c: Config.Datadog): Resource[F, Reporter[F]] = {
-    val tf = new ThreadFactory {
-      def newThread(r: Runnable): Thread = {
-        val t = new Thread(r)
-        t.setDaemon(true)
-        t
-      }
-    }
-
-    def datadogConfig(c: Config.Datadog): DatadogConfig =
-      new DatadogConfig {
-        override val apiKey = c.apiKey
-        override val applicationKey = c.applicationKey
-        override val enabled = true
-        override val step = java.time.Duration.ofSeconds(c.rate.toSeconds.toInt)
-        override val uri = c.endpoint.toString
-        // The parent of DatadogConfig need this abstract method to return null
-        // to apply the default value
-        def get(id: String): String = null
-      }
-
-    for {
-      registry <- Resource.make(
-        Sync[F].delay(
-          DatadogMeterRegistry
-            .builder(datadogConfig(c))
-            .build))(toStop => Sync[F].delay(toStop.stop))
-    } yield fromRegistry[F](registry, c)
+  def create[F[_]: Sync](c: Config.Metrics): Resource[F, Reporter[F]] = {
+    createMeterRegistry[F](c).map(registry => Reporter.fromRegistry(registry, c))
   }
 
-  def fromRegistry[F[_]](mx: MeterRegistry, config: Config.Datadog)(
+  def fromRegistry[F[_]](mx: MeterRegistry, config: Config.Metrics)(
       implicit F: Sync[F]): Reporter[F] =
     new Reporter[F] {
       // local tags overwrite global tags

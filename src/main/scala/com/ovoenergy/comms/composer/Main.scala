@@ -2,23 +2,27 @@ package com.ovoenergy.comms.composer
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
+import scala.util.Try
 import java.util.concurrent._
 
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.Id
 import cats.implicits._
 
-import org.http4s.Uri
+import org.http4s.{Uri, Request}
 import org.http4s.implicits._
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.Client
-import org.http4s.client.middleware.{Logger => RequestLogger}
+import org.http4s.client.middleware.{Logger => RequestLogger, Metrics => ClientMetrics}
 import org.http4s.server.Router
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.headers.{`User-Agent`, AgentProduct}
+import org.http4s.metrics.micrometer.{Config => Http4sMicrometerConfig, _}
 
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 import io.chrisdavenport.log4cats.SelfAwareStructuredLogger
+import io.micrometer.core.instrument.{MeterRegistry, Tags}
+
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
 import com.amazonaws.services.s3._
 import com.amazonaws.services.dynamodbv2._
@@ -50,20 +54,51 @@ import rendering.{HandlebarsRendering, HandlebarsWrapper, PdfRendering, Renderin
 import ShowInstances._
 object Main extends IOApp {
 
-  def mainExecutionContextStream: Stream[IO, ExecutionContext] = {
-    Stream
-      .bracket(IO(new ForkJoinPool(16)))(ex => IO(ex.shutdown()))
-      .map(ExecutionContext.fromExecutorService)
-  }
+  implicit val ec: ExecutionContext = ExecutionContext.global
 
-  def httpClientStream(implicit ec: ExecutionContext): Stream[IO, Client[IO]] = {
+  def httpClientStream(
+      meterRegistry: MeterRegistry,
+      metricsConfig: Config.Metrics): Stream[IO, Client[IO]] = {
     BlazeClientBuilder[IO](ec)
       .withUserAgent(
         `User-Agent`(AgentProduct(s"ovo-energy/comms/${BuildInfo.name}", Some(BuildInfo.version))))
-      .withResponseHeaderTimeout(60.seconds)
+      .withResponseHeaderTimeout(10.seconds)
       .withMaxTotalConnections(256)
       .withMaxConnectionsPerRequestKey(_ => 256)
       .stream
+      .flatMap { client =>
+        val config: Http4sMicrometerConfig = Http4sMicrometerConfig(
+          prefix = s"${metricsConfig.prefix}http4s.client.",
+          tags =
+            metricsConfig.tags.map { case (k, v) => Tags.of(k, v) }.foldLeft(Tags.empty)(_ and _)
+        )
+
+        val classifierFunc = { (request: Request[IO]) =>
+          // We want to measure S3 with dedicated name and tags
+          if (request.uri.host
+              .map(_.value)
+              .exists(x => x.contains("s3") && x.contains("amazonaws.com"))) {
+
+            Try(new AmazonS3URI(request.uri.renderString)).toOption.map { s3Uri =>
+              val bucket = s3Uri.getBucket
+              // To have a uniform name between PRD and UAT
+              val bucketNameTag = if (bucket.contains("ovo-comms-rendered-content")) {
+                "s3-bucket-name:ovo-comms-rendered-content"
+              }
+
+              s"s3[$bucketNameTag]"
+            }
+          } else {
+            None
+          }
+        }
+
+        val meteredClient = Micrometer[IO](meterRegistry, config).map { micrometer =>
+          ClientMetrics[IO](ops = micrometer, classifierF = classifierFunc)(client)
+        }
+
+        Stream.eval(meteredClient)
+      }
   }
 
   def s3ClientStream(endpoint: Option[Uri], region: Region): Stream[IO, AmazonS3Client] = {
@@ -99,14 +134,12 @@ object Main extends IOApp {
 
   def buildStream(
       config: Config,
-      mainEc: ExecutionContext,
       httpClient: Client[IO],
       amazonS3: AmazonS3Client,
       logger: SelfAwareStructuredLogger[IO],
       deduplication: ProcessingStore[IO, String],
       reporter: Reporter[IO]) = {
 
-    implicit val ec = mainEc
     implicit val implicitReporter: Reporter[IO] = reporter
     implicit val hash: Hash[IO] = Hash[IO]
     implicit val time: Time[IO] = Time[IO]
@@ -141,7 +174,6 @@ object Main extends IOApp {
 
     val http: Stream[IO, ExitCode] =
       BlazeServerBuilder[IO]
-        .withExecutionContext(mainEc)
         .bindHttp(config.http.port, config.http.host)
         .withHttpApp(routes)
         .serve
@@ -175,15 +207,15 @@ object Main extends IOApp {
     import scala.reflect.internal.Reporter
     val stream: Stream[IO, ExitCode] = for {
       config <- Stream.eval(Config.load[IO])
-      mainEc <- mainExecutionContextStream
-      httpClient <- httpClientStream(mainEc)
       amazonS3 <- s3ClientStream(config.store.s3Endpoint, config.store.region)
       logger <- Stream.eval(Slf4jLogger.create[IO])
       dynamoDb <- dynamoDbStream(config.deduplicationDynamoDbEndpoint, config.store.region)
       deduplication = ProcessingStore[IO, String, String](config.deduplication, dynamoDb)
-      reporter <- Stream.resource(Reporter.create[IO](config.datadog))
+      meterRegistry <- Stream.resource(metrics.createMeterRegistry[IO](config.metrics))
+      reporter = Reporter.fromRegistry[IO](meterRegistry, config.metrics)
+      httpClient <- httpClientStream(meterRegistry, config.metrics)
       _ <- Stream.eval(logger.info(s"Config: ${config}"))
-      result <- buildStream(config, mainEc, httpClient, amazonS3, logger, deduplication, reporter)
+      result <- buildStream(config, httpClient, amazonS3, logger, deduplication, reporter)
     } yield result
 
     stream.compile.drain.as(ExitCode.Success)

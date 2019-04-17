@@ -48,7 +48,9 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
       s"DOCRAPTOR_ENDPOINT=$composerDocraptorEndpoint",
       s"AWS_REGION=eu-west-1",
       s"DOCRAPTOR_API_KEY=FooBar",
-      s"DOCRAPTOR_IS_TEST=true"
+      s"DOCRAPTOR_IS_TEST=true",
+      s"DATADOG_API_KEY=foo",
+      s"DATADOG_APPLICATION_KEY=bar",
     )
     .withExposedPorts(composerPort)
     .withVolumeBindings(

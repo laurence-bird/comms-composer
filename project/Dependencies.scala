@@ -95,6 +95,8 @@ object Dependencies {
     lazy val blazeServer = "org.http4s" %% "http4s-blaze-server" % version
     lazy val circe = "org.http4s" %% "http4s-circe" % version
     lazy val dsl = "org.http4s" %% "http4s-dsl" % version
+
+    lazy val micrometerMetrics = "com.ovoenergy" %% "http4s-micrometer-metrics" % "0.0.5"
   }
 
   object ciris {

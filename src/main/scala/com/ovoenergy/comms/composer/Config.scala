@@ -37,7 +37,7 @@ case class Config(
     docRaptor: DocRaptorConfig,
     deduplication: DeduplicationConfig[String],
     deduplicationDynamoDbEndpoint: Option[Uri], // TODO Add endpoint override indeduplication
-    datadog: Config.Datadog
+    metrics: Config.Metrics
 )
 
 object Config {
@@ -73,28 +73,31 @@ object Config {
       ConfigDecoder.fromOption("ENV")(fromString)
   }
 
-  case class Datadog(
+  case class Metrics(
       prefix: String = "",
       tags: Map[String, String] = Map.empty,
       rate: FiniteDuration = 10.seconds,
       endpoint: Uri = Uri(),
       apiKey: String = "",
-      applicationKey: String = ""
+      applicationKey: String = "",
+      enabled: Boolean = true
   )
-  object Datadog {
+  object Metrics {
 
     def load[F[_]: Sync](envOpt: Option[Env]) = {
       val loadFromUnknownEnvironment = loadConfig(
         envF[F, String](s"DATADOG_API_KEY"),
         envF[F, String](s"DATADOG_APPLICATION_KEY"),
-      ) { (apiKey, applicationKey) =>
-        Datadog(
-          "comms.service.composer.",
-          Map("team" -> "comms", "environment" -> "unknown", "service" -> "composer"),
-          10.seconds,
-          Uri.uri("https://app.datadoghq.com"),
-          apiKey,
-          applicationKey
+        envF[F, Option[Boolean]](s"METRICS_DISABLED"),
+      ) { (apiKey, applicationKey, disabledOpt) =>
+        Metrics(
+          prefix = "comms.service.composer.",
+          tags = Map("team" -> "comms", "environment" -> "unknown", "service" -> "composer"),
+          rate = 10.seconds,
+          endpoint = Uri.uri("https://app.datadoghq.com"),
+          apiKey = apiKey,
+          applicationKey = applicationKey,
+          enabled = disabledOpt.map(!_).getOrElse(true)
         )
       }
 
@@ -102,15 +105,17 @@ object Config {
         val e = env.toStringLowerCase
         loadConfig(
           ssm.paramF[F, String](s"$e.datadog_api_key"),
-          ssm.paramF[F, String](s"$e.datadog_application_key")
-        ) { (apiKey, applicationKey) =>
-          Datadog(
-            "comms.service.composer.",
-            Map("team" -> "comms", "environment" -> e, "service" -> "composer"),
-            10.seconds,
-            Uri.uri("https://app.datadoghq.com"),
-            apiKey,
-            applicationKey
+          ssm.paramF[F, String](s"$e.datadog_application_key"),
+          envF[F, Option[Boolean]](s"METRICS_DISABLED"),
+        ) { (apiKey, applicationKey, disabledOpt) =>
+          Metrics(
+            prefix = "comms.service.composer.",
+            tags = Map("team" -> "comms", "environment" -> e, "service" -> "composer"),
+            rate = 10.seconds,
+            endpoint = Uri.uri("https://app.datadoghq.com"),
+            apiKey = apiKey,
+            applicationKey = applicationKey,
+            enabled = disabledOpt.map(!_).getOrElse(true)
           )
         }
       }
@@ -154,7 +159,7 @@ object Config {
             s"${environment.toStringLowerCase}.aiven.schema_registry.password"),
           credstashF[F, Secret[String]]()(s"${environment.toStringLowerCase}.docraptor.api_key"),
           envF[F, String]("DEDUPLICATION_TABLE"),
-          Config.Datadog.load[F](Some(environment))
+          Config.Metrics.load[F](Some(environment))
         ) {
           (
               awsRegion,
@@ -233,7 +238,7 @@ object Config {
           envF[F, Option[Boolean]]("DOCRAPTOR_IS_TEST").mapValue(_.getOrElse(true)),
           envF[F, String]("DEDUPLICATION_TABLE"),
           envF[F, Option[Uri]]("DEDUPLICATION_DYNAMO_DB_ENDPOINT"),
-          Config.Datadog.load[F](None)
+          Config.Metrics.load[F](None)
         ) {
           (
               awsRegion,

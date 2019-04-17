@@ -78,6 +78,7 @@ lazy val composer = (project in file("."))
       http4s.blazeServer,
       http4s.client,
       http4s.blazeClient,
+      http4s.micrometerMetrics,
       ovoEnergy.kafkaSerializationCore,
       ovoEnergy.kafkaSerializationCats,
       ovoEnergy.kafkaSerializationAvro,

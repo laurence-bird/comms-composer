@@ -208,27 +208,31 @@ object Kafka {
             val produce = {
 
               val recordConsumptionLatency: F[Unit] =
-                (
-                  time.now.map(now => JtDuration.between(orchestrated.metadata.createdAt, now)),
-                  Reporter[F].timer(
+                Reporter[F]
+                  .timer(
                     "consumption-latency",
                     metricsTags
                   )
-                ).mapN((duration, timer) => timer.record(duration)).flatten
+                  .flatMap { timer =>
+                    time.now
+                      .map(now => JtDuration.between(orchestrated.metadata.createdAt, now))
+                      .flatMap(timer.record)
+                  }
 
               def recordProcessingTime[A](fa: F[A]): F[A] =
-                time.now
-                  .bracket(_ => fa) { start =>
-                    (
-                      time.now.map(now => JtDuration.between(start, now)),
-                      Reporter[F].timer(
-                        "processing-time",
-                        metricsTags
-                      )
-                    ).mapN((duration, timer) => timer.record(duration)).flatten
+                Reporter[F]
+                  .timer(
+                    "processing-time",
+                    metricsTags
+                  )
+                  .flatMap { timer =>
+                    time.now.bracket(_ => fa) { start =>
+                      time.now.map(now => JtDuration.between(start, now)).flatMap(timer.record)
+                    }
                   }
 
               def recordTimeToNextmessage[A](nextMessage: Out): F[Unit] = {
+
                 val duration = JtDuration.between(
                   orchestrated.metadata.createdAt,
                   nextMessage.metadata.createdAt
@@ -269,7 +273,8 @@ object Kafka {
                 )
                 .handleErrorWith { err =>
                   val logFailure =
-                    log.warn(logContext(message.record): _*)(s"Error processing Kafka record. $err")
+                    log.warn(logContext(message.record, err): _*)(
+                      s"Error processing Kafka record. $err")
 
                   val createFailed = failedEvent(message.record.value, composerError(err))
                     .map(ProducerRecord(config.topics.failed.name, message.record.key, _))
