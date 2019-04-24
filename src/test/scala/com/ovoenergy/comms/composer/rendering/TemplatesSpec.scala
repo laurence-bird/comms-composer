@@ -115,7 +115,7 @@ class TemplatesSpec extends UnitSpec {
 
   it should "retrieve non existent sms template" in {
     Templates
-      .sms[IO](Effect[IO], ec, emptyTemplatesContext)
+      .sms[IO]
       .get(manifest)
       .attempt
       .futureValue
@@ -125,7 +125,7 @@ class TemplatesSpec extends UnitSpec {
 
   it should "retrieve non existent email template" in {
     Templates
-      .email[IO](Effect[IO], ec, emptyTemplatesContext)
+      .email[IO]
       .get(manifest)
       .attempt
       .futureValue
@@ -135,7 +135,7 @@ class TemplatesSpec extends UnitSpec {
 
   it should "retrieve non existent print template" in {
     Templates
-      .print[IO](Effect[IO], ec, emptyTemplatesContext)
+      .print[IO]
       .get(manifest)
       .attempt
       .futureValue
@@ -173,7 +173,7 @@ class TemplatesSpec extends UnitSpec {
 
   it should "retrieve non existent email channel template" in {
     Templates
-      .email[IO](Effect[IO], ec, partialTemplatesContext)
+      .email[IO, IO.Par]
       .get(manifest)
       .attempt
       .futureValue
@@ -183,7 +183,7 @@ class TemplatesSpec extends UnitSpec {
 
   it should "retrieve non existent print channel template" in {
     Templates
-      .print[IO](Effect[IO], ec, partialTemplatesContext)
+      .print[IO]
       .get(manifest)
       .attempt
       .futureValue

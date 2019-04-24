@@ -24,50 +24,64 @@ object model {
 
   type FailedOr[A] = Either[ComposerError, A]
 
+  case class TemplateFragmentId(value: String) extends AnyVal
+
+  case class TemplateFragment(value: String) extends AnyVal
+
+  case class RenderedFragment(value: String) extends AnyVal
+
+  // TODO Array[Byte] is mutable
+  case class RenderedPdfFragment(value: Array[Byte]) extends AnyVal
+
+  case class EmailTemplate(
+      subject: TemplateFragment,
+      htmlBody: TemplateFragment,
+      textBody: Option[TemplateFragment],
+      sender: Option[TemplateFragment]
+  )
+
+  object RenderedEmail {
+    case class Subject(uri: Uri) extends AnyVal
+    case class HtmlBody(uri: Uri) extends AnyVal
+    case class TextBody(uri: Uri) extends AnyVal
+  }
+
+  case class RenderedEmail(
+      sender: EmailSender,
+      subject: RenderedEmail.Subject,
+      htmlBody: RenderedEmail.HtmlBody,
+      textBody: Option[RenderedEmail.TextBody]
+  )
+
+  object RenderedSms {
+    case class Sender(content: String)
+    case class Body(uri: Uri)
+  }
+  case class RenderedSms(
+      sender: RenderedSms.Sender,
+      body: RenderedSms.Body,
+  )
+
+  object RenderedPrint {
+    // TODO Array is mutable
+    case class Body(uri: Uri)
+  }
+
+  // TODO What's about sender ???
+  case class RenderedPrint(
+      body: RenderedPrint.Body
+  )
+
+  case class PrintTemplate(
+      body: TemplateFragment
+  )
+
+  case class SmsTemplate(
+      body: TemplateFragment
+  )
+
   case class ComposerError(reason: String, errorCode: ErrorCode)
       extends RuntimeException(s"$errorCode - $reason")
-
-  object Email {
-    def chooseSender(template: Templates.Email): EmailSender =
-      template.sender.getOrElse(defaultSender)
-
-    val defaultSender = EmailSender("OVO Energy", "no-reply@ovoenergy.com")
-
-    case class Subject(content: String)
-    case class HtmlBody(content: String)
-    case class TextBody(content: String)
-    case class Sender(content: String)
-
-    case class Rendered(subject: Email.Subject, html: Email.HtmlBody, text: Option[Email.TextBody])
-  }
-
-  object Print {
-    case class PdfBody(content: Array[Byte])
-    case class HtmlBody(htmlBody: String)
-
-    case class RenderedPdf(fragment: PdfBody)
-
-    object RenderedPdf {
-      implicit def renderedPrintPdfCirceEncoder: Encoder[RenderedPdf] =
-        Encoder.encodeString.contramap[RenderedPdf] { x =>
-          // TODO: Sort me out, possible failure
-          Base64.getEncoder.encodeToString(x.fragment.content)
-        }
-
-      implicit def renderedPrintPdfCirceDecoder: Decoder[Print.RenderedPdf] =
-        decodeString
-          .emapTry(base64 => Try(Base64.getDecoder.decode(base64)))
-          .map(x => Print.RenderedPdf(Print.PdfBody(x)))
-
-    }
-  }
-
-  object SMS {
-    case class Sender(content: String)
-    case class Body(content: String)
-
-    case class Rendered(textBody: SMS.Body)
-  }
 
   trait Fragment[A] { self =>
     def content(a: A): Stream[Pure, Byte]
@@ -82,16 +96,11 @@ object model {
   }
 
   object Fragment {
+
     def strings: Fragment[String] = new Fragment[String] {
       // can't reuse the nio charset in `http4s.Charset`, it's private
       def content(s: String): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(s.getBytes(nioUtf8)))
       def contentType: ContentType = ContentType(MediaType.text.plain).withCharset(utf8)
-      def contentLength(s: String): Long = s.getBytes(utf8.nioCharset).length
-    }
-
-    def htmlStrings: Fragment[String] = new Fragment[String] {
-      def content(s: String): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(s.getBytes(nioUtf8)))
-      def contentType: ContentType = ContentType(html).withCharset(utf8)
       def contentLength(s: String): Long = s.getBytes(utf8.nioCharset).length
     }
 
@@ -101,22 +110,11 @@ object model {
       def contentLength(b: Array[Byte]): Long = b.length
     }
 
-    implicit val emailSubjectFragment: Fragment[Email.Subject] =
-      strings.contramap(_.content)
+    implicit val textFragment: Fragment[RenderedFragment] =
+      strings.contramap(_.value)
 
-    implicit val emailTextBodyFragment: Fragment[Email.TextBody] =
-      strings.contramap(_.content)
+    implicit val pdfFragment: Fragment[RenderedPdfFragment] =
+      pdfBytes.contramap(_.value)
 
-    implicit val emailHtmlBodyFragment: Fragment[Email.HtmlBody] =
-      htmlStrings.contramap(_.content)
-
-    implicit val printBodyFragment: Fragment[Print.PdfBody] =
-      pdfBytes.contramap(_.content)
-
-    implicit val smsSenderFragment: Fragment[SMS.Sender] =
-      strings.contramap(_.content)
-
-    implicit val smsBodyFragment: Fragment[SMS.Body] =
-      strings.contramap(_.content)
   }
 }

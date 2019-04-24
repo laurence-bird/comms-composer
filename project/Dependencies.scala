@@ -2,8 +2,8 @@ import sbt._
 
 object Dependencies {
 
-  lazy val handlebars = "com.github.jknack" % "handlebars" % "4.0.6"
-  lazy val s3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % "1.11.519"
+  lazy val handlebars = "com.github.jknack" % "handlebars" % "4.1.2"
+  lazy val s3Sdk = "com.amazonaws" % "aws-java-sdk-s3" % "1.11.531"
   lazy val shapeless = "com.chuusai" %% "shapeless" % "2.3.3"
   lazy val wiremock = "com.github.tomakehurst" % "wiremock-standalone" % "2.19.0"
   lazy val kafkaClients = "org.apache.kafka" % "kafka-clients" % "2.2.0"

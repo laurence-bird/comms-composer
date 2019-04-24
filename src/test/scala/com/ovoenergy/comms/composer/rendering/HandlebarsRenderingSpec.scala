@@ -49,11 +49,11 @@ class HandlebarsRenderingSpec extends UnitSpec with OptionValues {
     val htmlRendering = HandlebarsRendering.apply(handlebars)
 
     val now = ZonedDateTime.now()
-    val ht = HandlebarsTemplate("hi", requiredTemplateData)
+    val ht = model.TemplateFragment("hi")
 
     val result = htmlRendering.render(ht, now, emailTemplateData, fileName)
     result shouldBe 'right
-    contentInput shouldBe ht.rawExpandedContent
+    contentInput shouldBe ht.value
     fileNameInput shouldBe fileName
     contextInput.get("balance").value.asInstanceOf[Map[String, String]] shouldBe balanceMap
     contextInput.get("system").value.asInstanceOf[Map[String, String]] shouldBe Map(
@@ -95,11 +95,11 @@ class HandlebarsRenderingSpec extends UnitSpec with OptionValues {
     }
     val htmlRendering = HandlebarsRendering.apply(handlebars)
 
-    val ht = HandlebarsTemplate("hi", requiredTemplateData)
+    val ht = model.TemplateFragment("hi")
 
     val result = htmlRendering.render(ht, now, emailTemplateData, fileName)
     result shouldBe 'right
-    contentInput shouldBe ht.rawExpandedContent
+    contentInput shouldBe ht.value
     fileNameInput shouldBe fileName
     contextInput.get("system").value.asInstanceOf[Map[String, String]] shouldBe systemTdMap
     contextInput.get("profile").value.asInstanceOf[Map[String, String]] shouldBe profileTdMap

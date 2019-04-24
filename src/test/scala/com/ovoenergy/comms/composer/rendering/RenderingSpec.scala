@@ -43,21 +43,18 @@ class RenderingSpec extends UnitSpec with Arbitraries with TestGenerators with E
     ra <- genStringOfSize(10)
   } yield EmailTemplateData(td, cp, ra))
 
-  val requiredFields = RequiredTemplateData.obj(Map[String, RequiredTemplateData]())
-
-  val emailTemplate = EmailTemplate[Id](
+  val emailTemplate = Templates.Email(
     sender = None,
-    subject = HandlebarsTemplate(
+    subject = model.TemplateFragment(
       "Thanks for your payment of " +
         "{{#each payments}}" +
         "{{this.amount}}" +
         "{{else}}" +
         "NA" +
-        "{{/each}}",
-      requiredFields
+        "{{/each}}"
     ),
-    htmlBody = HandlebarsTemplate("You paid", requiredFields),
-    textBody = Some(HandlebarsTemplate("The amounts were", requiredFields))
+    htmlBody = model.TemplateFragment("You paid"),
+    textBody = Some(model.TemplateFragment("The amounts were"))
   )
 
   it should "Combine successfully rendered elements into a rendered email" in {
@@ -139,9 +136,7 @@ class RenderingSpec extends UnitSpec with Arbitraries with TestGenerators with E
 
   behavior of "renderSms"
 
-  val smsTemplate =
-    SMSTemplate[Id](
-      textBody = HandlebarsTemplate("{{firstName}} you paid £{{amount}}", requiredFields))
+  val smsTemplate = model.TemplateFragment("{{firstName}} you paid £{{amount}}")
 
   implicit val arbSmsTemplateData: Arbitrary[SMSTemplateData] = Arbitrary(for {
     td <- genMapTemplateData(3)
