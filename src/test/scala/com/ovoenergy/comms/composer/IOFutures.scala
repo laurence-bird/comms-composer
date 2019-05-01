@@ -1,13 +1,18 @@
 package com.ovoenergy.comms.composer
 
-import cats.effect.IO
+import scala.concurrent.ExecutionContext
+import scala.language.implicitConversions
+
+import cats.effect._
 
 import scala.util.{Success, Failure}
 import org.scalatest.concurrent.Futures
 
-import scala.language.implicitConversions
-
 trait IOFutures extends Futures {
+
+  implicit val ec: ExecutionContext = ExecutionContext.global
+  implicit val contextShift: ContextShift[IO] = IO.contextShift(ec)
+  implicit val timer: Timer[IO] = IO.timer(ec)
 
   implicit def convertIO[T](io: IO[T]): FutureConcept[T] =
     new FutureConcept[T] {

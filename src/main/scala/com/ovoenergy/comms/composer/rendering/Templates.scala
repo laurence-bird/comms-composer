@@ -20,17 +20,19 @@ import com.ovoenergy.comms.aws.s3.model.{Bucket, Key, Error => S3Error}
 import com.ovoenergy.comms.composer.model._
 
 trait Templates[F[_]] {
-
   def loadTemplateFragment(id: TemplateFragmentId): F[Option[TemplateFragment]]
 }
 
 object Templates {
 
   def apply[F[_]: Async](s3: S3[F], bucket: Bucket): Templates[F] = new Templates[F] {
+
+    private def keyFor(id: TemplateFragmentId) = Key(id.path)
+
     def loadTemplateFragment(
         id: TemplateFragmentId
     ): F[Option[TemplateFragment]] = {
-      EitherT(s3.getObjectAs(bucket = bucket, key = Key(id.value))((_, data) =>
+      EitherT(s3.getObjectAs(bucket = bucket, key = keyFor(id))((_, data) =>
         data.through(utf8Decode).compile.string.map(TemplateFragment.apply)))
         .map(_.some)
         .leftFlatMap { error =>

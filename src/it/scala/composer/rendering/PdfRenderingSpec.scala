@@ -1,24 +1,29 @@
 package com.ovoenergy.comms.composer
 package rendering
 
-import model.Print
-import rendering.PdfRendering.DocRaptorConfig
-import cats.effect.{IO, Timer}
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.concurrent.ExecutionContext.Implicits.global
+
+import cats._
 import cats.implicits._
-import fs2._
-import ciris._
 import cats.effect._
+import cats.effect.implicits._
+import fs2._
+
+import ciris._
+import ciris.cats.effect._
 import ciris.credstash.credstashF
+
 import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.client.blaze.BlazeClientBuilder
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext.Implicits.global
+import model._
 
 class PdfRenderingSpec extends IntegrationSpec {
+  import PdfRendering.DocRaptorConfig
 
   override implicit val patience: PatienceConfig = PatienceConfig(scaled(15.seconds), 500.millis)
 
@@ -30,7 +35,7 @@ class PdfRenderingSpec extends IntegrationSpec {
   "Pdf rendering" should {
     "render a well formatted HTML just fine" in {
 
-      val body = Print.HtmlBody(
+      val body = RenderedFragment(
         """
           |<html>
           |  <head>

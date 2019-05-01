@@ -8,7 +8,8 @@ import cats.kernel.Monoid
 import java.util.{Map => JMap, HashMap => JHashMap}
 import scala.collection.JavaConverters._
 
-import com.ovoenergy.comms.model.{CustomerAddress, CustomerProfile, TemplateData}
+import com.ovoenergy.comms.model.{CustomerAddress, CustomerProfile, TemplateData, TemplateManifest}
+import model.{TemplateFragmentId, TemplateFragmentType}
 
 package object logic {
 
@@ -16,6 +17,24 @@ package object logic {
     def orRaiseError(error: Throwable)(implicit me: MonadError[F, Throwable]) = {
       fOptA.flatMap(_.fold(error.raiseError[F, A])(_.pure[F]))
     }
+  }
+
+  // TODO I am not a fan of it, I would like to have this information on DynamoTable instead
+  def templateFragmentIdFor(
+      manifest: TemplateManifest,
+      fragmentType: TemplateFragmentType): TemplateFragmentId = fragmentType match {
+    case TemplateFragmentType.Email.Sender =>
+      TemplateFragmentId("${manifest.id}/${manifest.version}/email/sender.txt")
+    case TemplateFragmentType.Email.Subject =>
+      TemplateFragmentId("${manifest.id}/${manifest.version}/email/subject.txt")
+    case TemplateFragmentType.Email.HtmlBody =>
+      TemplateFragmentId("${manifest.id}/${manifest.version}/email/body.html")
+    case TemplateFragmentType.Email.TextBody =>
+      TemplateFragmentId("${manifest.id}/${manifest.version}/email/body.txt")
+    case TemplateFragmentType.Sms.Body =>
+      TemplateFragmentId("${manifest.id}/${manifest.version}/sms/body.txt")
+    case TemplateFragmentType.Print.Body =>
+      TemplateFragmentId("${manifest.id}/${manifest.version}/print/body.html")
   }
 
   // TODO: We can think to write a merge fucntion for template data, having a monoid for it in fact.
@@ -51,9 +70,11 @@ package object logic {
   def buildTemplateData(
       now: Instant,
       profileOpt: Option[CustomerProfile],
-      specificData: Map[String, TemplateData]): Map[String, TemplateData] = {
-    systemTemplateData(now) ++
-      profileTemplateData(profileOpt) ++
-      specificData
+      specificData: Map[String, TemplateData]): TemplateData = {
+    TemplateData.fromMap(
+      systemTemplateData(now) ++
+        profileTemplateData(profileOpt) ++
+        specificData
+    )
   }
 }

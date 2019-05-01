@@ -1,22 +1,24 @@
 package com.ovoenergy.comms.composer
 
+import java.util.UUID
+import scala.concurrent.ExecutionContext
+
 import model._
-import model.Email.Subject
-import com.ovoenergy.comms.aws._
-import common.CredentialsProvider
-import common.model._
-import s3.S3
-import s3.model._
+
 import cats.implicits._
 import cats.effect.{IO, Timer}
 import fs2._
+
 import org.http4s.Uri
 import org.http4s.client.Client
 import org.http4s.client.blaze._
 import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
-import java.util.UUID
 
-import scala.concurrent.ExecutionContext
+import com.ovoenergy.comms.aws._
+import com.ovoenergy.comms.aws.common.CredentialsProvider
+import com.ovoenergy.comms.aws.common.model._
+import com.ovoenergy.comms.aws.s3.S3
+import com.ovoenergy.comms.aws.s3.model._
 
 class StoreSpec extends IntegrationSpec {
 
@@ -33,7 +35,7 @@ class StoreSpec extends IntegrationSpec {
       val commId = UUID.randomUUID().toString
       val traceToken = UUID.randomUUID().toString
 
-      val fragment = Subject("This is a good news")
+      val fragment = RenderedFragment("This is a good news")
 
       val key = Key(s"$commId/${UUID.randomUUID().toString}")
 
@@ -48,7 +50,7 @@ class StoreSpec extends IntegrationSpec {
       val commId = UUID.randomUUID().toString
       val traceToken = UUID.randomUUID().toString
 
-      val fragment = Subject("This is a good news")
+      val fragment = RenderedFragment("This is a good news")
 
       val key = Key(s"$commId/${UUID.randomUUID().toString}")
 
@@ -66,7 +68,7 @@ class StoreSpec extends IntegrationSpec {
       val commId = UUID.randomUUID().toString
       val traceToken = UUID.randomUUID().toString
 
-      val fragment = Subject("This is a good news")
+      val fragment = RenderedFragment("This is a good news")
 
       val key = Key(s"$commId/${UUID.randomUUID().toString}")
 
@@ -79,16 +81,11 @@ class StoreSpec extends IntegrationSpec {
             .rethrow
             .flatMap(_.content.through(text.utf8Decode).compile.lastOrError)
         } yield retrieved
-      }.futureValue shouldBe fragment.content
+      }.futureValue shouldBe fragment.value
     }
   }
 
   def withS3[A](f: S3[IO] => IO[A]): IO[A] = {
-
-    implicit val ec = ExecutionContext.global
-    implicit val contextShift = cats.effect.IO.contextShift(ec)
-    implicit val timer: Timer[IO] = IO.timer(ec)
-
     S3.resource[IO](CredentialsProvider.default[IO], region).use(f)
   }
 

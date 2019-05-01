@@ -16,8 +16,6 @@ import model._
 
 object Sms {
 
-  val bodyTemplateFragmentId = TemplateFragmentId("body.txt")
-
   def apply[F[_]](event: OrchestratedSMSV3)(
       implicit ae: MonadError[F, Throwable],
       store: Store[F],
@@ -26,6 +24,7 @@ object Sms {
 
     val commId: CommId = event.metadata.commId
     val traceToken: TraceToken = event.metadata.traceToken
+    val templateManifest = event.metadata.templateManifest
 
     val recipientData = Map(
       "recipient" ->
@@ -34,7 +33,7 @@ object Sms {
         )
     )
 
-    def renderSms(data: Map[String, TemplateData]): F[RenderedSms] = {
+    def renderSms(data: TemplateData): F[RenderedSms] = {
 
       def upload(f: F[Option[RenderedFragment]]): F[Option[Uri]] = {
         OptionT(f).semiflatMap { fragment =>
@@ -42,10 +41,12 @@ object Sms {
         }.value
       }
 
-      upload(textRenderer.render(bodyTemplateFragmentId, data))
+      upload(
+        textRenderer
+          .render(templateFragmentIdFor(templateManifest, TemplateFragmentType.Sms.Body), data))
         .orRaiseError(
           new ComposerError(
-            s"Template does not have the required ${bodyTemplateFragmentId.value} fragment",
+            s"Template does not have the required SMS body fragment",
             InvalidTemplate)
         )
         .map { uri =>

@@ -4,6 +4,8 @@ import fs2.{io => _, _}
 import io.circe.{Encoder, Decoder}
 import java.util.Base64
 
+import cats.Show
+
 import scala.util.Try
 import io.circe.Decoder._
 import org.http4s._
@@ -13,7 +15,7 @@ import org.http4s.MediaType.text.{plain, html}
 import org.http4s.Charset.{`UTF-8` => utf8}
 import java.nio.charset.StandardCharsets.{UTF_8 => nioUtf8}
 
-import com.ovoenergy.comms.model.ErrorCode
+import com.ovoenergy.comms.model.{ErrorCode, TemplateManifest}
 import com.ovoenergy.comms.templates.model.EmailSender
 
 object model {
@@ -24,7 +26,24 @@ object model {
 
   type FailedOr[A] = Either[ComposerError, A]
 
-  case class TemplateFragmentId(value: String) extends AnyVal
+  case class TemplateFragmentId(path: String) extends AnyVal
+
+  sealed trait TemplateFragmentType
+  object TemplateFragmentType {
+    object Email {
+      case object Sender extends TemplateFragmentType
+      case object Subject extends TemplateFragmentType
+      case object HtmlBody extends TemplateFragmentType
+      case object TextBody extends TemplateFragmentType
+    }
+
+    object Sms {
+      case object Body extends TemplateFragmentType
+    }
+    object Print {
+      case object Body extends TemplateFragmentType
+    }
+  }
 
   case class TemplateFragment(value: String) extends AnyVal
 
@@ -117,4 +136,8 @@ object model {
       pdfBytes.contramap(_.value)
 
   }
+
+  implicit val templateManifestShow: Show[TemplateManifest] =
+    (t: TemplateManifest) => s"${t.id}:${t.version}"
+
 }

@@ -26,6 +26,7 @@ object Print {
 
     val commId: CommId = event.metadata.commId
     val traceToken: TraceToken = event.metadata.traceToken
+    val templateManifest = event.metadata.templateManifest
 
     // TODO
     val recipientData = {
@@ -49,14 +50,14 @@ object Print {
         "recipient" -> TemplateData.fromMap(Map("postalAddress" -> address)))
     }
 
-    def renderPrint(data: Map[String, TemplateData]): F[RenderedPrint] = {
+    def renderPrint(data: TemplateData): F[RenderedPrint] = {
       val toWatermark = event.metadata.canary;
 
       textRenderer
-        .render(bodyTemplateFragmentId, data)
+        .render(templateFragmentIdFor(templateManifest, TemplateFragmentType.Sms.Body), data)
         .orRaiseError(
           new ComposerError(
-            s"Template does not have the required ${bodyTemplateFragmentId.value} fragment",
+            s"Template does not have the required print body fragment",
             InvalidTemplate)
         )
         .flatMap { fragment =>

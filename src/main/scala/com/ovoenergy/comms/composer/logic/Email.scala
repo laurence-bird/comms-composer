@@ -16,11 +16,6 @@ import model._
 
 object Email {
 
-  val senderTemplateFragmentId = TemplateFragmentId("sender.txt")
-  val subjectTemplateFragmentId = TemplateFragmentId("subject.txt")
-  val htmlBodyTemplateFragmentId = TemplateFragmentId("body.html")
-  val textBodyTemplateFragmentId = TemplateFragmentId("body.txt")
-
   val defaultSender = EmailSender("OVO Energy", "no-reply@ovoenergy.com")
 
   def apply[F[_], G[_]](event: OrchestratedEmailV4)(
@@ -32,6 +27,7 @@ object Email {
 
     val commId: CommId = event.metadata.commId
     val traceToken: TraceToken = event.metadata.traceToken
+    val templateManifest = event.metadata.templateManifest
 
     val recipientData = Map(
       "recipient" ->
@@ -40,7 +36,7 @@ object Email {
         )
     )
 
-    def renderEmail(data: Map[String, TemplateData]): F[RenderedEmail] = {
+    def renderEmail(data: TemplateData): F[RenderedEmail] = {
 
       def upload(f: F[Option[RenderedFragment]]): F[Option[Uri]] = {
         OptionT(f).semiflatMap { fragment =>
@@ -49,32 +45,43 @@ object Email {
       }
 
       val renderSubject: F[Uri] =
-        upload(textRenderer.render(subjectTemplateFragmentId, data)).orRaiseError(
+        upload(
+          textRenderer.render(
+            templateFragmentIdFor(templateManifest, TemplateFragmentType.Email.Subject),
+            data)).orRaiseError(
           new ComposerError(
-            s"Template does not have the required ${subjectTemplateFragmentId.value} fragment",
+            s"Template ${templateManifest.show} does not have the required email subject fragment",
             InvalidTemplate)
         )
       val renderHtmlBody: F[Uri] =
-        upload(textRenderer.render(htmlBodyTemplateFragmentId, data)).orRaiseError(
+        upload(
+          textRenderer.render(
+            templateFragmentIdFor(templateManifest, TemplateFragmentType.Email.HtmlBody),
+            data)).orRaiseError(
           new ComposerError(
-            s"Template does not have the required ${htmlBodyTemplateFragmentId.value} fragment",
+            s"Template ${templateManifest.show} does not have the required email html body fragment",
             InvalidTemplate)
         )
       val renderTextBody: F[Option[Uri]] = upload(
-        textRenderer.render(textBodyTemplateFragmentId, data))
+        textRenderer.render(
+          templateFragmentIdFor(templateManifest, TemplateFragmentType.Email.TextBody),
+          data))
+
       val renderSender: F[EmailSender] =
-        textRenderer.render(senderTemplateFragmentId, data).flatMap { optFragment =>
-          optFragment.fold(defaultSender.pure[F]) { renderedSender =>
-            EmailSender
-              .parse(renderedSender.value)
-              .fold(
-                errors =>
-                  new ComposerError(
-                    s"Template ${senderTemplateFragmentId} is not valid",
-                    InvalidTemplate).raiseError[F, EmailSender],
-                _.pure[F])
+        textRenderer
+          .render(templateFragmentIdFor(templateManifest, TemplateFragmentType.Email.Sender), data)
+          .flatMap { optFragment =>
+            optFragment.fold(defaultSender.pure[F]) { renderedSender =>
+              EmailSender
+                .parse(renderedSender.value)
+                .fold(
+                  errors =>
+                    new ComposerError(
+                      s"Template ${templateManifest.show} fragment email sender is not valid",
+                      InvalidTemplate).raiseError[F, EmailSender],
+                  _.pure[F])
+            }
           }
-        }
 
       (renderSender, renderSubject, renderHtmlBody, renderTextBody).parMapN {
         (sender, subject, htmlBody, textBody) =>
