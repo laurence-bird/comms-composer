@@ -70,10 +70,13 @@ package object logic {
   def buildTemplateData(
       now: Instant,
       profileOpt: Option[CustomerProfile],
-      specificData: Map[String, TemplateData]): TemplateData = {
+      recipientData: Map[String, TemplateData],
+      specificData: Map[String, TemplateData]
+  ): TemplateData = {
     TemplateData.fromMap(
       systemTemplateData(now) ++
         profileTemplateData(profileOpt) ++
+        recipientData ++
         specificData
     )
   }

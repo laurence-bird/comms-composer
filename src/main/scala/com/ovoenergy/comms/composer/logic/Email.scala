@@ -18,23 +18,25 @@ object Email {
 
   val defaultSender = EmailSender("OVO Energy", "no-reply@ovoenergy.com")
 
-  def apply[F[_], G[_]](event: OrchestratedEmailV4)(
-      implicit parallel: Parallel[F, G],
-      ae: MonadError[F, Throwable],
+  def emailRecipientData(event: OrchestratedEmailV4) = Map(
+    "recipient" ->
+      TemplateData.fromMap(
+        Map("emailAddress" -> TemplateData.fromString(event.recipientEmailAddress))
+      )
+  )
+
+  def apply[F[_], G[_]](
       store: Store[F],
       textRenderer: TextRenderer[F],
-      time: Time[F]): F[ComposedEmailV4] = {
+      time: Time[F]
+  )(event: OrchestratedEmailV4)(
+      implicit parallel: Parallel[F, G],
+      ae: MonadError[F, Throwable]
+  ): F[ComposedEmailV4] = {
 
     val commId: CommId = event.metadata.commId
     val traceToken: TraceToken = event.metadata.traceToken
     val templateManifest = event.metadata.templateManifest
-
-    val recipientData = Map(
-      "recipient" ->
-        TemplateData.fromMap(
-          Map("emailAddress" -> TemplateData.fromString(event.recipientEmailAddress))
-        )
-    )
 
     def renderEmail(data: TemplateData): F[RenderedEmail] = {
 
@@ -99,7 +101,8 @@ object Email {
       templateData = buildTemplateData(
         now,
         event.customerProfile,
-        recipientData ++ event.templateData
+        emailRecipientData(event),
+        event.templateData
       )
       rendered <- renderEmail(templateData)
     } yield

@@ -1,12 +1,13 @@
 package com.ovoenergy.comms.composer
 
-import org.scalatest.{FlatSpec, Matchers, concurrent, prop}
+import org.scalatest._
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
-import concurrent.ScaledTimeSpans
+import org.scalatest.concurrent.ScaledTimeSpans
 
 class UnitSpec
     extends FlatSpec
     with Matchers
+    with EitherValues
     with ScalaCheckDrivenPropertyChecks
     with ScaledTimeSpans
     with IOFutures {

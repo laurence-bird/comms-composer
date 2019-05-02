@@ -148,10 +148,6 @@ object Main extends IOApp {
     implicit val implicitReporter: Reporter[IO] = reporter
     implicit val time: Time[IO] = Time[IO]
 
-    implicit val implicitTextRenderer: TextRenderer[IO] = textRenderer
-    implicit val implicitPdfRenderer: PdfRendering[IO] = pdfRenderer
-    implicit val implicitStore: Store[IO] = store
-
     val routes =
       Router[IO](
         "/admin" -> AdminRestApi[IO].adminService
@@ -169,19 +165,19 @@ object Main extends IOApp {
     val email: Stream[IO, Unit] = kafka.stream[OrchestratedEmailV4, ComposedEmailV4](
       topics.orchestratedEmail,
       topics.composedEmail,
-      logic.Email[IO, IO.Par](_)
+      logic.Email[IO, IO.Par](store, textRenderer, time)(_)
     )
 
     val sms: Stream[IO, Unit] = kafka.stream[OrchestratedSMSV3, ComposedSMSV4](
       topics.orchestratedSms,
       topics.composedSms,
-      logic.Sms[IO](_)
+      logic.Sms[IO](store, textRenderer, time)(_)
     )
 
     val print: Stream[IO, Unit] = kafka.stream[OrchestratedPrintV2, ComposedPrintV2](
       topics.orchestratedPrint,
       topics.composedPrint,
-      logic.Print[IO](_)
+      logic.Print[IO](store, textRenderer, pdfRenderer, time)(_)
     )
 
     Stream(email.drain, sms.drain, print.drain, http).parJoinUnbounded

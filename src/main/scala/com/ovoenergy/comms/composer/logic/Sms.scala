@@ -16,22 +16,22 @@ import model._
 
 object Sms {
 
-  def apply[F[_]](event: OrchestratedSMSV3)(
-      implicit ae: MonadError[F, Throwable],
+  def smsRecipientData(event: OrchestratedSMSV3) = Map(
+    "recipient" ->
+      TemplateData.fromMap(
+        Map("phoneNumber" -> TemplateData.fromString(event.recipientPhoneNumber))
+      )
+  )
+
+  def apply[F[_]](
       store: Store[F],
       textRenderer: TextRenderer[F],
-      time: Time[F]): F[ComposedSMSV4] = {
+      time: Time[F]
+  )(event: OrchestratedSMSV3)(implicit ae: MonadError[F, Throwable]): F[ComposedSMSV4] = {
 
     val commId: CommId = event.metadata.commId
     val traceToken: TraceToken = event.metadata.traceToken
     val templateManifest = event.metadata.templateManifest
-
-    val recipientData = Map(
-      "recipient" ->
-        TemplateData.fromMap(
-          Map("phoneNumber" -> TemplateData.fromString(event.recipientPhoneNumber))
-        )
-    )
 
     def renderSms(data: TemplateData): F[RenderedSms] = {
 
@@ -59,7 +59,8 @@ object Sms {
       templateData = buildTemplateData(
         now,
         event.customerProfile,
-        recipientData ++ event.templateData
+        smsRecipientData(event),
+        event.templateData
       )
       rendered <- renderSms(templateData)
     } yield

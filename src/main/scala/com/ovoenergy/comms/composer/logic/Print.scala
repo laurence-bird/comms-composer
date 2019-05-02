@@ -17,44 +17,44 @@ object Print {
 
   val bodyTemplateFragmentId = TemplateFragmentId("body.html")
 
-  def apply[F[_]: FlatMap](event: OrchestratedPrintV2)(
-      implicit ae: MonadError[F, Throwable],
+  def printRecipientData(event: OrchestratedPrintV2) = {
+    val customerAddress = event.address
+    val address = TemplateData.fromMap(
+      Map(
+        "line1" -> Some(customerAddress.line1),
+        "town" -> Some(customerAddress.town),
+        "postcode" -> Some(customerAddress.postcode),
+        "line2" -> customerAddress.line2,
+        "county" -> customerAddress.county,
+        "country" -> customerAddress.country
+      ) collect {
+        case (k, Some(v)) =>
+          (k, TemplateData.fromString(v))
+      }
+    )
+
+    Map(
+      "address" -> address, // "address" needs to be there to support legacy templates where the address was in "address"
+      "recipient" -> TemplateData.fromMap(Map("postalAddress" -> address))
+    )
+  }
+
+  def apply[F[_]: FlatMap](
       store: Store[F],
       textRenderer: TextRenderer[F],
       pdfRenderer: PdfRendering[F],
-      time: Time[F]): F[ComposedPrintV2] = {
+      time: Time[F]
+  )(event: OrchestratedPrintV2)(implicit ae: MonadError[F, Throwable]): F[ComposedPrintV2] = {
 
     val commId: CommId = event.metadata.commId
     val traceToken: TraceToken = event.metadata.traceToken
     val templateManifest = event.metadata.templateManifest
 
-    // TODO
-    val recipientData = {
-      val customerAddress = event.address
-      val address = TemplateData.fromMap(
-        Map(
-          "line1" -> Some(customerAddress.line1),
-          "town" -> Some(customerAddress.town),
-          "postcode" -> Some(customerAddress.postcode),
-          "line2" -> customerAddress.line2,
-          "county" -> customerAddress.county,
-          "country" -> customerAddress.country
-        ) collect {
-          case (k, Some(v)) =>
-            (k, TemplateData.fromString(v))
-        }
-      )
-      // "address" needs to be there to support legacy templates where the address was in "address"
-      Map(
-        "address" -> address,
-        "recipient" -> TemplateData.fromMap(Map("postalAddress" -> address)))
-    }
-
     def renderPrint(data: TemplateData): F[RenderedPrint] = {
       val toWatermark = event.metadata.canary;
 
       textRenderer
-        .render(templateFragmentIdFor(templateManifest, TemplateFragmentType.Sms.Body), data)
+        .render(templateFragmentIdFor(templateManifest, TemplateFragmentType.Print.Body), data)
         .orRaiseError(
           new ComposerError(
             s"Template does not have the required print body fragment",
@@ -69,13 +69,13 @@ object Print {
         .map(uri => RenderedPrint(RenderedPrint.Body(uri)))
     }
 
-    ???
     for {
       now <- time.now
       templateData = buildTemplateData(
         now,
         event.customerProfile,
-        recipientData ++ event.templateData
+        printRecipientData(event),
+        event.templateData
       )
       renderedPdf <- renderPrint(templateData)
     } yield

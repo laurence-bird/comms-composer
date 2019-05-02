@@ -116,6 +116,8 @@ object model {
 
   object Fragment {
 
+    def apply[A](implicit fa: Fragment[A]): Fragment[A] = fa
+
     def strings: Fragment[String] = new Fragment[String] {
       // can't reuse the nio charset in `http4s.Charset`, it's private
       def content(s: String): Stream[Pure, Byte] = Stream.chunk(Chunk.bytes(s.getBytes(nioUtf8)))
