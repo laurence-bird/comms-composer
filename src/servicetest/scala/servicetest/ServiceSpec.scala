@@ -1,12 +1,16 @@
 package com.ovoenergy.comms.composer
 package servicetest
 
+import java.{util => ju}
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
 import cats.Id
 
+import com.amazonaws.{ClientConfiguration, Protocol}
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
+import com.amazonaws.regions.DefaultAwsRegionProviderChain
 import com.amazonaws.services.dynamodbv2.model._
 import com.amazonaws.services.dynamodbv2._
 
@@ -38,7 +42,6 @@ import com.ovoenergy.comms.aws.common.model._
 import com.ovoenergy.comms.aws.s3.S3
 import com.ovoenergy.comms.aws.s3.model._
 import com.ovoenergy.comms.dockertestkit._
-import com.ovoenergy.comms.dockertestkit.dynamoDb._
 import com.ovoenergy.comms.aws.common.CredentialsProvider
 import com.ovoenergy.comms.aws.common.model._
 import com.ovoenergy.comms.model.types.{ComposedEventV3, OrchestratedEventV3}
@@ -57,7 +60,6 @@ abstract class ServiceSpec
     with KafkaKit
     with SchemaRegistryKit
     with DynamoDbKit
-    with DynamoDbClient
     with WiremockKit
     with ComposerKit
     with BeforeAndAfterAll
@@ -70,7 +72,7 @@ abstract class ServiceSpec
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val contextShift = cats.effect.IO.contextShift(ec)
   implicit val timer: Timer[IO] = IO.timer(ec)
-  implicit val patience: PatienceConfig = PatienceConfig(scaled(10.seconds), 500.millis)
+  implicit val patience: PatienceConfig = PatienceConfig(scaled(25.seconds), 500.millis)
 
   override lazy val managedContainers: ManagedContainers = ManagedContainers(
     zookeeperContainer,
@@ -115,7 +117,7 @@ abstract class ServiceSpec
         ).asJava))
     }.futureValue
 
-    dynamoDbClientResource[IO]().use { dynamoDb =>
+    dynamoDbClientResource.use { dynamoDb =>
       IO(dynamoDb.createTable(
         List(new AttributeDefinition("id", ScalarAttributeType.S), new AttributeDefinition("processorId", ScalarAttributeType.S)).asJava,
         composerDeduplicationTable,
@@ -246,7 +248,7 @@ abstract class ServiceSpec
       .withBootstrapServers(kafkaPublicEndpoint)
       .withEnableAutoCommit(false)
       .withAutoOffsetReset(AutoOffsetReset.Earliest)
-      .withGroupId(getClass.getName)
+      .withGroupId(getClass.getName())
       .withPollTimeout(500.millis)
 
     consumerStream[IO]
@@ -319,6 +321,23 @@ abstract class ServiceSpec
           .willReturn(status(statusCode))
       )
     )
+  }
+
+  def dynamoDbClientResource(region: String): Resource[IO, AmazonDynamoDBAsync] = {
+
+    def acquire = IO(
+      AmazonDynamoDBAsyncClientBuilder
+        .standard()
+        .withEndpointConfiguration(new EndpointConfiguration(dynamoDbPublicEndpoint, region))
+        .withClientConfiguration(new ClientConfiguration().withProtocol(Protocol.HTTP))
+        .build()
+    )
+
+    Resource.make(acquire)(c =>  IO(c.shutdown()))
+  }
+
+  def dynamoDbClientResource: Resource[IO, AmazonDynamoDBAsync] = {
+    Resource.liftF(IO(new DefaultAwsRegionProviderChain().getRegion())).flatMap(dynamoDbClientResource)
   }
 
   override def spanScaleFactor: Double = {

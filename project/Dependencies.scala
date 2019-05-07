@@ -11,7 +11,7 @@ object Dependencies {
   lazy val scalaJava8Compat = "org.scala-lang.modules" %% "scala-java8-compat" % "0.9.0"
 
   object scalacheck {
-    lazy val shapeless = "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % "1.2.0"
+    lazy val shapeless = "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % "1.2.2"
     lazy val toolboxDatetime = "com.fortysevendeg" %% "scalacheck-toolbox-datetime" % "0.2.1"
     lazy val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   }
@@ -33,7 +33,7 @@ object Dependencies {
   }
 
   object micrometer {
-    private val micrometerVersion = "1.1.3"
+    private val micrometerVersion = "1.1.4"
     lazy val core = "io.micrometer" % "micrometer-core" % micrometerVersion
     lazy val registryDatadog = "io.micrometer" % "micrometer-registry-datadog" % micrometerVersion
   }
@@ -51,12 +51,12 @@ object Dependencies {
 
   object ovoEnergy {
 
-    private val kafkaSerializationVersion = "0.5.0"
+    private val kafkaSerializationVersion = "0.5.1"
     private val commsKafkaTestHelperVersion = "3.21"
     private val commsKafkaMessagesVersion = "1.79.4"
     private val commsTemplatesVersion = "0.33"
-    private val commsDockerTestkitVersion = "1.8.11"
-    private val commsAwsVersion = "0.2.12"
+    private val commsDockerTestkitVersion = "1.9.1"
+    private val commsAwsVersion = "0.2.15"
     private val commsDeduplicationVersion = "0.1.9"
 
     lazy val kafkaSerializationCore = "com.ovoenergy" %% "kafka-serialization-core" % kafkaSerializationVersion
@@ -68,8 +68,19 @@ object Dependencies {
     lazy val commsMessages = "com.ovoenergy" %% "comms-kafka-messages" % commsKafkaMessagesVersion
     lazy val commsTemplates = "com.ovoenergy" %% "comms-templates" % commsTemplatesVersion
     lazy val commsTestHelpers = "com.ovoenergy" %% "comms-kafka-test-helpers" % commsKafkaTestHelperVersion
-    lazy val commsDockerKitCore = "com.ovoenergy" %% "comms-docker-testkit-core" % commsDockerTestkitVersion
-    lazy val commsDockerKitClients = "com.ovoenergy" %% "comms-docker-testkit-clients" % commsDockerTestkitVersion
+    lazy val commsDockerKit = ("com.ovoenergy" %% "comms-docker-testkit" % commsDockerTestkitVersion)
+      .exclude("org.glassfish.jersey.core", "jersey-client")
+      .exclude("org.glassfish.jersey.connectors", "jersey-apache-connector")
+      .exclude("org.glassfish.jersey.media", "jersey-media-json-jackson")
+      .exclude("javax.activation", "activation")
+      .exclude("com.google.guava", "guava")
+      .exclude("com.fasterxml.jackson.jaxrs", "jackson-jaxrs-json-provider")
+      .exclude("com.fasterxml.jackson.datatype", "jackson-datatype-guava")
+      .exclude("com.fasterxml.jackson.core", "jackson-databind")
+      .exclude("org.apache.httpcomponents", "httpclient")
+      .exclude("org.apache.httpcomponents", "httpcore")
+
+
     lazy val commsAwsS3 = "com.ovoenergy.comms" %% "comms-aws-s3" % commsAwsVersion
     lazy val commsDeduplication = "com.ovoenergy.comms" %% "deduplication" % commsDeduplicationVersion
   }
@@ -86,7 +97,7 @@ object Dependencies {
 
   object http4s {
 
-    private val version = "0.20.0-RC1"
+    private val version = "0.20.0"
 
     lazy val core = "org.http4s" %% "http4s-core" % version
     lazy val client = "org.http4s" %% "http4s-client" % version

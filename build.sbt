@@ -5,7 +5,8 @@ import com.amazonaws.services.cloudformation.model._
 lazy val ServiceTest = config("servicetest") extend Test
 lazy val IT = config("it") extend Test
 
-lazy val awsJavaSdkVersion = "1.11.534"
+lazy val awsJavaSdkVersion = "1.11.545"
+lazy val jerseyVersion = "2.25.1"
 
 lazy val composer = (project in file("."))
   .enablePlugins(BuildInfoPlugin, JavaServerAppPackaging, AshScriptPlugin, DockerPlugin, EcrPlugin, CloudFormationPlugin)
@@ -33,6 +34,7 @@ lazy val composer = (project in file("."))
     inConfig(IT)(Defaults.testSettings),
     inConfig(ServiceTest)(Defaults.testSettings),
     ServiceTest / test := (ServiceTest / test).dependsOn(Docker / publishLocal).value,
+    ServiceTest / testOnly := (ServiceTest / testOnly).dependsOn(Docker / publishLocal).evaluated,
     ServiceTest / test / parallelExecution := false,
     publish := (Docker / publish).value,
     publishLocal := (Docker / publishLocal).value,
@@ -106,8 +108,7 @@ lazy val composer = (project in file("."))
       scalacheck.toolboxDatetime % Test,
       scalacheck.scalacheck % Test,
       scalatest % Test,
-      ovoEnergy.commsDockerKitCore % Test,
-      ovoEnergy.commsDockerKitClients % Test,
+      ovoEnergy.commsDockerKit % Test,
       ovoEnergy.commsMessagesTests % Test,
       wiremock % ServiceTest,
       ovoEnergy.commsTestHelpers % ServiceTest,

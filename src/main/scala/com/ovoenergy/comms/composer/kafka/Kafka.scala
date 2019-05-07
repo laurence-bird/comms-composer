@@ -274,17 +274,26 @@ object Kafka {
                 .handleErrorWith { err =>
                   val logFailure =
                     log.warn(logContext(message.record, err): _*)(
-                      s"Error processing Kafka record. $err")
+                      s"Error processing Kafka record. $err") *> log
+                      .debug("Error processing Kafka record:" ++ err.getStackTrace.mkString("\n"))
 
                   val createFailed = failedEvent(message.record.value, composerError(err))
                     .map(ProducerRecord(config.topics.failed.name, message.record.key, _))
                     .map(ProducerMessage.one(_, message.committableOffset))
                     .flatMap(failedProducer.produce)
+                    .flatTap(_.flatTap(res =>
+                      log.info(logContext(res.records._1, res.records._2): _*)(
+                        s"Sent record to Kafka topic ${res.records._2.show}"
+                    )))
 
                   val createFeedback = feedbackEvent(message.record.value, composerError(err))
                     .map(ProducerRecord(config.topics.feedback.name, message.record.key, _))
                     .map(ProducerMessage.one(_, message.committableOffset))
                     .flatMap(feedbackProducer.produce)
+                    .flatTap(_.flatTap(res =>
+                      log.info(logContext(res.records._1, res.records._2): _*)(
+                        s"Sent record to Kafka topic ${res.records._2.show}"
+                    )))
 
                   val createFailedandFeedback = (createFailed, createFeedback)
                     .mapN((a, b) => a)

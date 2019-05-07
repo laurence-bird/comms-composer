@@ -82,9 +82,11 @@ object Main extends IOApp {
             Try(new AmazonS3URI(request.uri.renderString)).toOption.map { s3Uri =>
               val bucket = s3Uri.getBucket
               // To have a uniform name between PRD and UAT
-              val bucketNameTag = if (bucket.contains("ovo-comms-rendered-content")) {
-                "s3-bucket-name:ovo-comms-rendered-content"
-              }
+              val bucketNameTag: String = (if (bucket.contains("ovo-comms-rendered-content")) {
+                                             "s3-bucket-name:ovo-comms-rendered-content".some
+                                           } else {
+                                             none[String]
+                                           }).combineAll
 
               s"s3[$bucketNameTag]"
             }
@@ -214,7 +216,7 @@ object Main extends IOApp {
       meterRegistry <- Stream.resource(metrics.createMeterRegistry[IO](config.metrics))
       reporter = Reporter.fromRegistry[IO](meterRegistry, config.metrics)
       httpClient <- httpClientStream(meterRegistry, config.metrics)
-      _ <- Stream.eval(logger.info(s"Config: ${config}"))
+      _ <- Stream.eval(logger.info(s"Composer starting up..."))
       result <- buildStream(config, httpClient, amazonS3, logger, deduplication, reporter)
     } yield result
 

@@ -7,7 +7,7 @@ import org.scalatest.Suite
 
 import com.spotify.docker.client.messages.HostConfig
 
-import com.ovoenergy.comms.dockertestkit.DockerReadyChecker.HttpResponseCode
+import com.ovoenergy.comms.dockertestkit.DockerReadyChecker.LogLineContains
 import com.ovoenergy.comms.dockertestkit._
 
 object ComposerKit extends DockerContainerNamer
@@ -51,12 +51,12 @@ trait ComposerKit extends DockerTestKit with DockerHostIpProvider {
       s"DOCRAPTOR_IS_TEST=true",
       s"DATADOG_API_KEY=foo",
       s"DATADOG_APPLICATION_KEY=bar",
+      s"METRICS_DISABLED=true",
     )
     .withExposedPorts(composerPort)
     .withVolumeBindings(
       List(HostConfig.Bind.from(s"""${sys.props("user.home")}/.aws""").to("/sbin/.aws").build()))
-    .withReadyChecker(HttpResponseCode(port = composerPort, path = "/admin/health", code = 200)
-      .looped(10, 5.seconds))
+    .withReadyChecker(LogLineContains("Composer starting up").looped(10, 5.seconds))
     .withDependencies(zookeeperContainer, kafkaContainer, schemaRegistryContainer, dynamoDbContainer)
     .toContainer
 

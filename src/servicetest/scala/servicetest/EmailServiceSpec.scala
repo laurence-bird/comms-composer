@@ -11,7 +11,7 @@ class EmailServiceSpec extends ServiceSpec with TestGenerators {
 
   "Composer" should {
 
-    "process orchestrated sms message successfully" in {
+    "process orchestrated Email message successfully" in {
       val sourceMessage: OrchestratedEmailV4 = {
         val initial = generate[OrchestratedEmailV4]
         initial.copy(
