@@ -1,6 +1,8 @@
 package com.ovoenergy.comms.composer
 package logic
 
+import io.chrisdavenport.log4cats._
+
 import cats._
 import cats.data.OptionT
 import cats.implicits._
@@ -44,7 +46,9 @@ object Print {
       textRenderer: TextRenderer[F],
       pdfRenderer: PdfRendering[F],
       time: Time[F]
-  )(event: OrchestratedPrintV2)(implicit ae: MonadError[F, Throwable]): F[ComposedPrintV2] = {
+  )(event: OrchestratedPrintV2)(
+      implicit ae: MonadError[F, Throwable],
+      logger: StructuredLogger[F]): F[ComposedPrintV2] = {
 
     val commId: CommId = event.metadata.commId
     val traceToken: TraceToken = event.metadata.traceToken
@@ -77,6 +81,7 @@ object Print {
         printRecipientData(event),
         event.templateData
       )
+      _ <- logger.debug(s"TemplateData: ${templateData}")
       renderedPdf <- renderPrint(templateData)
     } yield
       ComposedPrintV2(

@@ -20,7 +20,7 @@ import org.http4s.headers.{`User-Agent`, AgentProduct}
 import org.http4s.metrics.micrometer.{Config => Http4sMicrometerConfig, _}
 
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
-import io.chrisdavenport.log4cats.SelfAwareStructuredLogger
+import io.chrisdavenport.log4cats._
 import io.micrometer.core.instrument.{MeterRegistry, Tags}
 
 import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration
@@ -141,11 +141,12 @@ object Main extends IOApp {
       textRenderer: TextRenderer[IO],
       pdfRenderer: PdfRendering[IO],
       store: Store[IO],
-      logger: SelfAwareStructuredLogger[IO],
+      logger: StructuredLogger[IO],
       deduplication: ProcessingStore[IO, String],
       reporter: Reporter[IO]) = {
 
     implicit val implicitReporter: Reporter[IO] = reporter
+    implicit val implicitLogger: StructuredLogger[IO] = logger
     implicit val time: Time[IO] = Time[IO]
 
     val routes =

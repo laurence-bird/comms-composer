@@ -25,6 +25,7 @@ import mocks._
 
 import Arbitraries._
 import com.ovoenergy.comms.model.TemplateManifest
+import java.time.Instant
 
 class LogicSpec extends UnitSpec {
 
@@ -60,4 +61,87 @@ class LogicSpec extends UnitSpec {
       s"${manifest.id}/${manifest.version}/sms/body.txt")
   }
 
+  behavior of "TemplateData Semigroup"
+
+  it should "override any left with right string" in forAll { (loser: TemplateData, str: String) =>
+    val winner = TemplateData.fromString(str)
+    Semigroup[TemplateData].combine(loser, winner) shouldBe winner
+  }
+
+  it should "override any left with right list" in forAll {
+    (loser: TemplateData, str1: String, str2: String) =>
+      val winner =
+        TemplateData.fromSeq(List(TemplateData.fromString(str1), TemplateData.fromString(str2)))
+      Semigroup[TemplateData].combine(loser, winner) shouldBe winner
+  }
+
+  it should "override string left with right map" in forAll {
+    (str: String, map: Map[String, TemplateData]) =>
+      val winner = TemplateData.fromMap(map)
+      val loser = TemplateData.fromString(str)
+
+      Semigroup[TemplateData].combine(loser, winner) shouldBe winner
+  }
+
+  it should "override list left with right map" in forAll {
+    (str1: String, str2: String, map: Map[String, TemplateData]) =>
+      val winner = TemplateData.fromMap(map)
+      val loser =
+        TemplateData.fromSeq(List(TemplateData.fromString(str1), TemplateData.fromString(str2)))
+      Semigroup[TemplateData].combine(loser, winner) shouldBe winner
+  }
+
+  it should "deep merge two maps" in forAll { (str1: String, str2: String, str3: String) =>
+    val l = TemplateData.fromMap(
+      Map(str1 -> TemplateData.fromString(str1), str2 -> TemplateData.fromString(str2)))
+    val r = TemplateData.fromMap(
+      Map(str2 -> TemplateData.fromString(str2), str3 -> TemplateData.fromString(str3)))
+
+    val expected = TemplateData.fromMap(
+      Map(
+        str1 -> TemplateData.fromString(str1),
+        str2 -> TemplateData.fromString(str2),
+        str3 -> TemplateData.fromString(str3)
+      ))
+
+    Semigroup[TemplateData].combine(l, r) shouldBe expected
+  }
+
+  it should "deep merge two maps overriding first map values from the second map " in forAll {
+    (str1: String, str21: String, str22: String, str3: String) =>
+      val l = TemplateData.fromMap(
+        Map(str1 -> TemplateData.fromString(str1), str21 -> TemplateData.fromString(str21)))
+      val r = TemplateData.fromMap(
+        Map(str21 -> TemplateData.fromString(str22), str3 -> TemplateData.fromString(str3)))
+
+      val expected = TemplateData.fromMap(
+        Map(
+          str1 -> TemplateData.fromString(str1),
+          str21 -> TemplateData.fromString(str22),
+          str3 -> TemplateData.fromString(str3)
+        ))
+
+      Semigroup[TemplateData].combine(l, r) shouldBe expected
+  }
+
+  behaviour of "buildTemplateData"
+
+  it should "override system data" in {
+    val result = buildTemplateData(
+      Instant.now(), 
+      None, 
+      TemplateData.fromMap(
+        Map(
+          "recipient" -> TemplateData.fromString("a1")
+        )
+      ),
+      TemplateData.fromMap(
+        Map(
+          "a" -> TemplateData.fromString("a2")
+        )
+      )
+    )
+
+    result shouldBe TemplateData.
+  }
 }

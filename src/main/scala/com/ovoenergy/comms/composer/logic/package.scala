@@ -1,12 +1,12 @@
 package com.ovoenergy.comms.composer
 
 import java.time._
-
-import cats.MonadError
-import cats.implicits._
-import cats.kernel.Monoid
 import java.util.{Map => JMap, HashMap => JHashMap}
 import scala.collection.JavaConverters._
+
+import cats.{MonadError, Semigroup, Monoid}
+import cats.implicits._
+import shapeless._
 
 import com.ovoenergy.comms.model.{CustomerAddress, CustomerProfile, TemplateData, TemplateManifest}
 import model.{TemplateFragmentId, TemplateFragmentType}
@@ -16,6 +16,14 @@ package object logic {
   implicit class RichF[F[_], A](fOptA: F[Option[A]]) {
     def orRaiseError(error: Throwable)(implicit me: MonadError[F, Throwable]) = {
       fOptA.flatMap(_.fold(error.raiseError[F, A])(_.pure[F]))
+    }
+  }
+
+  implicit val monoidForTemplateData: Semigroup[TemplateData] = new Semigroup[TemplateData] {
+    def combine(x: TemplateData, y: TemplateData): TemplateData = (x, y) match {
+      case (TemplateData(Inr(Inr(Inl(a)))), TemplateData(Inr(Inr(Inl(b))))) =>
+        TemplateData.fromMap(a |+| b)
+      case (_, tdb: TemplateData) => tdb
     }
   }
 
@@ -74,9 +82,9 @@ package object logic {
       specificData: Map[String, TemplateData]
   ): TemplateData = {
     TemplateData.fromMap(
-      systemTemplateData(now) ++
-        profileTemplateData(profileOpt) ++
-        recipientData ++
+      systemTemplateData(now) |+|
+        profileTemplateData(profileOpt) |+|
+        recipientData |+|
         specificData
     )
   }
