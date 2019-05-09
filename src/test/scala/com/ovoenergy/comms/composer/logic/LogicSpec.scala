@@ -123,25 +123,4 @@ class LogicSpec extends UnitSpec {
 
       Semigroup[TemplateData].combine(l, r) shouldBe expected
   }
-
-  behaviour of "buildTemplateData"
-
-  it should "override system data" in {
-    val result = buildTemplateData(
-      Instant.now(), 
-      None, 
-      TemplateData.fromMap(
-        Map(
-          "recipient" -> TemplateData.fromString("a1")
-        )
-      ),
-      TemplateData.fromMap(
-        Map(
-          "a" -> TemplateData.fromString("a2")
-        )
-      )
-    )
-
-    result shouldBe TemplateData.
-  }
 }
