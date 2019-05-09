@@ -24,17 +24,17 @@ package object logic {
       manifest: TemplateManifest,
       fragmentType: TemplateFragmentType): TemplateFragmentId = fragmentType match {
     case TemplateFragmentType.Email.Sender =>
-      TemplateFragmentId("${manifest.id}/${manifest.version}/email/sender.txt")
+      TemplateFragmentId(s"${manifest.id}/${manifest.version}/email/sender.txt")
     case TemplateFragmentType.Email.Subject =>
-      TemplateFragmentId("${manifest.id}/${manifest.version}/email/subject.txt")
+      TemplateFragmentId(s"${manifest.id}/${manifest.version}/email/subject.txt")
     case TemplateFragmentType.Email.HtmlBody =>
-      TemplateFragmentId("${manifest.id}/${manifest.version}/email/body.html")
+      TemplateFragmentId(s"${manifest.id}/${manifest.version}/email/body.html")
     case TemplateFragmentType.Email.TextBody =>
-      TemplateFragmentId("${manifest.id}/${manifest.version}/email/body.txt")
+      TemplateFragmentId(s"${manifest.id}/${manifest.version}/email/body.txt")
     case TemplateFragmentType.Sms.Body =>
-      TemplateFragmentId("${manifest.id}/${manifest.version}/sms/body.txt")
+      TemplateFragmentId(s"${manifest.id}/${manifest.version}/sms/body.txt")
     case TemplateFragmentType.Print.Body =>
-      TemplateFragmentId("${manifest.id}/${manifest.version}/print/body.html")
+      TemplateFragmentId(s"${manifest.id}/${manifest.version}/print/body.html")
   }
 
   // TODO: We can think to write a merge fucntion for template data, having a monoid for it in fact.

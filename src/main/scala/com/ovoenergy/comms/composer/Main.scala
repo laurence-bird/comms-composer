@@ -200,7 +200,7 @@ object Main extends IOApp {
       store = Store[IO](s3, config.store, new Store.RandomSuffixKeys)
       textRendered <- Stream.eval(TextRenderer[IO](Templates[IO](s3, config.templates.bucket)))
       pdfRenderer = PdfRendering[IO](httpClient, config.docRaptor)
-      _ <- Stream.eval(logger.info(s"Config: ${config}"))
+      _ <- Stream.eval(logger.info(s"Composer starting up"))
       result <- buildStream(
         config,
         httpClient,
