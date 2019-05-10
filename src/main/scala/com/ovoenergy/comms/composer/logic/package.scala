@@ -19,7 +19,7 @@ package object logic {
     }
   }
 
-  implicit val monoidForTemplateData: Semigroup[TemplateData] = new Semigroup[TemplateData] {
+  implicit val semigroupForTemplateData: Semigroup[TemplateData] = new Semigroup[TemplateData] {
     def combine(x: TemplateData, y: TemplateData): TemplateData = (x, y) match {
       case (TemplateData(Inr(Inr(Inl(a)))), TemplateData(Inr(Inr(Inl(b))))) =>
         TemplateData.fromMap(a |+| b)
