@@ -1,18 +1,23 @@
 package com.ovoenergy.comms.composer
 
-import org.scalatest.{FlatSpec, Matchers, concurrent, prop}
-import concurrent.ScaledTimeSpans
-import prop.GeneratorDrivenPropertyChecks
+import io.chrisdavenport.log4cats.StructuredLogger
+import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
 
-import com.ovoenergy.comms.model.Arbitraries
+import cats.effect.IO
+
+import org.scalatest._
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks
+import org.scalatest.concurrent.ScaledTimeSpans
 
 class UnitSpec
     extends FlatSpec
     with Matchers
-    with GeneratorDrivenPropertyChecks
-    with Arbitraries
+    with EitherValues
+    with ScalaCheckDrivenPropertyChecks
     with ScaledTimeSpans
     with IOFutures {
+
+  implicit val unsafeLogger: StructuredLogger[IO] = Slf4jLogger.unsafeCreate[IO]
 
   override def spanScaleFactor: Double = {
     sys.env

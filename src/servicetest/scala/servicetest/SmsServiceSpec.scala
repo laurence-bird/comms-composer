@@ -7,7 +7,9 @@ import cats.effect._
 import com.ovoenergy.comms.model._
 import sms._
 
-class SmsServiceSpec extends ServiceSpec with TestGenerators {
+import Arbitraries._
+
+class SmsServiceSpec extends ServiceSpec {
 
   "Composer" should {
 

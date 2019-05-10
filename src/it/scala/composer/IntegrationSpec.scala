@@ -1,5 +1,8 @@
 package com.ovoenergy.comms.composer
 
+import scala.concurrent.ExecutionContext
+import cats.effect._
+
 import org.scalatest.{Matchers, WordSpec}
 
 import scala.concurrent.duration._

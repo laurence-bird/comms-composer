@@ -14,6 +14,7 @@
     <logger name="org.apache.kafka" level="WARN" />
     <logger name="com.amazonaws" level="WARN" />
     <logger name="com.ovoenergy.comms.composer" level="DEBUG" />
+    <logger name="com.ovoenergy.comms.aws" level="DEBUG" />
     
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>

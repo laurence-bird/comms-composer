@@ -1,36 +1,88 @@
 package com.ovoenergy.comms.composer
 package logic
 
-import cats.FlatMap
+import io.chrisdavenport.log4cats._
+
+import cats._
+import cats.data.OptionT
 import cats.implicits._
-import com.ovoenergy.comms.model.{MetadataV3, TemplateData, TemplateManifest}
+
+import org.http4s.Uri
+
+import com.ovoenergy.comms.model.{MetadataV3, TemplateData, InvalidTemplate}
 import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
-import com.ovoenergy.comms.composer.rendering.templating.{PrintTemplateData, TemplateDataWrapper}
-import rendering.Rendering
+
+import rendering.{TextRenderer, PdfRendering}
+import model._
 
 object Print {
 
-  private def buildPrintTemplateData(event: OrchestratedPrintV2): PrintTemplateData =
-    PrintTemplateData(event.templateData, event.customerProfile, event.address)
+  val bodyTemplateFragmentId = TemplateFragmentId("body.html")
 
-  def apply[F[_]: FlatMap](event: OrchestratedPrintV2)(
-      implicit rendering: Rendering[F],
+  def printRecipientData(event: OrchestratedPrintV2) = {
+    val customerAddress = event.address
+    val address = TemplateData.fromMap(
+      Map(
+        "line1" -> Some(customerAddress.line1),
+        "town" -> Some(customerAddress.town),
+        "postcode" -> Some(customerAddress.postcode),
+        "line2" -> customerAddress.line2,
+        "county" -> customerAddress.county,
+        "country" -> customerAddress.country
+      ) collect {
+        case (k, Some(v)) =>
+          (k, TemplateData.fromString(v))
+      }
+    )
+
+    Map(
+      "address" -> address, // "address" needs to be there to support legacy templates where the address was in "address"
+      "recipient" -> TemplateData.fromMap(Map("postalAddress" -> address))
+    )
+  }
+
+  def apply[F[_]: FlatMap](
       store: Store[F],
-      templates: Templates[F, Templates.Print],
-      hash: Hash[F],
-      time: Time[F]): F[ComposedPrintV2] = {
+      textRenderer: TextRenderer[F],
+      pdfRenderer: PdfRendering[F],
+      time: Time[F]
+  )(event: OrchestratedPrintV2)(
+      implicit ae: MonadError[F, Throwable],
+      logger: StructuredLogger[F]): F[ComposedPrintV2] = {
+
+    val commId: CommId = event.metadata.commId
+    val traceToken: TraceToken = event.metadata.traceToken
+    val templateManifest = event.metadata.templateManifest
+
+    def renderPrint(data: TemplateData): F[RenderedPrint] = {
+      val toWatermark = event.metadata.canary;
+
+      textRenderer
+        .render(templateFragmentIdFor(templateManifest, TemplateFragmentType.Print.Body), data)
+        .orRaiseError(
+          new ComposerError(
+            s"Template does not have the required print body fragment",
+            InvalidTemplate)
+        )
+        .flatMap { fragment =>
+          pdfRenderer.render(fragment, toWatermark)
+        }
+        .flatMap { pdfFragment =>
+          store.upload(commId, traceToken, pdfFragment)
+        }
+        .map(uri => RenderedPrint(RenderedPrint.Body(uri)))
+    }
+
     for {
-      template <- templates.get(event.metadata.templateManifest)
       now <- time.now
-      html <- rendering.renderPrintHtml(
+      templateData = buildTemplateData(
         now,
-        event.metadata.templateManifest,
-        template,
-        PrintTemplateData(event.templateData, event.customerProfile, event.address)
+        event.customerProfile,
+        printRecipientData(event),
+        event.templateData
       )
-      renderedPdf <- rendering.renderPrintPdf(html, toWatermark = event.metadata.canary)
-      pdfUri <- store.upload(event.metadata.commId, event.metadata.traceToken, renderedPdf.fragment)
-      hashedComm <- hash.apply(event)
+      _ <- logger.debug(s"TemplateData: ${templateData}")
+      renderedPdf <- renderPrint(templateData)
     } yield
       ComposedPrintV2(
         metadata = MetadataV3.fromSourceMetadata(
@@ -39,28 +91,9 @@ object Print {
           event.metadata.commId ++ "-composed-print"
         ),
         internalMetadata = event.internalMetadata,
-        pdfIdentifier = pdfUri.renderString,
-        hashedComm = hashedComm,
-        expireAt = event.expireAt
+        pdfIdentifier = renderedPdf.body.uri.renderString,
+        expireAt = event.expireAt,
+        hashedComm = "N/A",
       )
-  }
-
-  def http[F[_]: FlatMap](templateManifest: TemplateManifest, data: Map[String, TemplateData])(
-      implicit rendering: Rendering[F],
-      store: Store[F],
-      templates: Templates[F, Templates.Print],
-      hash: Hash[F],
-      time: Time[F]): F[model.Print.RenderedPdf] = {
-    for {
-      template <- templates.get(templateManifest)
-      now <- time.now
-      html <- rendering.renderPrintHtml(
-        now,
-        templateManifest,
-        template,
-        TemplateDataWrapper(data)
-      )
-      renderedPdf <- rendering.renderPrintPdf(html, toWatermark = false) // even if we preview canaries, it's ok
-    } yield renderedPdf
   }
 }

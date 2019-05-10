@@ -24,6 +24,7 @@ trait Store[F[_]] {
 object Store {
 
   case class Config(
+      // TODO rename to bucket
       bucketName: Bucket,
       region: Region = Region.`eu-west-1`,
       s3Endpoint: Option[Uri] = None

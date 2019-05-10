@@ -104,7 +104,7 @@ object Kafka {
       def failedEvent(a: In, e: ComposerError): F[FailedV3] = {
         time.now.map { now =>
           val failedMetadata = a.metadata.copy(
-            createdAt = now.toInstant,
+            createdAt = now,
             eventId = a.metadata.commId ++ "-failed"
           )
 
@@ -122,7 +122,7 @@ object Kafka {
           val metadata = EventMetadata(
             eventId = a.metadata.commId ++ "-feedback-failed",
             traceToken = a.metadata.traceToken,
-            createdAt = now.toInstant
+            createdAt = now
           )
 
           val customer = a.metadata.deliverTo match {

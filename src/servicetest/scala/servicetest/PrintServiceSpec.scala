@@ -13,7 +13,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import com.ovoenergy.comms.model._
 import print._
 
-class PrintServiceSpec extends ServiceSpec with TestGenerators {
+import Arbitraries._
+class PrintServiceSpec extends ServiceSpec {
 
   "Composer" should {
     "process orchestrated print message successfully" in {

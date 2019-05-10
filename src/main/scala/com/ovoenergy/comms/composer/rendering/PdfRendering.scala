@@ -21,13 +21,13 @@ import client._
 import client.blaze._
 import client.dsl._
 import client.middleware.{Retry, RetryPolicy}
-import com.ovoenergy.comms.composer.model.Print
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
+import model._
 trait PdfRendering[F[_]] {
-  def render(renderedPrintHtml: Print.HtmlBody, toWatermark: Boolean): F[Print.RenderedPdf]
+  def render(textFragment: RenderedFragment, toWatermark: Boolean): F[RenderedPdfFragment]
 }
 
 object PdfRendering {
@@ -79,10 +79,10 @@ object PdfRendering {
       implicit val docRaptorRequestEntityEncoder: EntityEncoder[F, DocRaptorRequest] =
         jsonEncoderOf[F, DocRaptorRequest]
 
-      def render(renderedPrintHtml: Print.HtmlBody, toWatermark: Boolean): F[Print.RenderedPdf] = {
+      def render(textFragment: RenderedFragment, toWatermark: Boolean): F[RenderedPdfFragment] = {
 
         val docRaptorBody: DocRaptorRequest = DocRaptorRequest(
-          renderedPrintHtml.htmlBody,
+          textFragment.value,
           docRaptorConfig.isTest || toWatermark,
           "pdf",
           PrinceOptions("PDF/X-1a:2003")
@@ -96,6 +96,7 @@ object PdfRendering {
           .covary[F]
 
         for {
+          // TODO config should contain already Uri
           docRaptorUri <- F.fromEither(Uri.fromString(s"${docRaptorConfig.url}/docs"))
           request <- POST(docRaptorBody.asJson, docRaptorUri, Authorization(credentials))
           result <- retryingClient.expectOr[Array[Byte]](request) { response =>
@@ -113,7 +114,7 @@ object PdfRendering {
                     )
               })
           }
-        } yield Print.RenderedPdf(Print.PdfBody(result))
+        } yield RenderedPdfFragment(result)
       }
     }
   }

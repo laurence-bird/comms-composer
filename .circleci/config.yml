@@ -157,12 +157,12 @@ jobs:
         path: target/test-reports
 
     - store_artifacts:
-        path: target/it.log
-        destination: logs/integration_test.log
+        path: target/integration-test.log
+        destination: logs/integration-test.log
 
     - store_artifacts:
-        path: target/it-docker.log
-        destination: logs/integration_test-docker.log
+        path: target/integration-test-docker.log
+        destination: logs/integration-test-docker.log
 
     - persist_to_workspace:
         root: .

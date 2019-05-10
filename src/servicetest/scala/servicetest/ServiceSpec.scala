@@ -69,9 +69,6 @@ abstract class ServiceSpec
 
   sys.props.put("logback.configurationFile", "logback-servicetest.xml")
 
-  implicit val ec: ExecutionContext = ExecutionContext.global
-  implicit val contextShift = cats.effect.IO.contextShift(ec)
-  implicit val timer: Timer[IO] = IO.timer(ec)
   implicit val patience: PatienceConfig = PatienceConfig(scaled(25.seconds), 500.millis)
 
   override lazy val managedContainers: ManagedContainers = ManagedContainers(
@@ -161,21 +158,21 @@ abstract class ServiceSpec
       s3.putObject(
           bucketName,
           Key(s"${templateManifest.id}/${templateManifest.version}/email/body.html"),
-          ObjectContent.fromByteArray[IO]("{{> header}} HTML BODY {{amount}}".getBytes)
+          ObjectContent.fromByteArray[IO]("HTML BODY {{amount}}".getBytes)
         )
         .map(_.leftWiden[Throwable])
         .rethrow,
       s3.putObject(
           bucketName,
           Key(s"${templateManifest.id}/${templateManifest.version}/email/body.txt"),
-          ObjectContent.fromByteArray[IO]("{{> header}} TEXT BODY {{amount}}".getBytes)
+          ObjectContent.fromByteArray[IO]("TEXT BODY {{amount}}".getBytes)
         )
         .map(_.leftWiden[Throwable])
         .rethrow,
       s3.putObject(
           bucketName,
           Key(s"${templateManifest.id}/${templateManifest.version}/sms/body.txt"),
-          ObjectContent.fromByteArray[IO]("{{> header}} SMS BODY {{amount}}".getBytes)
+          ObjectContent.fromByteArray[IO]("SMS BODY {{amount}}".getBytes)
         )
         .map(_.leftWiden[Throwable])
         .rethrow,
@@ -186,27 +183,6 @@ abstract class ServiceSpec
         )
         .map(_.leftWiden[Throwable])
         .rethrow,
-      s3.putObject(
-          bucketName,
-          Key(s"fragments/email/html/header.html"),
-          ObjectContent.fromByteArray[IO]("HTML HEADER".getBytes)
-        )
-        .map(_.leftWiden[Throwable])
-        .rethrow,
-      s3.putObject(
-          bucketName,
-          Key(s"fragments/email/txt/header.txt"),
-          ObjectContent.fromByteArray[IO]("TEXT HEADER".getBytes)
-        )
-        .map(_.leftWiden[Throwable])
-        .rethrow,
-      s3.putObject(
-          bucketName,
-          Key(s"fragments/sms/txt/header.txt"),
-          ObjectContent.fromByteArray[IO]("SMS HEADER".getBytes)
-        )
-        .map(_.leftWiden[Throwable])
-        .rethrow
     ).sequence.void
 
   }
