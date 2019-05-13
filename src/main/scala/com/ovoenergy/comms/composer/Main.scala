@@ -83,11 +83,11 @@ object Main extends IOApp {
             Try(new AmazonS3URI(request.uri.renderString)).toOption.map { s3Uri =>
               val bucket = s3Uri.getBucket
               // To have a uniform name between PRD and UAT
-              val bucketNameTag: String = (if (bucket.contains("ovo-comms-rendered-content")) {
-                                             "s3-bucket-name:ovo-comms-rendered-content".some
-                                           } else {
-                                             none[String]
-                                           }).combineAll
+              val bucketNameTag: String = if (bucket.contains("ovo-comms-rendered-content")) {
+                "s3-bucket-name:ovo-comms-rendered-content"
+              } else {
+                s"s3-bucket-name:$bucket"
+              }
 
               s"s3[$bucketNameTag]"
             }
