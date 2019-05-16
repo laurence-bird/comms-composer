@@ -7,7 +7,8 @@ import cats._
 import cats.data.OptionT
 import cats.implicits._
 
-import org.http4s.Uri
+import org.http4s.{Uri, MediaType, Charset}
+import org.http4s.headers.{`Content-Type` => ContentType}
 
 import com.ovoenergy.comms.model.{MetadataV3, TemplateData, InvalidTemplate}
 import com.ovoenergy.comms.model.print.{ComposedPrintV2, OrchestratedPrintV2}
@@ -59,15 +60,19 @@ object Print {
 
       textRenderer
         .render(templateFragmentIdFor(templateManifest, TemplateFragmentType.Print.Body), data)
-        .orRaiseError(
-          new ComposerError(
-            s"Template does not have the required print body fragment",
-            InvalidTemplate)
-        )
+        .flatMap(
+          _.liftTo[F](
+            new ComposerError(
+              s"Template does not have the required print body fragment",
+              InvalidTemplate)
+          ))
         .flatMap { fragment =>
           pdfRenderer.render(fragment, toWatermark)
         }
         .flatMap { pdfFragment =>
+          implicit val htmlFragment =
+            Fragment.textFragment.withContentType(ContentType(MediaType.text.html, Charset.`UTF-8`))
+
           store.upload(commId, traceToken, pdfFragment)
         }
         .map(uri => RenderedPrint(RenderedPrint.Body(uri)))

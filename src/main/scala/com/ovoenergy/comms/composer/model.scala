@@ -59,6 +59,7 @@ object model {
       sender: Option[TemplateFragment]
   )
 
+  // TODO I would like more ComposedEmail as it is not just rendered is also stored
   object RenderedEmail {
     case class Subject(uri: Uri) extends AnyVal
     case class HtmlBody(uri: Uri) extends AnyVal
@@ -72,6 +73,7 @@ object model {
       textBody: Option[RenderedEmail.TextBody]
   )
 
+  // TODO I would like more ComposedSms as it is not just rendered is also stored
   object RenderedSms {
     case class Sender(content: String)
     case class Body(uri: Uri)
@@ -81,6 +83,7 @@ object model {
       body: RenderedSms.Body,
   )
 
+  // TODO I would like more ComposedPrint as it is not just rendered is also stored
   object RenderedPrint {
     // TODO Array is mutable
     case class Body(uri: Uri)
@@ -111,6 +114,12 @@ object model {
       def content(b: B): Stream[Pure, Byte] = self.content(f(b))
       def contentLength(b: B): Long = self.contentLength(f(b))
       def contentType: ContentType = self.contentType
+    }
+
+    def withContentType(ct: ContentType): Fragment[A] = new Fragment[A] {
+      def content(a: A): Stream[Pure, Byte] = self.content(a)
+      def contentLength(a: A): Long = self.contentLength(a)
+      def contentType: ContentType = ct
     }
   }
 

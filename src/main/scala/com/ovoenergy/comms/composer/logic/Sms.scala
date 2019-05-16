@@ -44,11 +44,12 @@ object Sms {
       upload(
         textRenderer
           .render(templateFragmentIdFor(templateManifest, TemplateFragmentType.Sms.Body), data))
-        .orRaiseError(
-          new ComposerError(
-            s"Template does not have the required SMS body fragment",
-            InvalidTemplate)
-        )
+        .flatMap(
+          _.liftTo[F](
+            new ComposerError(
+              s"Template does not have the required SMS body fragment",
+              InvalidTemplate)
+          ))
         .map { uri =>
           RenderedSms(RenderedSms.Sender(event.recipientPhoneNumber), RenderedSms.Body(uri))
         }
