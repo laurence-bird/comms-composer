@@ -13,12 +13,6 @@ import model.{TemplateFragmentId, TemplateFragmentType}
 
 package object logic {
 
-  implicit class RichF[F[_], A](fOptA: F[Option[A]]) {
-    def orRaiseError(error: Throwable)(implicit me: MonadError[F, Throwable]) = {
-      fOptA.flatMap(_.fold(error.raiseError[F, A])(_.pure[F]))
-    }
-  }
-
   implicit val semigroupForTemplateData: Semigroup[TemplateData] = new Semigroup[TemplateData] {
     def combine(x: TemplateData, y: TemplateData): TemplateData = (x, y) match {
       case (TemplateData(Inr(Inr(Inl(a)))), TemplateData(Inr(Inr(Inl(b))))) =>

@@ -5,7 +5,8 @@ import cats._
 import cats.data.OptionT
 import cats.implicits._
 
-import org.http4s.Uri
+import org.http4s.{Uri, MediaType, Charset}
+import org.http4s.headers.{`Content-Type` => ContentType}
 
 import com.ovoenergy.comms.model.{MetadataV3, TemplateData, InvalidTemplate}
 import com.ovoenergy.comms.model.email.{ComposedEmailV4, OrchestratedEmailV4}
@@ -46,24 +47,35 @@ object Email {
         }.value
       }
 
+      def uploadHtml(f: F[Option[RenderedFragment]]): F[Option[Uri]] = {
+
+        implicit val htmlFragment =
+          Fragment.textFragment.withContentType(ContentType(MediaType.text.html, Charset.`UTF-8`))
+
+        OptionT(f).semiflatMap { fragment =>
+          store.upload(commId, traceToken, fragment)
+        }.value
+      }
+
       val renderSubject: F[Uri] =
         upload(
           textRenderer.render(
             templateFragmentIdFor(templateManifest, TemplateFragmentType.Email.Subject),
-            data)).orRaiseError(
-          new ComposerError(
+            data)
+        ).flatMap(
+          _.liftTo[F](new ComposerError(
             s"Template ${templateManifest.show} does not have the required email subject fragment",
-            InvalidTemplate)
-        )
+            InvalidTemplate
+          )))
       val renderHtmlBody: F[Uri] =
-        upload(
+        uploadHtml(
           textRenderer.render(
             templateFragmentIdFor(templateManifest, TemplateFragmentType.Email.HtmlBody),
-            data)).orRaiseError(
+            data)).flatMap(_.liftTo[F]((
           new ComposerError(
             s"Template ${templateManifest.show} does not have the required email html body fragment",
             InvalidTemplate)
-        )
+        )))
       val renderTextBody: F[Option[Uri]] = upload(
         textRenderer.render(
           templateFragmentIdFor(templateManifest, TemplateFragmentType.Email.TextBody),
