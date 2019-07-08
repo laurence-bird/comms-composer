@@ -47,14 +47,14 @@ object Dependencies {
 
     lazy val kafkaClient = "com.ovoenergy" %% "fs2-kafka" % fs2KafkaVersion
   }
-  
+
 
   object ovoEnergy {
 
     private val kafkaSerializationVersion = "0.5.1"
     private val commsKafkaTestHelperVersion = "3.21"
     private val commsKafkaMessagesVersion = "1.79.4"
-    private val commsTemplatesVersion = "0.33"
+    private val commsTemplatesVersion = "0.34"
     private val commsDockerTestkitVersion = "1.9.1"
     private val commsAwsVersion = "0.2.15"
     private val commsDeduplicationVersion = "0.1.9"
